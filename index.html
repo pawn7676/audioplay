@@ -110,7 +110,7 @@
   <g id="black-pawn"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" stroke="#000" stroke-width="1.5" stroke-linecap="round"/></g>
 </defs></svg>
 
-<h1>Audioplay<span class="version">w2</span></h1>
+<h1>Audioplay<span class="version">w3</span></h1>
 
 <div class="panel" id="panelVoice">
   <h2>Voice</h2>
@@ -138,6 +138,11 @@
       value="60" autocapitalize="off" autocorrect="off"
       spellcheck="false"> <span class="hint" style="margin-top:0">seconds, comma-separated</span>
   </div>
+  <div class="row opt">
+    <label for="optVoice">voice</label>
+    <select id="optVoice"><option value="">browser default</option></select>
+    <button class="chip" id="btnVoiceTest">test</button>
+  </div>
   <p class="hint">One tap starts the microphone and the
   speech — iOS requires the tap. Then walk to your board:
   say moves like "echo four", "knight takes delta five",
@@ -148,8 +153,9 @@
   the two clocks, side to move drawn heavier, everything
   else spoken. Silent: four quadrants — clocks left, last
   moves right — and nothing spoken at all; questions
-  appear as numbered lists, answered by voice. Tap a
-  black screen to come back here. Practice parses moves
+  appear as numbered lists, answered by voice. Both black
+  screens fill the page under Safari's toolbar; tap one
+  to come back here. Practice parses moves
   and answers with a random legal reply, sending
   nothing.</p>
 </div>
@@ -181,8 +187,15 @@
     <button id="btnSeekCancel" disabled>Cancel seek</button>
   </div>
   <div class="row">
-    <label>opponent <input id="challengeWho" class="whoin" type="text" value="maia1"
-      autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+    <label>opponent <select id="challengeWho">
+      <option value="maia1">maia1 (easiest)</option>
+      <option value="maia5">maia5</option>
+      <option value="maia9">maia9 (strongest)</option>
+      <option value="other">someone else</option>
+    </select></label>
+    <input id="challengeOther" class="whoin" type="text"
+      placeholder="lichess name" style="display:none"
+      autocapitalize="off" autocorrect="off" spellcheck="false">
     <label>I play <select id="challengeColour">
       <option value="random">random</option>
       <option value="white">white</option>
@@ -212,12 +225,12 @@
      only; all cross-file calls happen at runtime. Bump
      ?v= with VERSION so a deploy can never mix old and
      new files in one cached page. -->
-<script src="rules.js?v=w2"></script>
-<script src="board.js?v=w2"></script>
-<script src="speech.js?v=w2"></script>
-<script src="parser.js?v=w2"></script>
-<script src="lichess.js?v=w2"></script>
-<script src="modes.js?v=w2"></script>
-<script src="app.js?v=w2"></script>
+<script src="rules.js?v=w3"></script>
+<script src="board.js?v=w3"></script>
+<script src="speech.js?v=w3"></script>
+<script src="parser.js?v=w3"></script>
+<script src="lichess.js?v=w3"></script>
+<script src="modes.js?v=w3"></script>
+<script src="app.js?v=w3"></script>
 </body>
 </html>
