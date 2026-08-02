@@ -36,7 +36,8 @@
 
   var api = {
     gameId: null,
-    myId: null,
+    myId: null,          // lowercased, for matching
+    myName: null,        // as Lichess capitalises it, for display
     myColor: null,
     pos: null,
     moves: [],            // uci list already applied
@@ -94,6 +95,7 @@
   function clearToken() {
     cachedToken = null;
     api.myId = null;
+    api.myName = null;
     try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
     log("API", "token cleared from this browser");
   }
@@ -196,6 +198,7 @@
     stopEverything();
     clearToken();
     api.myId = null;
+    api.myName = null;
     api.gameId = null;
     api.myColor = null;
     api.pos = null;
@@ -221,7 +224,11 @@
   function fetchMyId() {
     return apiGet("/api/account").then(function (a) {
       api.myId = (a.id || "").toLowerCase();
-      log("API", "account = " + api.myId);
+      // the id is lowercased for comparing against
+      // game.white.id; the username keeps its real
+      // capitalisation and is what the user is shown
+      api.myName = a.username || a.id || "";
+      log("API", "account = " + api.myName);
       return api.myId;
     });
   }
@@ -604,7 +611,12 @@
   function connectAccount() {
     if (!storedToken()) return;
     fetchMyId().then(function () {
-      uiStatus("Connected. Waiting for a game.");
+      uiStatus("Signed in as " + api.myName + ". Waiting for a game.");
+      // the account row shows the username and switches
+      // the sign-in button's label, so it must repaint
+      // once the name is known — without this the panel
+      // still read "Sign in with Lichess" while connected
+      renderAccount();
       watchEvents();
       return apiGet("/api/account/playing?nb=1");
     }).then(function (d) {
