@@ -291,6 +291,14 @@
  *        verifying rather than asserting: confirm the
  *        file actually changed; do not trust that an
  *        edit applied.
+ *   w19  which panels are open survives a reload. They
+ *        are <details> elements, which always reset to
+ *        their markup state, and a hard reload is how a
+ *        new build gets picked up here, so the reset was
+ *        happening constantly. Keyed by the panel id
+ *        that index.html already carries, so the markup
+ *        stays untouched and its own state remains the
+ *        default for a first visit.
  *
  *  WORKING STYLE THAT WORKS, unchanged: log dumps are the
  *  best source of bugs; verify before asserting; nothing
@@ -306,7 +314,7 @@
    * parser.js, speech and mic settings in speech.js —
    * each knob next to the code it turns. */
 
-  var VERSION = "w18";
+  var VERSION = "w19";
 
   // LEAVE TOKEN EMPTY. Sign-in fills localStorage; this
   // override exists only for testing and means the token
@@ -725,8 +733,49 @@
       LOG.length = 0; logBody.textContent = "";
     });
 
+    restorePanels();
     renderButton();
     log("UI", "ready");
+  }
+
+  // WHICH PANELS ARE OPEN IS REMEMBERED (w19). The
+  // <details> elements reset to their markup state on
+  // every load, so anyone who collapsed the Lichess panel
+  // to get the board higher up the screen found it back
+  // again after a refresh — and refreshes are frequent
+  // here, since a hard reload is how a new build is
+  // picked up.
+  //
+  // Keyed by the PANEL id, which index.html already
+  // carries, so no markup changes and no new ids. The
+  // markup's own open/closed state stays the default for
+  // a browser that has never been told otherwise.
+  var PANELS_KEY = "audioplay.panels";
+
+  function panelDetails() {
+    return document.querySelectorAll(".panel[id] > details");
+  }
+
+  function savePanels() {
+    var state = {};
+    Array.prototype.forEach.call(panelDetails(), function (d) {
+      state[d.parentNode.id] = d.open;
+    });
+    try { localStorage.setItem(PANELS_KEY, JSON.stringify(state)); }
+    catch (e) {}
+  }
+
+  function restorePanels() {
+    var state = null;
+    try {
+      var raw = localStorage.getItem(PANELS_KEY);
+      if (raw) state = JSON.parse(raw);
+    } catch (e) {}
+    Array.prototype.forEach.call(panelDetails(), function (d) {
+      var id = d.parentNode.id;
+      if (state && id in state) d.open = !!state[id];
+      d.addEventListener("toggle", savePanels);
+    });
   }
 
   /*=========================== 14. BOOT ===========================*/
