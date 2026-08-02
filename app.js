@@ -256,6 +256,41 @@
  *        "tags"/"tag" join the takes words: heard twice
  *        in game17, and only luck kept it from playing
  *        a non-capture.
+ *   w15  a "speak the opponent's moves" checkbox, from
+ *        measuring game17: opponent move to first word
+ *        heard, median 11s; that word to the POST, 0s.
+ *        The code is free; the wait is the program's own
+ *        voice, which the mic sits deaf through.
+ *   w16  w15 REMOVED the same day. Hearing the
+ *        opponent's move is not overhead, it IS the
+ *        program; a switch trading the ear for speed is
+ *        a switch for a different program, and fast
+ *        chess already has lichess.org. The measurements
+ *        are kept as a tombstone in modes.js with the
+ *        rule they earned: do not propose muting
+ *        announcements for speed again.
+ *   w17  HOW TO GET A GOOD VOICE ON iOS, written down in
+ *        speech.js and on the page after the owner found
+ *        it by hand: set a Premium/Enhanced voice as the
+ *        SYSTEM voice in Settings, then leave the page's
+ *        dropdown on "default". CORRECTS an old finding
+ *        that downloaded voices could never reach a web
+ *        page — they cannot be selected by name, but
+ *        Safari resolves the page-language default to
+ *        whatever the system voice is set to. Siri
+ *        voices really are unreachable; that stands.
+ *   w18  the w15-w17 notes and the data-driven checkbox
+ *        binding, which had never actually landed in
+ *        this file. An edit asserted on a LATER file and
+ *        died before writing this one, and the two
+ *        version bumps after it then matched nothing and
+ *        failed SILENTLY. The site was fine — the old
+ *        id-based binding still worked — but VERSION
+ *        read w14 in log dumps for three versions. THE
+ *        LESSON is the project's own rule about
+ *        verifying rather than asserting: confirm the
+ *        file actually changed; do not trust that an
+ *        edit applied.
  *
  *  WORKING STYLE THAT WORKS, unchanged: log dumps are the
  *  best source of bugs; verify before asserting; nothing
@@ -271,7 +306,7 @@
    * parser.js, speech and mic settings in speech.js —
    * each knob next to the code it turns. */
 
-  var VERSION = "w14";
+  var VERSION = "w18";
 
   // LEAVE TOKEN EMPTY. Sign-in fills localStorage; this
   // override exists only for testing and means the token
@@ -579,14 +614,6 @@
       b.addEventListener("click", function () { setMode(k); });
     });
 
-    function bindCheck(id, key) {
-      var box = el(id);
-      box.checked = !!MODE_SETTINGS[key];
-      box.addEventListener("change", function () {
-        MODE_SETTINGS[key] = box.checked;
-        saveModeSettings();
-      });
-    }
     // ---- w3: voice dropdown ----
     // Filled from what the DEVICE reports, not a
     // hardcoded list: installed voices differ per device
@@ -660,9 +687,21 @@
     oppSel.addEventListener("change", syncOpponent);
     oppOther.addEventListener("change", syncOpponent);
 
-    bindCheck("optReadBackVoice", "readBackVoice");
-    bindCheck("optReadBackClock", "readBackClock");
-    bindCheck("optLowTime", "lowTimeOn");
+    // Every checkbox carrying data-setting="key" binds
+    // itself to MODE_SETTINGS[key] and persists on change
+    // (w18). Adding a setting now needs index.html for the
+    // control and modes.js for the default; this file
+    // stays out of it.
+    var boxes = document.querySelectorAll("input[data-setting]");
+    Array.prototype.forEach.call(boxes, function (box) {
+      var key = box.getAttribute("data-setting");
+      box.checked = !!MODE_SETTINGS[key];
+      box.addEventListener("change", function () {
+        MODE_SETTINGS[key] = box.checked;
+        saveModeSettings();
+        log("UI", key + " = " + box.checked);
+      });
+    });
     var lvls = el("optLowTimeLevels");
     lvls.value = MODE_SETTINGS.lowTimeLevels;
     lvls.addEventListener("change", function () {
