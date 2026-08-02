@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<!-- Layout only. The project is documented in app.js —
+<!-- Layout and STATIC style only. The project is
+     documented in app.js — 
      read its header first. The CSS below is BoardEye's,
      trimmed to the panels this page has.
 
@@ -14,7 +15,18 @@
      This file should only change when the LAYOUT does.
      Cache-busting went too: GitHub Pages caches about
      ten minutes and a hard refresh beats it, which is
-     the right trade for a site with one user. -->
+     the right trade for a site with one user.
+
+     NO STATE APPEARANCE LIVES HERE (w11). Anything whose
+     look changes with what the program is DOING — a
+     button that goes green when signed in, a chip that
+     lights when its mode is on — is styled from app.js,
+     inline, next to the code that knows the state. The
+     userscript did it that way and it was right: a CSS
+     class here plus a toggle there means every such
+     tweak edits two files for one idea. What stays here
+     is the resting appearance: colours, type, spacing,
+     layout. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -86,8 +98,6 @@
   }
   .hint { color: var(--dim); font-size: .82rem; margin-top: 8px; line-height: 1.4; }
   #lichessLine { margin-top: 6px; }
-  #lichessWho { margin-top: 6px; color: var(--accent); font-weight: 700;
-                font-size: 1.05rem; }
   #turnLine { margin-top: 6px; font-weight: 700; }
   #clockLine { margin-top: 6px; font-size: 1.5rem; font-weight: 700; letter-spacing: .02em;
                font-family: Menlo, "SF Mono", monospace; }
@@ -197,7 +207,6 @@
   cannot change your account or read your email. You can
   revoke it any time under Preferences &rarr; Security on
   Lichess, or by signing out here.</p>
-  <div class="stats" id="lichessWho"></div>
   <div class="stats" id="lichessLine">Not signed in.</div>
   <div class="row">
     <label>minutes <input id="seekMinutes" class="numin" type="number" min="1" max="180" value="15"></label>
