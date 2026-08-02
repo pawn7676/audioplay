@@ -227,6 +227,16 @@
  *        now inert: it says WHO, and Sign out beside it
  *        is how you leave. The general rule it broke —
  *        let each element do exactly one job.
+ *   w13  two things a first real game exposed. The
+ *        status line never updated once a game began,
+ *        so "Challenge sent to maia1 - waiting." stayed
+ *        up for the entire game; the game state now
+ *        owns that line whenever a game exists. And the
+ *        page never said that VOICE MUST BE TURNED ON
+ *        BY HAND — iOS opens no microphone without a
+ *        real tap, so a game with the mic off looks
+ *        broken and is not. The line now says so, in
+ *        the one place the user is already looking.
  *
  *  WORKING STYLE THAT WORKS, unchanged: log dumps are the
  *  best source of bugs; verify before asserting; nothing
@@ -242,7 +252,7 @@
    * parser.js, speech and mic settings in speech.js —
    * each knob next to the code it turns. */
 
-  var VERSION = "w12";
+  var VERSION = "w13";
 
   // LEAVE TOKEN EMPTY. Sign-in fills localStorage; this
   // override exists only for testing and means the token
@@ -356,12 +366,39 @@
   // The one hook lichess.js calls whenever the game state
   // moves: board, clocks, turn line, buttons, all from one
   // place, the way renderButton always worked.
+  // Once a game exists, THE GAME IS THE STATUS. Before
+  // w13 the line kept whatever lichess.js last wrote —
+  // "Challenge sent to maia1 - waiting." stayed up for a
+  // whole game, because nothing rewrote it when the game
+  // actually started. Seek and challenge messages still
+  // stand while there is no game to report.
+  //
+  // It also carries THE ONE THING A NEW PLAYER CANNOT
+  // GUESS: voice does not start by itself. iOS will not
+  // open a microphone without a real tap, so the round
+  // button must be pressed once per session — a rule of
+  // the platform, not a choice here (see speech.js). A
+  // game running with the mic off looks broken and is
+  // not, so the line says exactly what to do.
+  function renderStatus() {
+    if (!api.gameId) return;      // no game: leave the
+                                  // seek/challenge message
+    if (api.over) { uiStatus("Game over."); return; }
+    if (!running) {
+      uiStatus("Playing. Tap the round button above to turn " +
+               "on voice.");
+      return;
+    }
+    uiStatus(dryRun ? "Practice mode." : "Playing.");
+  }
+
   function uiGameChanged() {
     renderMiniBoard();
     renderClocks();
     renderTurn();
     renderAccount();
     renderButton();
+    renderStatus();
   }
 
   // The signed-in green is the SAME green the round
@@ -493,6 +530,7 @@
         log("UI", "voice play off");
       }
       renderButton();
+      renderStatus();
     });
 
     // ---- practice chip, verbatim from the userscript ----
