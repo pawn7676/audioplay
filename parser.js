@@ -30,15 +30,17 @@
   // ask yes/no when a phrase matches >1 move
   var CONFIRM_AMBIGUOUS = true;
 
-  // Your own move is read back in full once Lichess
-  // accepts it ("knight foxtrot 3."). ON since v70, as the
-  // chosen move confirmation: unlike the chimes it is never
-  // lost, and unlike the flat "ok." of v67-68 it varies
-  // with every move and confirms WHAT was played, not just
-  // that something was. Set false for silent success, with
-  // only the opponent's reply as implicit confirmation;
-  // "repeat" always works either way.
-  var READ_BACK_MY_MOVE = true;
+  // Your own move read back in full once Lichess accepts
+  // it ("knight foxtrot 3.") — ON since v70 as the chosen
+  // move confirmation: unlike the chimes it is never lost,
+  // and unlike the flat "ok." of v67-68 it varies with
+  // every move and confirms WHAT was played. At w2 the
+  // single constant became PER-MODE: the two accept sites
+  // below ask readBackMyMove() (modes.js), which answers
+  // from the settings panel — voice only defaults ON,
+  // clock mode defaults OFF (the turn flip on the visible
+  // clocks already confirms the move). "repeat" always
+  // works either way.
 
   // Safari sometimes clips the first word, so that "knight
   // foxtrot three" arrives as "foxtrot three", with the
@@ -1077,7 +1079,7 @@
       // read-back: the move appears there, and the info
       // area under it is cleared of any finished dialogue
       if (silentModeOn()) silentClearFinishedDialogue();
-      else if (READ_BACK_MY_MOVE) speak(sanToSpeech(c.san));
+      else if (readBackMyMove()) speak(sanToSpeech(c.san));
       else if (SPOKEN_OK) speak("ok.");
       setTimeout(dryOpponentReply, 1600);
       return;
@@ -1123,7 +1125,7 @@
         else if (api.over || /#$/.test(c.san)) {
           /* the result line says it, and says it better */
         }
-        else if (READ_BACK_MY_MOVE) speak(sanToSpeech(c.san));
+        else if (readBackMyMove()) speak(sanToSpeech(c.san));
         else if (SPOKEN_OK) speak("ok.");
       } else {
         var msg = (r.body && r.body.error) ? String(r.body.error) : ("error " + r.status);
