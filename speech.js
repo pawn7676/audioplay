@@ -61,12 +61,44 @@
   // the plain compact version instead, which sounds worse.
   // Only set this if the default is the wrong voice.
   //
-  // IMPORTANT, and not obvious: Safari can only use the
-  // voices BUILT INTO iOS. Voices you download under
-  // Settings > Accessibility > Spoken Content > Voices go to
-  // VoiceOver and Speak Screen only. Allison, Ava, Alex,
-  // Susan and Tom are downloads, so a web page can never
-  // reach them, and neither can any Siri voice.
+  // HOW TO GET A GOOD VOICE ON iOS — do this once, on
+  // the device, and every voice on this page improves.
+  // Confirmed on an iPad with Ava (Premium):
+  //
+  //   Settings > General > Accessibility >
+  //     Read & Speak > Voices > English > Voice
+  //   pick a (Premium) or (Enhanced) entry and let it
+  //   download, then leave THIS page's dropdown on
+  //   "default".
+  //
+  // The menu has moved between iOS versions — older ones
+  // call it Accessibility > Spoken Content > Voices — so
+  // if the path above is wrong, look for Voices under
+  // whichever Accessibility section mentions speech.
+  //
+  // THE LAST STEP IS THE COUNTERINTUITIVE ONE and it
+  // CORRECTS AN EARLIER FINDING here, which said flatly
+  // that downloaded voices could never be reached from a
+  // web page. Half true: they are not offered by name in
+  // getVoices(), so the dropdown cannot select them —
+  // but Safari uses the voice for the PAGE LANGUAGE, and
+  // iOS resolves that to whatever the system voice is
+  // set to. So choosing Ava (Premium) in Settings makes
+  // "default" here mean Ava (Premium). Naming a voice
+  // explicitly does the opposite: it pins the plain
+  // compact build, which is the 1990s-sounding one.
+  //
+  // Siri voices remain genuinely unreachable, and that
+  // part of the old finding stands.
+  //
+  // Two cautions. AFTER AN iOS UPGRADE a downloaded
+  // voice can still be listed while no longer actually
+  // installed, silently reverting to the compact build —
+  // if the sound gets worse after an update, re-download
+  // it. And the Rate and Pitch sliders on that Settings
+  // screen belong to VoiceOver and Speak Screen; this
+  // page sets its own (SPEAK_RATE, SPEAK_PITCH below),
+  // so change those here, not there.
   //
   // At w3 this became the STARTING value only: the Voice
   // panel offers whatever English voices the device
