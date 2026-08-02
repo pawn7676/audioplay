@@ -18,6 +18,8 @@ function element(id) {
       : id === "seekIncrement" ? "10" : id === "challengeWho" ? "maia1"
       : id === "challengeColour" ? "random" : "",
     classList: { add() {}, remove() {}, toggle() {} },
+    options: [],                       // real <select>s have this
+    innerHTML_: "",
     addEventListener(name, fn) { this["on_" + name] = fn; },
     appendChild() {}, remove() {},
     getContext() { return new Proxy({}, { get: () => () => {} }); },
@@ -231,6 +233,37 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   vm.runInContext("lowTimeTick();", sandbox);
   await sleep(80);
   check("callout resumes in voice mode", /one minute/.test(heard().join(" ")));
+
+  // ---- w3 ----
+  // fullscreen is gone from both overlays: no call, and
+  // the four helpers deleted rather than left dangling
+  const modesSrc = fs.readFileSync("modes.js", "utf8")
+    .split("\n").filter(l => !/^\s*[*/]/.test(l)).join("\n");
+  check("no fullscreen calls left in modes.js",
+        !/enterClockFullscreen\(|enterSilentFullscreen\(|leaveClockFullscreen\(|leaveSilentFullscreen\(/.test(modesSrc));
+
+  // entering and leaving an overlay still works with the
+  // fullscreen calls removed
+  vm.runInContext("enterClockMode();", sandbox);
+  check("clock mode still enters without fullscreen",
+        vm.runInContext("currentMode()", sandbox) === "clock");
+  vm.runInContext("exitClockMode(true);", sandbox);
+  vm.runInContext("enterSilentMode();", sandbox);
+  check("silent mode still enters without fullscreen",
+        vm.runInContext("currentMode()", sandbox) === "silent");
+  vm.runInContext("exitSilentMode(true);", sandbox);
+  check("back to voice", vm.runInContext("currentMode()", sandbox) === "voice");
+
+  // the voice setter takes and is remembered
+  vm.runInContext('setVoiceName("Samantha");', sandbox);
+  check("voice name set", vm.runInContext("VOICE_NAME", sandbox) === "Samantha");
+  vm.runInContext('setVoiceName("");', sandbox);
+  check("voice name cleared to default",
+        vm.runInContext("VOICE_NAME", sandbox) === "");
+
+  // the opponent setting is what the challenge button sends
+  check("opponent defaults to maia1",
+        vm.runInContext("MODE_SETTINGS.opponent", sandbox) === "maia1");
 
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
