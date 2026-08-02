@@ -317,6 +317,23 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("page-language voice sorts first (" + order.join(",") + ")",
         order[0] === "Zzz");
 
+  // ---- w9: the signed-in username reaches the screen ----
+  vm.runInContext(`
+    api.myId = "pawn76"; api.myName = "pawn76";
+    renderAccount();
+  `, sandbox);
+  check("username shown in the panel",
+        vm.runInContext('document.getElementById("lichessWho").textContent',
+                        sandbox) === "pawn76");
+  check("sign-in button becomes a switch-account button",
+        vm.runInContext('document.getElementById("btnSignIn").textContent',
+                        sandbox) === "Sign in as someone else");
+  vm.runInContext('api.myId = null; api.myName = null; renderAccount();',
+                  sandbox);
+  check("username cleared on sign-out",
+        vm.runInContext('document.getElementById("lichessWho").textContent',
+                        sandbox) === "");
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();
