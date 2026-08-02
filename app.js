@@ -126,6 +126,17 @@
  *        opt-in and default off; the amended tombstone is
  *        in modes.js. Also fixes w1's missing
  *        flipClockSides stub.
+ *    w3  FULLSCREEN RETIRED from both black screens —
+ *        the v75/v76/v79 tombstone's own stated one-line
+ *        out, taken after the owner reported glitchy
+ *        transitions; the overlays now fill the visible
+ *        viewport under Safari's toolbar, and the exit
+ *        that corrupted the layout viewport no longer
+ *        happens at all. A voice dropdown built from the
+ *        voices the DEVICE reports (never a hardcoded
+ *        list of names that may not be installed), with
+ *        a test button. An opponent dropdown: maia1,
+ *        maia5, maia9, or someone else by name.
  *
  *  WORKING STYLE THAT WORKS, unchanged: log dumps are the
  *  best source of bugs; verify before asserting; nothing
@@ -141,7 +152,7 @@
    * parser.js, speech and mic settings in speech.js —
    * each knob next to the code it turns. */
 
-  var VERSION = "w2";
+  var VERSION = "w3";
 
   // LEAVE TOKEN EMPTY. Sign-in fills localStorage; this
   // override exists only for testing and means the token
@@ -311,7 +322,7 @@
       renderAccount();
     });
     challengeBtn.addEventListener("click", function () {
-      sendChallenge(el("challengeWho").value,
+      sendChallenge(MODE_SETTINGS.opponent,
                     el("seekMinutes").value, el("seekIncrement").value,
                     el("seekRated").checked, el("challengeColour").value);
     });
@@ -381,6 +392,75 @@
         saveModeSettings();
       });
     }
+    // ---- w3: voice dropdown ----
+    // Filled from what the DEVICE reports, not a
+    // hardcoded list: installed voices differ per device
+    // and per iOS version, and naming one that is absent
+    // just silently falls back. iOS reports an empty list
+    // until speech has been used once, so this is
+    // refilled after the first tap as well as at boot.
+    var voiceSel = el("optVoice");
+    function fillVoices() {
+      var have = englishVoices();
+      var want = MODE_SETTINGS.voiceName || "";
+      if (voiceSel.options.length === have.length + 1) return;
+      voiceSel.innerHTML = "";
+      var d = document.createElement("option");
+      d.value = ""; d.textContent = "browser default";
+      voiceSel.appendChild(d);
+      have.forEach(function (v) {
+        var o = document.createElement("option");
+        o.value = v.name;
+        o.textContent = v.name + " (" + (v.lang || "?") + ")";
+        voiceSel.appendChild(o);
+      });
+      voiceSel.value = want;
+      if (voiceSel.value !== want) voiceSel.value = "";
+      log("TTS", have.length + " English voices offered");
+    }
+    fillVoices();
+    voiceSel.addEventListener("change", function () {
+      MODE_SETTINGS.voiceName = voiceSel.value;
+      saveModeSettings();
+      setVoiceName(voiceSel.value);
+    });
+    el("btnVoiceTest").addEventListener("click", function () {
+      wakeSpeech();
+      setTimeout(function () {
+        loadVoices();
+        fillVoices();
+        // a real sentence, not "testing": the point is how
+        // this voice says the words it will actually say
+        speak("knight foxtrot 3. black to move.");
+      }, 300);
+    });
+    // iOS hands over the list only after speech has run
+    setTimeout(fillVoices, 1500);
+    setInterval(fillVoices, 4000);
+
+    // ---- w3: opponent dropdown ----
+    // The maia bots are the standing opponents: maia1 is
+    // the gentlest, maia9 the strongest. "someone else"
+    // reveals the name box rather than having two
+    // controls compete for the same job.
+    var oppSel = el("challengeWho"), oppOther = el("challengeOther");
+    function syncOpponent() {
+      var custom = oppSel.value === "other";
+      oppOther.style.display = custom ? "" : "none";
+      MODE_SETTINGS.opponent = custom ? oppOther.value : oppSel.value;
+      saveModeSettings();
+    }
+    if (MODE_SETTINGS.opponent &&
+        !["maia1", "maia5", "maia9"].includes(MODE_SETTINGS.opponent)) {
+      oppSel.value = "other";
+      oppOther.value = MODE_SETTINGS.opponent;
+    } else {
+      oppSel.value = MODE_SETTINGS.opponent || "maia1";
+    }
+    syncOpponent();
+    oppSel.addEventListener("change", syncOpponent);
+    oppOther.addEventListener("change", syncOpponent);
+
     bindCheck("optReadBackVoice", "readBackVoice");
     bindCheck("optReadBackClock", "readBackClock");
     bindCheck("optLowTime", "lowTimeOn");
