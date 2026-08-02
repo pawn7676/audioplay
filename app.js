@@ -189,6 +189,15 @@
  *        from an unanticipated platform. THE LESSON, for
  *        anything added later: prefer detecting what is
  *        there to declaring what should be.
+ *    w9  the signed-in username is SHOWN. It was fetched
+ *        all along and only kept lowercased for matching
+ *        game.white.id, never displayed, so a connected
+ *        page could not tell you whose account it was on
+ *        — which matters most on a shared device. The
+ *        same fix repairs a real bug: connectAccount set
+ *        the status text but never repainted the account
+ *        row, so the button still read "Sign in with
+ *        Lichess" while signed in.
  *
  *  WORKING STYLE THAT WORKS, unchanged: log dumps are the
  *  best source of bugs; verify before asserting; nothing
@@ -204,7 +213,7 @@
    * parser.js, speech and mic settings in speech.js —
    * each knob next to the code it turns. */
 
-  var VERSION = "w8";
+  var VERSION = "w9";
 
   // LEAVE TOKEN EMPTY. Sign-in fills localStorage; this
   // override exists only for testing and means the token
@@ -326,13 +335,20 @@
     renderButton();
   }
 
-  var signInBtn, signOutBtn, seekBtn, seekCancelBtn, challengeBtn;
+  var signInBtn, signOutBtn, seekBtn, seekCancelBtn, challengeBtn,
+      whoLine;
 
   function renderAccount() {
     var signedIn = !!storedToken();
     if (signInBtn) {
-      signInBtn.textContent = api.myId
+      // once signed in the button is no longer the way
+      // in, it is the way to switch accounts, and the
+      // name makes clear WHICH account is being left
+      signInBtn.textContent = api.myName
         ? "Sign in as someone else" : "Sign in with Lichess";
+    }
+    if (whoLine) {
+      whoLine.textContent = api.myName ? api.myName : "";
     }
     if (signOutBtn) signOutBtn.disabled = !signedIn;
     var inGame = !!api.gameId && !api.over;
@@ -350,6 +366,7 @@
     clockLine = el("clockLine");
     turnLine = el("turnLine");
     signInBtn = el("btnSignIn");
+    whoLine = el("lichessWho");
     signOutBtn = el("btnSignOut");
     seekBtn = el("btnSeek");
     seekCancelBtn = el("btnSeekCancel");
