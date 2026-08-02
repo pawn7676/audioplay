@@ -68,7 +68,39 @@
   // Susan and Tom are downloads, so a web page can never
   // reach them, and neither can any Siri voice.
   //
+  // At w3 this became the STARTING value only: the Voice
+  // panel offers whatever English voices the device
+  // actually reports (they differ per device, so a
+  // hardcoded list of "good" names would mostly name
+  // voices that are not installed), and the choice is
+  // saved. setVoiceName() below is what the dropdown
+  // calls; empty string means "browser default", which
+  // stays the default for the reasons above.
   var VOICE_NAME = "";
+
+  // The English voices this device actually has, for the
+  // dropdown. Empty until the list arrives — iOS reports
+  // nothing until speech has been used once, which is why
+  // loadVoices is polled and re-run after the first tap.
+  function englishVoices() {
+    var list = [];
+    try { list = window.speechSynthesis.getVoices() || []; } catch (e) {}
+    return list.filter(function (v) {
+      return v.lang && v.lang.toLowerCase().indexOf("en") === 0;
+    });
+  }
+
+  // Called by the dropdown. Re-runs the picker at once so
+  // the next utterance uses the new voice, and returns
+  // whether the name was found.
+  function setVoiceName(name) {
+    VOICE_NAME = name || "";
+    missLogged = null;
+    defaultLogged = false;
+    var ok = loadVoices();
+    log("TTS", "voice set to " + (VOICE_NAME || "browser default"));
+    return ok;
+  }
 
   var SPEAK_RATE = 0.9;
   var SPEAK_PITCH = 1.0;
