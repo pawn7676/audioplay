@@ -250,7 +250,9 @@
     readBackVoice: true,    // voice only: the ear is all
     readBackClock: false,   // clock: the turn flip confirms
     lowTimeOn: false,       // CLOSED CASE REOPENED, opt-in
-    lowTimeLevels: "60"     // seconds, comma-separated
+    lowTimeLevels: "60",    // seconds, comma-separated
+    voiceName: "",          // "" = the browser default
+    opponent: "maia1"       // the seek/challenge dropdown
   };
 
   function loadModeSettings() {
@@ -356,6 +358,10 @@
 
   setInterval(lowTimeTick, 500);
   loadModeSettings();
+  // the saved voice is applied once the list exists; iOS
+  // reports nothing until speech has been used, so this
+  // also re-runs from the first tap (app.js).
+  if (MODE_SETTINGS.voiceName) setVoiceName(MODE_SETTINGS.voiceName);
 
   /*======================== 15. CLOCK MODE ========================*/
 
@@ -590,42 +596,37 @@
     }
   });
 
-  // Fullscreen hides Safari's toolbar, so the display is
-  // black edge to edge. Browsers only grant it from a real
-  // user gesture: entering by the clk chip goes fullscreen,
-  // entering by VOICE cannot — Safari refuses, the refusal
-  // is logged, and the overlay simply shows under the
-  // toolbar instead. THE VOICE ENTRY IS THEREFORE DEAD in
-  // practice (v94): tried and dropped, since the toolbar
-  // makes it the wrong screen to look at, and the chip is
-  // one tap. CLOCK_TIME_SIZE_BARE is sized on that fact.
-  // The phrase still works, and toggling off by voice or by
-  // tap is unaffected. Leaving fullscreen with a system
-  // gesture keeps clock mode up (toolbar returns); tapping
-  // the overlay exits both.
-  function enterClockFullscreen() {
-    try {
-      var el = clockOverlay;
-      var req = el.requestFullscreen || el.webkitRequestFullscreen;
-      if (!req) { log("CLK", "fullscreen unsupported"); return; }
-      var p = req.call(el);
-      if (p && p.catch) {
-        p.catch(function (e) {
-          log("CLK", "fullscreen refused: " + e.message);
-        });
-      }
-    } catch (e) { log("CLK", "fullscreen error: " + e.message); }
-  }
-
-  function leaveClockFullscreen() {
-    try {
-      if (document.fullscreenElement ||
-          document.webkitFullscreenElement) {
-        (document.exitFullscreen ||
-         document.webkitExitFullscreen).call(document);
-      }
-    } catch (e) {}
-  }
+  /*----- w3: FULLSCREEN RETIRED — THE TOMBSTONE'S OWN OUT -----
+   * enterClockFullscreen, leaveClockFullscreen,
+   * enterSilentFullscreen and leaveSilentFullscreen are
+   * DELETED, not disabled, at w3.
+   *
+   * The v75/v76/v79 closed case recorded that Safari's
+   * layout viewport stays corrupted after any element
+   * fullscreen EXIT until the app is force-quit, that
+   * three in-page repairs were built and all removed, and
+   * that "the one-line out, if it ever becomes
+   * intolerable, is to stop calling
+   * enterClockFullscreen()/enterSilentFullscreen()". The
+   * owner reported glitchy transitions on the website at
+   * w3 and asked for exactly that. So this is the
+   * sanctioned exit being taken, not a new idea.
+   *
+   * WHAT IS LOST: Safari's toolbar stays on screen, so
+   * the black area is the visible viewport rather than
+   * the whole panel. That is the accepted cost, and the
+   * owner judged it fine — the clocks are sized in vh, so
+   * they fill whatever height they are given.
+   *
+   * WHAT IS GAINED, beyond smooth transitions: the
+   * corruption cannot happen at all, since it is
+   * triggered by the EXIT that no longer occurs. The
+   * chip-row displacement in the section 12 closed case
+   * had the same root and also goes away.
+   *
+   * DO NOT REINSTATE without a fundamentally different
+   * theory, and read v75-v79 first if tempted.
+   *--------------------------------------------------------*/
 
   function enterClockMode() {
     // v80: the two full-screen overlays never stack; the
@@ -637,7 +638,7 @@
     clearInterval(clockTimer);
     clockTimer = setInterval(renderClockMode, OVERLAY_TICK_MS);
     acquireClockLock();
-    enterClockFullscreen();
+    // w3: NO FULLSCREEN. See the note above exitClockMode.
     log("CLK", "clock mode on");
     // no spoken announcement: the clocks are the signal
     uiModeChanged();   // w2: repaint the mode selector
@@ -649,7 +650,6 @@
     clearInterval(clockTimer);
     clockTimer = null;
     releaseClockLock();
-    leaveClockFullscreen();
     log("CLK", "clock mode off" + (byTap ? " (tap)" : ""));
     if (!byTap) speak("clock mode off.");
     uiModeChanged();   // w2: repaint the mode selector
@@ -1014,29 +1014,8 @@
     }
   });
 
-  function enterSilentFullscreen() {
-    try {
-      var el = silentOverlay;
-      var req = el.requestFullscreen || el.webkitRequestFullscreen;
-      if (!req) { log("SIL", "fullscreen unsupported"); return; }
-      var p = req.call(el);
-      if (p && p.catch) {
-        p.catch(function (e) {
-          log("SIL", "fullscreen refused: " + e.message);
-        });
-      }
-    } catch (e) { log("SIL", "fullscreen error: " + e.message); }
-  }
-
-  function leaveSilentFullscreen() {
-    try {
-      if (document.fullscreenElement ||
-          document.webkitFullscreenElement) {
-        (document.exitFullscreen ||
-         document.webkitExitFullscreen).call(document);
-      }
-    } catch (e) {}
-  }
+  // (silent-mode fullscreen retired at w3 — see the
+  // tombstone above enterClockMode)
 
   function enterSilentMode() {
     // the two overlays never stack (mirrored in
@@ -1051,7 +1030,7 @@
     clearInterval(silentTimer);
     silentTimer = setInterval(renderSilentMode, OVERLAY_TICK_MS);
     acquireSilentLock();
-    enterSilentFullscreen();
+    // w3: NO FULLSCREEN. See the note above exitClockMode.
     log("SIL", "silent mode on");
     // no announcement of any kind: that is the whole point
     uiModeChanged();   // w2: repaint the mode selector
@@ -1063,7 +1042,6 @@
     clearInterval(silentTimer);
     silentTimer = null;
     releaseSilentLock();
-    leaveSilentFullscreen();
     log("SIL", "silent mode off" + (byTap ? " (tap)" : ""));
     // spoken, not shown: the overlay is already down, so
     // speech is live again and the confirmation is audible
