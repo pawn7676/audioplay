@@ -611,7 +611,9 @@
   function connectAccount() {
     if (!storedToken()) return;
     fetchMyId().then(function () {
-      uiStatus("Signed in as " + api.myName + ". Waiting for a game.");
+      // the account button carries the name (w10); this
+      // line says only what is happening
+      uiStatus("Waiting for a game.");
       // the account row shows the username and switches
       // the sign-in button's label, so it must repaint
       // once the name is known — without this the panel
@@ -736,4 +738,3 @@
     clearTimeout(reconnectTimer);
     clearInterval(pollTimer);
   }
-
