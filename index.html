@@ -87,6 +87,9 @@
     font-family: ui-monospace, Menlo, monospace; -webkit-overflow-scrolling: touch;
   }
   #verLabel { margin-left: auto; color: var(--warn); font-size: 12px; flex: 0 0 auto; }
+  .row.opt { font-size: .85rem; color: var(--text); gap: 6px; }
+  .row.opt label { display: flex; align-items: center; gap: 6px; }
+  #modeRow button { flex: 1 1 0; }
 </style>
 </head>
 <body>
@@ -107,7 +110,7 @@
   <g id="black-pawn"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" stroke="#000" stroke-width="1.5" stroke-linecap="round"/></g>
 </defs></svg>
 
-<h1>Audioplay<span class="version">w1</span></h1>
+<h1>Audioplay<span class="version">w2</span></h1>
 
 <div class="panel" id="panelVoice">
   <h2>Voice</h2>
@@ -115,12 +118,40 @@
     <button class="chip" id="chipPractice">practice</button>
     <button id="bigBtn">&#9654;</button>
   </div>
+  <div class="row" id="modeRow">
+    <button id="modeVoice" class="on">voice only</button>
+    <button id="modeClock">clock</button>
+    <button id="modeSilent">silent</button>
+  </div>
+  <div class="row opt">
+    <label><input type="checkbox" id="optReadBackVoice">
+    read my move back (voice only)</label>
+  </div>
+  <div class="row opt">
+    <label><input type="checkbox" id="optReadBackClock">
+    read my move back (clock mode)</label>
+  </div>
+  <div class="row opt">
+    <label><input type="checkbox" id="optLowTime">
+    spoken time warnings (voice only) at</label>
+    <input id="optLowTimeLevels" class="numin" type="text"
+      value="60" autocapitalize="off" autocorrect="off"
+      spellcheck="false"> <span class="hint" style="margin-top:0">seconds, comma-separated</span>
+  </div>
   <p class="hint">One tap starts the microphone and the
   speech — iOS requires the tap. Then walk to your board:
   say moves like "echo four", "knight takes delta five",
   "castle kingside". "repeat" re-speaks the last move,
-  "clock" speaks the times. Practice parses moves and
-  answers with a random legal reply, sending nothing.</p>
+  "clock" speaks the times, "flip clock" swaps the clock
+  sides. Voice only: nothing on screen is needed — the
+  screen can even be off. Clock: a black screen with just
+  the two clocks, side to move drawn heavier, everything
+  else spoken. Silent: four quadrants — clocks left, last
+  moves right — and nothing spoken at all; questions
+  appear as numbered lists, answered by voice. Tap a
+  black screen to come back here. Practice parses moves
+  and answers with a random legal reply, sending
+  nothing.</p>
 </div>
 
 <div class="panel" id="panelBoard">
@@ -181,11 +212,12 @@
      only; all cross-file calls happen at runtime. Bump
      ?v= with VERSION so a deploy can never mix old and
      new files in one cached page. -->
-<script src="rules.js?v=w1"></script>
-<script src="board.js?v=w1"></script>
-<script src="speech.js?v=w1"></script>
-<script src="parser.js?v=w1"></script>
-<script src="lichess.js?v=w1"></script>
-<script src="app.js?v=w1"></script>
+<script src="rules.js?v=w2"></script>
+<script src="board.js?v=w2"></script>
+<script src="speech.js?v=w2"></script>
+<script src="parser.js?v=w2"></script>
+<script src="lichess.js?v=w2"></script>
+<script src="modes.js?v=w2"></script>
+<script src="app.js?v=w2"></script>
 </body>
 </html>
