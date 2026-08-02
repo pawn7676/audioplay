@@ -237,6 +237,25 @@
  *        real tap, so a game with the mic off looks
  *        broken and is not. The line now says so, in
  *        the one place the user is already looking.
+ *   w14  GAME 17, the first real game on the website,
+ *        and it found a genuine bug. THE MIC COULD BE
+ *        DEAD WITH THE BUTTON LIT. startListening()
+ *        refuses while speech is in flight, and with
+ *        MIC_ALWAYS_ON nothing restarted it afterwards —
+ *        safe in the userscript, where the button called
+ *        connect() and the announcement came back long
+ *        after the mic was up. The website moved the
+ *        connection to SIGN-IN, so "connected. you are
+ *        white." can be mid-sentence at the first tap,
+ *        which is exactly what happened at 23:17:24: no
+ *        mic cycle was ever logged and voice had to be
+ *        switched off and on to recover. The end of
+ *        speech now re-checks the mic, and a refusal is
+ *        logged instead of being silent — the failure
+ *        hid precisely because nothing said it. Also
+ *        "tags"/"tag" join the takes words: heard twice
+ *        in game17, and only luck kept it from playing
+ *        a non-capture.
  *
  *  WORKING STYLE THAT WORKS, unchanged: log dumps are the
  *  best source of bugs; verify before asserting; nothing
@@ -252,7 +271,7 @@
    * parser.js, speech and mic settings in speech.js —
    * each knob next to the code it turns. */
 
-  var VERSION = "w13";
+  var VERSION = "w14";
 
   // LEAVE TOKEN EMPTY. Sign-in fills localStorage; this
   // override exists only for testing and means the token
