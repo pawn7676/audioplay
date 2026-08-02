@@ -265,6 +265,29 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("opponent defaults to maia1",
         vm.runInContext("MODE_SETTINGS.opponent", sandbox) === "maia1");
 
+  // ---- w4: the shortlist is the whole list ----
+  vm.runInContext(`
+    speechSynthesis.getVoices = function () {
+      return [
+        { name: "Samantha", lang: "en-US" },
+        { name: "Daniel", lang: "en-GB" },
+        { name: "Zarvox", lang: "en-US" },
+        { name: "Bubbles", lang: "en-US" },
+        { name: "Thomas", lang: "fr-FR" },
+        { name: "Moira", lang: "en-IE" }
+      ];
+    };
+  `, sandbox);
+  const offered = vm.runInContext(
+    "englishVoices().map(function (v) { return v.name; })", sandbox);
+  check("only shortlist voices offered (" + offered.join(",") + ")",
+        offered.length === 3 &&
+        offered.includes("Samantha") && offered.includes("Daniel") &&
+        offered.includes("Moira"));
+  check("novelty voices excluded",
+        !offered.includes("Zarvox") && !offered.includes("Bubbles"));
+  check("shortlist order kept", offered[0] === "Samantha");
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();
