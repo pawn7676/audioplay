@@ -198,6 +198,27 @@
  *        the status text but never repainted the account
  *        row, so the button still read "Sign in with
  *        Lichess" while signed in.
+ *   w10  the username stops being said twice. w9 put it
+ *        in a line of its own AND in the status line
+ *        under it. Now the account button IS the
+ *        identity — the name is its label and the green
+ *        is its state (the same green the round button
+ *        uses for "on", because it means the same
+ *        thing) — and the status line is left to say
+ *        only what is happening.
+ *   w11  a churn fix, not a feature. w10 needed THREE
+ *        files to change one button: a CSS class in
+ *        index.html, the toggle here, and a status
+ *        string in lichess.js. State appearance now
+ *        lives in app.js as inline style, the way the
+ *        userscript always did it, so index.html is out
+ *        of that loop entirely. RULE: index.html holds
+ *        the RESTING look; anything that changes with
+ *        what the program is doing is styled from here.
+ *        Still outstanding, and the next churn source
+ *        to fix: 19 uiStatus() strings sit in
+ *        lichess.js, which should report STATE and let
+ *        this file choose the WORDS.
  *
  *  WORKING STYLE THAT WORKS, unchanged: log dumps are the
  *  best source of bugs; verify before asserting; nothing
@@ -213,7 +234,7 @@
    * parser.js, speech and mic settings in speech.js —
    * each knob next to the code it turns. */
 
-  var VERSION = "w9";
+  var VERSION = "w11";
 
   // LEAVE TOKEN EMPTY. Sign-in fills localStorage; this
   // override exists only for testing and means the token
@@ -335,20 +356,45 @@
     renderButton();
   }
 
-  var signInBtn, signOutBtn, seekBtn, seekCancelBtn, challengeBtn,
-      whoLine;
+  // The signed-in green is the SAME green the round
+  // button uses for "on", because it means the same
+  // thing: this is running. Kept here as a constant so
+  // the one idea has one home.
+  var SIGNED_IN_BG = "#3a5a2a";
+  var SIGNED_IN_FG = "#e6efe0";
+
+  var signInBtn, signOutBtn, seekBtn, seekCancelBtn, challengeBtn;
 
   function renderAccount() {
     var signedIn = !!storedToken();
     if (signInBtn) {
-      // once signed in the button is no longer the way
-      // in, it is the way to switch accounts, and the
-      // name makes clear WHICH account is being left
-      signInBtn.textContent = api.myName
-        ? "Sign in as someone else" : "Sign in with Lichess";
-    }
-    if (whoLine) {
-      whoLine.textContent = api.myName ? api.myName : "";
+      // ONE control, both facts. Signed out it is the way
+      // in and says so. Signed in it becomes the account
+      // itself: the name is the label and the green is
+      // the state, matching the round button's "on" —
+      // tapping it switches accounts, which is what a
+      // name in an account row is expected to do.
+      //
+      // The name is NOT repeated in the status line
+      // below; that line says what is HAPPENING, this
+      // button says WHO. w9 had it in both places and
+      // read as a stutter.
+      signInBtn.textContent = api.myName || "Sign in with Lichess";
+      signInBtn.title = api.myName ? "Sign in as someone else" : "";
+      // styled HERE, not by a class in index.html (w11):
+      // appearance that changes with state belongs beside
+      // the code that knows the state, or every tweak
+      // edits two files for one idea.
+      if (api.myName) {
+        signInBtn.style.background = SIGNED_IN_BG;
+        signInBtn.style.color = SIGNED_IN_FG;
+        signInBtn.style.borderColor = SIGNED_IN_BG;
+      } else {
+        signInBtn.style.background = "";
+        signInBtn.style.color = "";
+        signInBtn.style.borderColor = "";
+      }
+      signInBtn.classList.toggle("primary", !api.myName);
     }
     if (signOutBtn) signOutBtn.disabled = !signedIn;
     var inGame = !!api.gameId && !api.over;
@@ -366,7 +412,6 @@
     clockLine = el("clockLine");
     turnLine = el("turnLine");
     signInBtn = el("btnSignIn");
-    whoLine = el("lichessWho");
     signOutBtn = el("btnSignOut");
     seekBtn = el("btnSeek");
     seekCancelBtn = el("btnSeekCancel");
