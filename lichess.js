@@ -53,7 +53,18 @@
   // GitHub Pages origin it belongs to us, so the token
   // lives here and the GM-storage apparatus is retired.
   var LICHESS_BASE = "https://lichess.org";
-  var LICHESS_CLIENT_ID = "audioplay.voice.chess";
+  // THE USER SEES THIS STRING. Lichess has no app
+  // registry and no approval step: whatever goes here is
+  // shown verbatim on the consent screen, and is the only
+  // thing identifying this page to the person deciding
+  // whether to trust it. So it is a NAME, not a
+  // description — the reverse-domain shape it had at w1
+  // was a convention borrowed without its reason (there
+  // is no registry to namespace against, and no domain
+  // here to reverse). Changing it later is safe: existing
+  // tokens keep working, they just list under the old
+  // name on lichess.org until re-granted.
+  var LICHESS_CLIENT_ID = "audioplay";
   var LICHESS_SCOPES = "board:play challenge:write challenge:read";
   var VERIFIER_KEY = "audioplay.lichess.verifier";
   var VERIFIER_ALPHABET =
