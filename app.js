@@ -137,6 +137,25 @@
  *        list of names that may not be installed), with
  *        a test button. An opponent dropdown: maia1,
  *        maia5, maia9, or someone else by name.
+ *    w4  the voice dropdown cut to a SHORTLIST the owner
+ *        chose by ear on his own iPad — Samantha, Daniel,
+ *        Karen, Moira, Rishi, Tessa — shown as bare
+ *        names. w3 offered every English voice the device
+ *        reported, which on iOS is dozens, most of them
+ *        unusable. The list is in speech.js.
+ *    w5  index.html stops carrying a version number. It
+ *        held one in the heading and in a ?v= on all
+ *        seven script tags, so every bump forced an
+ *        edit and re-upload of a file whose layout had
+ *        not changed — pure churn for whoever is copying
+ *        files into GitHub by hand. Both displays now
+ *        read VERSION from here. RULE: index.html
+ *        changes only when the LAYOUT changes.
+ *    w6  the version comes off the screen entirely — the
+ *        heading and the log-bar label both go. VERSION
+ *        stays in app.js and in the log lines, so a
+ *        pasted dump still identifies its build; that is
+ *        the only reader who ever needed it.
  *
  *  WORKING STYLE THAT WORKS, unchanged: log dumps are the
  *  best source of bugs; verify before asserting; nothing
@@ -152,7 +171,7 @@
    * parser.js, speech and mic settings in speech.js —
    * each knob next to the code it turns. */
 
-  var VERSION = "w3";
+  var VERSION = "w6";
 
   // LEAVE TOKEN EMPTY. Sign-in fills localStorage; this
   // override exists only for testing and means the token
@@ -304,7 +323,10 @@
     challengeBtn = el("btnChallenge");
     logBody = el("logBody");
     logBody.textContent = LOG.join("\n");
-    el("verLabel").textContent = "Audioplay " + VERSION;
+    // NO VERSION ON SCREEN (w6). VERSION lives on in the
+    // log lines, which is where it earns its place: a
+    // pasted dump says which build produced it. On screen
+    // it only told the owner what he had just uploaded.
 
     signInBtn.addEventListener("click", function () { signIn(); });
     signOutBtn.addEventListener("click", function () {
@@ -406,17 +428,19 @@
       if (voiceSel.options.length === have.length + 1) return;
       voiceSel.innerHTML = "";
       var d = document.createElement("option");
-      d.value = ""; d.textContent = "browser default";
+      d.value = ""; d.textContent = "default";
       voiceSel.appendChild(d);
       have.forEach(function (v) {
         var o = document.createElement("option");
+        // the bare name only: the language tag is noise
+        // once the list is six voices the owner chose
         o.value = v.name;
-        o.textContent = v.name + " (" + (v.lang || "?") + ")";
+        o.textContent = v.name;
         voiceSel.appendChild(o);
       });
       voiceSel.value = want;
       if (voiceSel.value !== want) voiceSel.value = "";
-      log("TTS", have.length + " English voices offered");
+      log("TTS", have.length + " of the shortlist installed");
     }
     fillVoices();
     voiceSel.addEventListener("change", function () {
