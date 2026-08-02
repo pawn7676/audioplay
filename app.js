@@ -219,6 +219,14 @@
  *        to fix: 19 uiStatus() strings sit in
  *        lichess.js, which should report STATE and let
  *        this file choose the WORDS.
+ *   w12  the account pill stops being a button. Showing
+ *        the username on it made it read as a label, but
+ *        it still fired "sign in as someone else", so
+ *        tapping it sent an already-signed-in user back
+ *        to the Lichess consent screen. Signed in it is
+ *        now inert: it says WHO, and Sign out beside it
+ *        is how you leave. The general rule it broke —
+ *        let each element do exactly one job.
  *
  *  WORKING STYLE THAT WORKS, unchanged: log dumps are the
  *  best source of bugs; verify before asserting; nothing
@@ -234,7 +242,7 @@
    * parser.js, speech and mic settings in speech.js —
    * each knob next to the code it turns. */
 
-  var VERSION = "w11";
+  var VERSION = "w12";
 
   // LEAVE TOKEN EMPTY. Sign-in fills localStorage; this
   // override exists only for testing and means the token
@@ -380,7 +388,16 @@
       // button says WHO. w9 had it in both places and
       // read as a stutter.
       signInBtn.textContent = api.myName || "Sign in with Lichess";
-      signInBtn.title = api.myName ? "Sign in as someone else" : "";
+      // NOT A BUTTON WHEN SIGNED IN (w12). It reads as a
+      // label showing who you are, so tapping it should
+      // not do anything — w11 made it "sign in as someone
+      // else" and taking the user back to the Lichess
+      // consent screen while already signed in was
+      // baffling. Switching accounts is rare and Sign out
+      // then Sign in already does it. ONE CONTROL, ONE
+      // JOB: this says WHO, Sign out is how you LEAVE.
+      signInBtn.title = "";
+      signInBtn.style.cursor = api.myName ? "default" : "";
       // styled HERE, not by a class in index.html (w11):
       // appearance that changes with state belongs beside
       // the code that knows the state, or every tweak
@@ -423,7 +440,11 @@
     // pasted dump says which build produced it. On screen
     // it only told the owner what he had just uploaded.
 
-    signInBtn.addEventListener("click", function () { signIn(); });
+    signInBtn.addEventListener("click", function () {
+      // signed in, this is a label, not a control (w12)
+      if (api.myName) return;
+      signIn();
+    });
     signOutBtn.addEventListener("click", function () {
       signOut();
       renderButton();
