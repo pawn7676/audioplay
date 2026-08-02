@@ -43,8 +43,12 @@
  *                reworks: PKCE sign-in (no more tokens by
  *                hand) and the account event stream (no
  *                more game id from the URL).
- *    app.js      this file: settings, the log, the
- *                overlay stubs, UI glue, boot.
+ *    modes.js    sections 15-16 verbatim (the clock and
+ *                silent screens), the mode selector, the
+ *                per-mode read-back, the low-time
+ *                watcher and its reopened tombstone.
+ *    app.js      this file: settings, the log, UI glue,
+ *                boot.
  *    index.html  layout only. Quarantined: the CSS and
  *                markup nobody touches. Version bumps and
  *                history happen HERE, not there.
@@ -90,23 +94,21 @@
  *  CLOSED CASES carried over whole from the userscript
  *  (the detail lives in speech.js and the v104 source):
  *  sound is settled — confirmation must be speech, chimes
- *  are dead on iOS; no unprompted clock speech of any
- *  kind, asked for and declined at v92 ("clock" answers
- *  on demand and stays the whole answer); no fullscreen
- *  repairs; nothing speculative in the vocabulary.
+ *  are dead on iOS; no fullscreen repairs; nothing
+ *  speculative in the vocabulary. The v92 no-unprompted-
+ *  clock-speech case was REOPENED BY THE OWNER at w2 as
+ *  an opt-in — the amended tombstone is in modes.js.
  *
- *  CLOCK MODE AND SILENT MODE (userscript 15 and 16) ARE
- *  NOT PORTED, and the reasoning should save someone a
- *  rebuild: this page IS clock mode. The userscript drew
- *  a black overlay because the Lichess page underneath
- *  was unreadable clutter; here the page is ours, the
- *  clocks are already on it in large type, and the moves
- *  are spoken. Silent mode was the userscript's own
- *  deletion candidate ("it demands constant looking at
- *  the iPad, the one thing this project exists to
- *  avoid"). The stubs below keep the dialogue code
- *  verbatim; if either overlay is ever wanted, port it
- *  behind them.
+ *  CLOCK MODE AND SILENT MODE returned at w2 as chosen
+ *  modes (w1 had left them out, reasoning that this page
+ *  is a standing clock mode — still true of the page, but
+ *  the black screens earn their keep in a dark room and
+ *  across-the-room reading, and the owner asked). The
+ *  thirteen-game findings travel with them, in modes.js:
+ *  screen-off voice-only was the weakest setting, silent
+ *  mode demands looking at the iPad. As chosen modes
+ *  rather than defaults, that is now the user's trade to
+ *  make per game.
  *
  *  VERSIONS. The website counts w1, w2, ... so no number
  *  ever collides with the userscript's v-series in a log
@@ -114,6 +116,16 @@
  *    w1  the port: userscript v104 voice pipeline +
  *        BoardEye's board, PKCE and seek/challenge, on
  *        GitHub Pages.
+ *    w2  the three viewing modes — voice only, clock,
+ *        silent — as a per-game choice, with sections 15
+ *        and 16 ported verbatim into modes.js. Per-mode
+ *        move read-back (voice ON, clock OFF by default:
+ *        the turn flip on the clocks is the free
+ *        confirmation). Low-time callouts in voice-only
+ *        mode: a CLOSED CASE REOPENED BY THE OWNER,
+ *        opt-in and default off; the amended tombstone is
+ *        in modes.js. Also fixes w1's missing
+ *        flipClockSides stub.
  *
  *  WORKING STYLE THAT WORKS, unchanged: log dumps are the
  *  best source of bugs; verify before asserting; nothing
@@ -129,7 +141,7 @@
    * parser.js, speech and mic settings in speech.js —
    * each knob next to the code it turns. */
 
-  var VERSION = "w1";
+  var VERSION = "w2";
 
   // LEAVE TOKEN EMPTY. Sign-in fills localStorage; this
   // override exists only for testing and means the token
@@ -162,25 +174,14 @@
     log("ERR", (e.message || "?") + " @" + (e.lineno || "?"));
   });
 
-  /*=================== OVERLAY STUBS (15 and 16) ==================*/
-  /* The dialogue in parser.js and speak() in speech.js
-   * still ask these questions, verbatim from v104. The
-   * answers here mean "voice mode, always": no overlay is
-   * up, everything is spoken. This is the v78-parity
-   * guarantee by construction — with silentModeOn() false,
-   * every silent-mode branch is dead code, byte-identical
-   * to what shipped and tested in the userscript. */
-
-  function silentModeOn() { return false; }
-  function clockModeOn() { return false; }
-  function silentShowText() {}
-  function silentSetInfo() {}
-  function silentListLines() { return []; }
-  function silentClearFinishedDialogue() {}
-  function presentPendingList() {}
-  function toggleClockMode() {}
-  function toggleSilentMode() {}
-  function classifyFlipClockAvailable() { return false; }
+  /*================= OVERLAYS LIVE IN modes.js (w2) ===============*/
+  /* w1 stubbed sections 15 and 16 here so the dialogue
+   * could stay verbatim; w2 ports them for real. modes.js
+   * loads just before this file and owns silentModeOn,
+   * clockModeOn, the enter/exit pairs, flipClockSides —
+   * which w1's stubs had in fact MISSED, so "flip clock"
+   * would have thrown; found by the w2 port — and the
+   * per-mode readBackMyMove() plus the low-time watcher. */
 
   /*============================ 12. UI ============================*/
   /* The userscript built its buttons with createElement
@@ -193,6 +194,20 @@
    * simply start itself after sign-in. */
 
   var bigBtn, testChip, statusLine, clockLine, turnLine;
+
+  // w2: the mode selector row. Lit = current mode, one
+  // always lit. modes.js calls uiModeChanged from every
+  // enter/exit so a tap-to-leave repaints this too.
+  var modeBtns = {};
+
+  function renderModeButtons() {
+    var m = currentMode();
+    ["voice", "clock", "silent"].forEach(function (k) {
+      if (modeBtns[k]) modeBtns[k].classList.toggle("on", m === k);
+    });
+  }
+
+  function uiModeChanged() { renderModeButtons(); }
 
   function renderButton() {
     if (testChip) {
@@ -350,6 +365,34 @@
       }
       renderButton();
     });
+
+    // ---- w2: mode selector and per-mode settings ----
+    ["voice", "clock", "silent"].forEach(function (k) {
+      var b = el("mode" + k.charAt(0).toUpperCase() + k.slice(1));
+      modeBtns[k] = b;
+      b.addEventListener("click", function () { setMode(k); });
+    });
+
+    function bindCheck(id, key) {
+      var box = el(id);
+      box.checked = !!MODE_SETTINGS[key];
+      box.addEventListener("change", function () {
+        MODE_SETTINGS[key] = box.checked;
+        saveModeSettings();
+      });
+    }
+    bindCheck("optReadBackVoice", "readBackVoice");
+    bindCheck("optReadBackClock", "readBackClock");
+    bindCheck("optLowTime", "lowTimeOn");
+    var lvls = el("optLowTimeLevels");
+    lvls.value = MODE_SETTINGS.lowTimeLevels;
+    lvls.addEventListener("change", function () {
+      MODE_SETTINGS.lowTimeLevels = lvls.value;
+      saveModeSettings();
+      log("CLK", "low-time levels set to " +
+          lowTimeLevels().join(",") + "s");
+    });
+    renderModeButtons();
 
     // ---- log panel buttons ----
     el("btnLogCopy").addEventListener("click", function () {
