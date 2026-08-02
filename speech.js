@@ -416,6 +416,34 @@
         else {
           ignoreMicUntil = Date.now() + MIC_IGNORE_TAIL_MS;
           if (!MIC_ALWAYS_ON) resumeMicSoon();
+          // THE MIC MAY NEVER HAVE STARTED (w14, game17).
+          // startListening() refuses while speech is in
+          // flight, and with MIC_ALWAYS_ON nothing above
+          // resumes it, because the userscript could
+          // assume the mic was already running by the
+          // time anything was spoken: its button called
+          // connect(), and the announcement came back
+          // over the network long after startListening().
+          //
+          // The website broke that assumption. The game
+          // connection belongs to SIGN-IN now, so the
+          // "connected. you are white." announcement can
+          // be mid-sentence when the round button is
+          // first tapped. In game17 it was: the tap at
+          // 23:17:24 started the keep-alive and then
+          // bailed out of startListening, no cycle was
+          // ever logged, and the mic stayed dead with the
+          // button lit until voice was switched off and
+          // on again at 23:17:54.
+          //
+          // So the end of speech is where the mic gets
+          // re-checked. startListening() is idempotent —
+          // it returns early if already listening — so
+          // this costs nothing in the normal case.
+          else if (running && !listening) {
+            log("MIC", "starting after speech (was blocked by it)");
+            startListening();
+          }
         }
       });
     };
@@ -550,11 +578,27 @@
   var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   var recognition = null, listening = false, running = false;
   var restartTimer = null, micFails = 0, micCycles = 0, noSpeech = 0;
+  var micBlockedLogged = false;
   var ignoreMicUntil = 0;
 
   function startListening() {
     if (!Rec) { log("MIC", "SpeechRecognition unavailable in this browser"); return; }
-    if (!running || speaking || listening) return;
+    // A REFUSAL USED TO BE SILENT, and that is how the
+    // game17 dead mic hid: the button was lit, nothing in
+    // the log said the mic had declined to start. Speech
+    // blocking it is normal and self-healing (the speech
+    // end re-checks), so it is logged once rather than
+    // every time; anything else is worth seeing.
+    if (!running) return;
+    if (listening) return;
+    if (speaking) {
+      if (!micBlockedLogged) {
+        micBlockedLogged = true;
+        log("MIC", "not starting yet: speech in flight");
+      }
+      return;
+    }
+    micBlockedLogged = false;
     try {
       recognition = new Rec();
     } catch (e) { log("ERR", "new SpeechRecognition: " + e.message); return; }
