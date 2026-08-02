@@ -21,12 +21,24 @@
  *  so no server exists anywhere in this project.
  *
  *  WHO THIS IS FOR
- *  One user, one board, and the fact that explains nearly
- *  every choice: HE PLAYS WITHOUT READING GLASSES. A real
+ *  THE WEBSITE WIDENED THE AUDIENCE, and that is the
+ *  point of it. The userscript was built for one user,
+ *  one board: he plays WITHOUT READING GLASSES, at a real
  *  board, standing, with a 13-inch iPad across the room.
- *  The screen exists to be glanced at, not read; the ears
- *  carry the game. Anything that must be acted on MUST be
- *  spoken.
+ *  That fact still explains most of the display decisions
+ *  in modes.js and should not be undone — it is why the
+ *  clocks are enormous, why weight carries the turn, why
+ *  anything that must be acted on is SPOKEN.
+ *
+ *  But the site is opened by whoever finds it, on
+ *  whatever they own. So: NO CODE HERE MAY ASSUME AN
+ *  IPAD, or Safari, or a US English voice. w4 shipped a
+ *  six-name voice list chosen by ear on the owner's own
+ *  iPad, and on Windows or Android it offered nothing at
+ *  all — the exact mistake to watch for. Platform
+ *  findings stay written down (the iOS ones in speech.js
+ *  are real and hard-won), but they are handled as
+ *  conditions to detect, never as the shape of the world.
  *
  *  THE FILE MAP (load order in index.html)
  *    rules.js    section 13, FROZEN, perft-verified.
@@ -156,6 +168,27 @@
  *        stays in app.js and in the log lines, so a
  *        pasted dump still identifies its build; that is
  *        the only reader who ever needed it.
+ *    w7  the voice list goes CROSS-PLATFORM, fixing a w4
+ *        bug: six Apple names meant Windows and Android
+ *        users saw an empty dropdown. Apple, Microsoft
+ *        and Google families are all matched, by prefix
+ *        so version suffixes cannot break it, labels
+ *        tidied for display, and if nothing matches at
+ *        all every English voice is offered rather than
+ *        none. WHO THIS IS FOR was rewritten to say what
+ *        w4 forgot: the site is not the userscript, and
+ *        no code here may assume an iPad.
+ *    w8  THE ALLOWLIST GOES. w4 and w7 both hardcoded
+ *        which voices to offer, and both were claims
+ *        about hardware nobody here owns — the failure is
+ *        silent and total when the claim is wrong. The
+ *        dropdown now offers whatever English voices the
+ *        device reports. The one exclusion is Apple's
+ *        joke voices, and it is a BLOCKLIST: it can only
+ *        subtract known junk, never withhold a real voice
+ *        from an unanticipated platform. THE LESSON, for
+ *        anything added later: prefer detecting what is
+ *        there to declaring what should be.
  *
  *  WORKING STYLE THAT WORKS, unchanged: log dumps are the
  *  best source of bugs; verify before asserting; nothing
@@ -171,7 +204,7 @@
    * parser.js, speech and mic settings in speech.js —
    * each knob next to the code it turns. */
 
-  var VERSION = "w6";
+  var VERSION = "w8";
 
   // LEAVE TOKEN EMPTY. Sign-in fills localStorage; this
   // override exists only for testing and means the token
@@ -434,13 +467,15 @@
         var o = document.createElement("option");
         // the bare name only: the language tag is noise
         // once the list is six voices the owner chose
+        // the stored value is the platform's real name;
+        // the label is the tidied one (voiceLabel)
         o.value = v.name;
-        o.textContent = v.name;
+        o.textContent = v.label || v.name;
         voiceSel.appendChild(o);
       });
       voiceSel.value = want;
       if (voiceSel.value !== want) voiceSel.value = "";
-      log("TTS", have.length + " of the shortlist installed");
+      log("TTS", have.length + " voices offered");
     }
     fillVoices();
     voiceSel.addEventListener("change", function () {
