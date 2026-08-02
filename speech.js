@@ -78,39 +78,84 @@
   // stays the default for the reasons above.
   var VOICE_NAME = "";
 
-  // THE SHORTLIST. Six voices, named by the owner after
-  // auditioning what his iPad actually offers, and that
-  // is the whole list — the device reports dozens more
-  // (Apple's novelty voices, compact duplicates, other
-  // languages) and none of them read a chess move well.
-  // A voice on this list that is not installed simply
-  // does not appear; nothing else is ever offered.
+  // NO ALLOWLIST. The dropdown offers whatever English
+  // voices the device reports, and this is the settled
+  // answer after two wrong ones: w4 hardcoded six Apple
+  // names (Windows and Android then saw an EMPTY list),
+  // w7 hardcoded three vendor families (better, but still
+  // a guess about hardware nobody here has). Any allowlist
+  // is a claim about someone else's device, and it fails
+  // silently and totally when the claim is wrong. What
+  // the device reports is the only thing that is true
+  // everywhere.
   //
-  // Order is the owner's: Samantha first as the en-US
-  // default, then the accents.
-  var VOICE_SHORTLIST = ["Samantha", "Daniel", "Karen",
-                         "Moira", "Rishi", "Tessa"];
+  // THE ONE EXCLUSION is Apple's novelty voices: a fixed,
+  // shipped set of joke voices — Bubbles, Zarvox, Bad
+  // News — that are sound effects rather than accents or
+  // alternatives, and that report en-US like any real
+  // voice, since the Web Speech API exposes no quality or
+  // category flag. This is a BLOCKLIST, not an allowlist,
+  // and the difference is the whole point: on Windows,
+  // Android or anything unknown, none of these names
+  // exist, so nothing is filtered and every voice comes
+  // through. It can subtract junk; it can never withhold
+  // a real voice from a platform nobody anticipated.
+  // Delete the list to see literally everything.
+  var NOVELTY_VOICES = {
+    albert: 1, "bad news": 1, bahh: 1, bells: 1, boing: 1,
+    bubbles: 1, cellos: 1, deranged: 1, "good news": 1,
+    jester: 1, organ: 1, "pipe organ": 1, superstar: 1,
+    trinoids: 1, whisper: 1, wobble: 1, zarvox: 1,
+    hysterical: 1
+  };
 
-  // Only the shortlist, in shortlist order, and only the
-  // entries this device really has. Empty until the list
-  // arrives — iOS reports nothing until speech has been
-  // used once, which is why loadVoices is polled and
+  function isEnglishVoice(v) {
+    return !!(v && v.lang && v.lang.toLowerCase().indexOf("en") === 0);
+  }
+
+  // What the dropdown SHOWS. The stored value is always
+  // the platform's real name; this only tidies the label,
+  // since "Microsoft Ravi - English (India)" is unreadable
+  // on a phone. If tidying would empty the name, the real
+  // one is kept.
+  function voiceLabel(realName) {
+    var n = String(realName || "");
+    n = n.replace(/^Microsoft\s+/i, "");
+    n = n.replace(/^Google\s+/i, "");
+    n = n.replace(/\s*Online\s*\(Natural\)/i, "");
+    n = n.replace(/\s*[-\u2014]\s*English.*$/i, "");
+    return n.trim() || String(realName);
+  }
+
+  // Every English voice this device has, minus the joke
+  // voices, in a stable order: the page-language matches
+  // first, then the rest alphabetically. Empty until the
+  // list arrives — iOS reports nothing until speech has
+  // been used once, which is why loadVoices is polled and
   // re-run after the first tap.
   function englishVoices() {
     var list = [];
     try { list = window.speechSynthesis.getVoices() || []; } catch (e) {}
-    var out = [];
-    VOICE_SHORTLIST.forEach(function (want) {
-      var w = want.toLowerCase();
-      for (var i = 0; i < list.length; i++) {
-        var n = String(list[i].name || "").toLowerCase();
-        // an exact name match, or the same voice with a
-        // quality suffix ("Samantha (Enhanced)")
-        if (n === w || n.indexOf(w + " (") === 0) {
-          out.push({ name: want, voice: list[i] });
-          return;
-        }
+    var page = "en-us";
+    try {
+      if (navigator.language &&
+          navigator.language.toLowerCase().indexOf("en") === 0) {
+        page = navigator.language.toLowerCase();
       }
+    } catch (e) {}
+    var out = list.filter(function (v) {
+      if (!isEnglishVoice(v)) return false;
+      var n = String(v.name || "").toLowerCase().trim();
+      return !NOVELTY_VOICES[n];
+    }).map(function (v) {
+      return { name: v.name, label: voiceLabel(v.name), voice: v };
+    });
+    out.sort(function (a, b) {
+      var al = String(a.voice.lang || "").toLowerCase();
+      var bl = String(b.voice.lang || "").toLowerCase();
+      var ap = al === page ? 0 : 1, bp = bl === page ? 0 : 1;
+      if (ap !== bp) return ap - bp;
+      return a.label.localeCompare(b.label);
     });
     return out;
   }
