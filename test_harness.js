@@ -265,28 +265,57 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("opponent defaults to maia1",
         vm.runInContext("MODE_SETTINGS.opponent", sandbox) === "maia1");
 
-  // ---- w4: the shortlist is the whole list ----
-  vm.runInContext(`
-    speechSynthesis.getVoices = function () {
-      return [
-        { name: "Samantha", lang: "en-US" },
-        { name: "Daniel", lang: "en-GB" },
-        { name: "Zarvox", lang: "en-US" },
-        { name: "Bubbles", lang: "en-US" },
-        { name: "Thomas", lang: "fr-FR" },
-        { name: "Moira", lang: "en-IE" }
-      ];
-    };
-  `, sandbox);
-  const offered = vm.runInContext(
-    "englishVoices().map(function (v) { return v.name; })", sandbox);
-  check("only shortlist voices offered (" + offered.join(",") + ")",
-        offered.length === 3 &&
-        offered.includes("Samantha") && offered.includes("Daniel") &&
-        offered.includes("Moira"));
-  check("novelty voices excluded",
-        !offered.includes("Zarvox") && !offered.includes("Bubbles"));
-  check("shortlist order kept", offered[0] === "Samantha");
+  // ---- w8: no allowlist; the device decides ----
+  function withVoices(voices, expr) {
+    vm.runInContext("__voices = " + JSON.stringify(voices) + ";" +
+      "speechSynthesis.getVoices = function () { return __voices; };",
+      sandbox);
+    return vm.runInContext(expr, sandbox);
+  }
+  const names = "englishVoices().map(function (v) { return v.label; })";
+
+  // an unknown platform's voices come through untouched:
+  // the failure mode of every previous allowlist
+  const odd = withVoices([
+    { name: "Acme Speaker One", lang: "en-US" },
+    { name: "Vendor Voice Two", lang: "en-GB" },
+    { name: "Stimme Drei", lang: "de-DE" }
+  ], names);
+  check("unknown platform's English voices all offered (" +
+        odd.join(",") + ")",
+        odd.length === 2 && odd.includes("Acme Speaker One") &&
+        odd.includes("Vendor Voice Two"));
+
+  // Windows in India: nothing filtered, labels tidied
+  const win = withVoices([
+    { name: "Microsoft Ravi - English (India)", lang: "en-IN" },
+    { name: "Microsoft Heera - English (India)", lang: "en-IN" },
+    { name: "Microsoft David - English (United States)", lang: "en-US" },
+    { name: "Microsoft Hemant - Hindi (India)", lang: "hi-IN" }
+  ], names);
+  check("Windows voices all offered, tidied (" + win.join(",") + ")",
+        win.length === 3 && win.includes("Ravi") &&
+        !win.join(",").includes("Microsoft"));
+
+  // Apple: real voices kept, joke voices dropped
+  const apple = withVoices([
+    { name: "Samantha", lang: "en-US" },
+    { name: "Daniel", lang: "en-GB" },
+    { name: "Zarvox", lang: "en-US" },
+    { name: "Bubbles", lang: "en-US" },
+    { name: "Bad News", lang: "en-US" }
+  ], names);
+  check("joke voices excluded, real ones kept (" + apple.join(",") + ")",
+        apple.length === 2 && apple.includes("Samantha") &&
+        apple.includes("Daniel"));
+
+  // page-language voices sort first
+  const order = withVoices([
+    { name: "Aaa", lang: "en-GB" },
+    { name: "Zzz", lang: "en-US" }
+  ], names);
+  check("page-language voice sorts first (" + order.join(",") + ")",
+        order[0] === "Zzz");
 
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
