@@ -255,6 +255,39 @@
     opponent: "maia1"       // the seek/challenge dropdown
   };
 
+  /*--------- WHAT A MOVE COSTS, MEASURED IN GAME17 ---------
+   * Kept because the numbers are worth having and the
+   * conclusion drawn from them was WRONG.
+   *
+   *   opponent's move -> first word heard   median 11.0s
+   *   that word -> POST to Lichess          median  0.0s
+   *
+   * The parser, the guards and the network are free. The
+   * eleven seconds are deciding, speaking, Safari taking
+   * a second or two to finalise a transcript, and waiting
+   * out the program's own voice — the mic is deaf while
+   * it talks so it never transcribes itself.
+   *
+   * w15 turned that last part into a checkbox: "speak the
+   * opponent's moves", off for anyone watching the
+   * screen, worth two or three seconds a move. It was
+   * REMOVED the same day, and the reason is the point of
+   * the whole project: hearing the opponent's move IS
+   * audioplay. A setting that trades the ear for speed is
+   * a setting for a different program, and if fast chess
+   * is what is wanted, lichess.org is right there and
+   * better at it.
+   *
+   * SO: THE SPEECH IS NOT OVERHEAD TO BE TRIMMED. Do not
+   * propose muting announcements for speed again. If a
+   * move cycle ever has to get shorter, the honest places
+   * to look are the ones that are NOT the ear: Safari's
+   * finalisation lag (not ours), the guard exchanges
+   * (insurance against game6, and worth their cost), and
+   * the retries after a mishearing (vocabulary work,
+   * which is where every real gain has come from).
+   *---------------------------------------------------------*/
+
   function loadModeSettings() {
     try {
       var raw = localStorage.getItem(MODE_SETTINGS_KEY);
