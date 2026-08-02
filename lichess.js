@@ -738,3 +738,4 @@
     clearTimeout(reconnectTimer);
     clearInterval(pollTimer);
   }
+
