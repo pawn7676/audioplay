@@ -154,7 +154,15 @@
     knightie: [["piece", "n"], ["file", "e"]]
   };
 
+  // "tags" and "tag": game17, twice in one utterance —
+  // "Queen tags echo seven", "Queen tag echo seven". It
+  // still played, but only by luck: the ONLY legal queen
+  // move to e7 happened to be the capture, so the missing
+  // "takes" cost nothing that time. On a square reachable
+  // both ways it would have been a quiet wrong move, which
+  // is the game6 failure this grammar exists to prevent.
   var TAKE_WORDS = { takes: 1, take: 1, taking: 1, tates: 1, tanks: 1,
+    tags: 1, tag: 1,
     captures: 1, capture: 1, capturing: 1, x: 1, times: 1, "\u00d7": 1 };
   var CASTLE_WORDS = { castle: 1, castles: 1, castling: 1, cassel: 1,
     cattle: 1, castel: 1, hassle: 1 };
