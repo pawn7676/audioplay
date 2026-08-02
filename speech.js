@@ -78,16 +78,41 @@
   // stays the default for the reasons above.
   var VOICE_NAME = "";
 
-  // The English voices this device actually has, for the
-  // dropdown. Empty until the list arrives — iOS reports
-  // nothing until speech has been used once, which is why
-  // loadVoices is polled and re-run after the first tap.
+  // THE SHORTLIST. Six voices, named by the owner after
+  // auditioning what his iPad actually offers, and that
+  // is the whole list — the device reports dozens more
+  // (Apple's novelty voices, compact duplicates, other
+  // languages) and none of them read a chess move well.
+  // A voice on this list that is not installed simply
+  // does not appear; nothing else is ever offered.
+  //
+  // Order is the owner's: Samantha first as the en-US
+  // default, then the accents.
+  var VOICE_SHORTLIST = ["Samantha", "Daniel", "Karen",
+                         "Moira", "Rishi", "Tessa"];
+
+  // Only the shortlist, in shortlist order, and only the
+  // entries this device really has. Empty until the list
+  // arrives — iOS reports nothing until speech has been
+  // used once, which is why loadVoices is polled and
+  // re-run after the first tap.
   function englishVoices() {
     var list = [];
     try { list = window.speechSynthesis.getVoices() || []; } catch (e) {}
-    return list.filter(function (v) {
-      return v.lang && v.lang.toLowerCase().indexOf("en") === 0;
+    var out = [];
+    VOICE_SHORTLIST.forEach(function (want) {
+      var w = want.toLowerCase();
+      for (var i = 0; i < list.length; i++) {
+        var n = String(list[i].name || "").toLowerCase();
+        // an exact name match, or the same voice with a
+        // quality suffix ("Samantha (Enhanced)")
+        if (n === w || n.indexOf(w + " (") === 0) {
+          out.push({ name: want, voice: list[i] });
+          return;
+        }
+      }
     });
+    return out;
   }
 
   // Called by the dropdown. Re-runs the picker at once so
