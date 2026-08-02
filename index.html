@@ -86,6 +86,8 @@
   }
   .hint { color: var(--dim); font-size: .82rem; margin-top: 8px; line-height: 1.4; }
   #lichessLine { margin-top: 6px; }
+  #lichessWho { margin-top: 6px; color: var(--accent); font-weight: 700;
+                font-size: 1.05rem; }
   #turnLine { margin-top: 6px; font-weight: 700; }
   #clockLine { margin-top: 6px; font-size: 1.5rem; font-weight: 700; letter-spacing: .02em;
                font-family: Menlo, "SF Mono", monospace; }
@@ -188,6 +190,14 @@
     <button id="btnSignIn" class="primary">Sign in with Lichess</button>
     <button id="btnSignOut" disabled>Sign out</button>
   </div>
+  <p class="hint">Signing in happens on lichess.org, so
+  this site never sees your password. Lichess will ask you
+  to allow three things: read challenges, send and accept
+  challenges, and play games. That is all it can do — it
+  cannot change your account or read your email. You can
+  revoke it any time under Preferences &rarr; Security on
+  Lichess, or by signing out here.</p>
+  <div class="stats" id="lichessWho"></div>
   <div class="stats" id="lichessLine">Not signed in.</div>
   <div class="row">
     <label>minutes <input id="seekMinutes" class="numin" type="number" min="1" max="180" value="15"></label>
