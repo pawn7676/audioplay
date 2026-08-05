@@ -731,6 +731,20 @@
    *         door, and it still carried the w11 rule that
    *         w36 deliberately broke - see the amendment
    *         there for who owns state appearance now.
+   *    w39  spelled for the ear, named for the board.
+   *         Two of the owner's, from listening and from
+   *         reading: (1) every English voice says
+   *         "LITCH-ess", so the one SPOKEN mention is now
+   *         "lee chess" - spoken text is spelled the way
+   *         it should sound, and the name stays correct
+   *         everywhere it is read; (2) the clocks and the
+   *         turn line say White and Black, capitalised,
+   *         White first as on any score sheet, instead of
+   *         "you" and "them" - the colours are what the
+   *         game is about, and you/them made the reader
+   *         translate twice. Which clock is YOURS is still
+   *         marked by colour, so naming them properly cost
+   *         nothing.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
@@ -3775,7 +3789,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w38";
+  VERSION = "w39";
 
   var RULES = makeRules();
 
@@ -5001,7 +5015,12 @@ function initBoard() {
         // WEB (delta 2): no connect() - sign-in owns the
         // connection; the button owns the voice. The two
         // spoken hints cover the states a blind start hits.
-        if (!storedToken()) speak("sign in with lichess first.");
+        // SPELLED FOR THE EAR, NOT THE EYE (w39): every
+        // English voice reads "lichess" as "LITCH-ess". It
+        // is spoken text, so it is spelled the way it
+        // should sound; the site's name is still written
+        // correctly everywhere it is READ.
+        if (!storedToken()) speak("sign in with lee chess first.");
         else if (!api.gameId) speak("voice on. waiting for a game.");
       } else {
         dryRun = false;
@@ -5113,6 +5132,15 @@ function initBoard() {
     paintVoiceButton();
   }
 
+  // colorWord (section 4) is the SPOKEN form and stays lower
+  // case - a voice does not read capitals. This is the same
+  // word for the eye, where a colour is a proper name on a
+  // score sheet.
+  function colourLabel(c) {
+    var w = colorWord(c);
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }
+
   var statusLine, clockLine, turnLine;
 
   function uiStatus(text) {
@@ -5130,13 +5158,23 @@ function initBoard() {
   function renderPageClocks() {
     if (!clockLine) return;
     if (!api.pos || api.wtime == null) { clockLine.innerHTML = ""; return; }
+    // WHITE AND BLACK, NOT YOU AND THEM (w39). The board
+    // above is drawn from your side and the colours are what
+    // the game is actually about; "you/them" made the reader
+    // translate twice. White is always first, as it is in
+    // every score sheet ever written. WHICH ONE IS YOURS is
+    // still marked - the "mine" class, and its low-time
+    // colour - so nothing was lost by naming them properly.
     var mine = api.myColor || "w";
-    var theirs = mine === "w" ? "b" : "w";
-    var mineLeft = fmtClock(remainingMs(mine));
-    var low = remainingMs(mine) != null && remainingMs(mine) < 60000;
-    clockLine.innerHTML =
-      '<span class="mine' + (low ? " low" : "") + '">you ' +
-      mineLeft + "</span> &nbsp; them " + fmtClock(remainingMs(theirs));
+    function side(colour) {
+      var left = remainingMs(colour);
+      var isMine = colour === mine;
+      var low = isMine && left != null && left < 60000;
+      return '<span class="' + (isMine ? "mine" : "") +
+        (low ? " low" : "") + '">' + colourLabel(colour) + " " +
+        fmtClock(left) + "</span>";
+    }
+    clockLine.innerHTML = side("w") + " &nbsp; " + side("b");
   }
 
   function renderTurn() {
@@ -5146,7 +5184,7 @@ function initBoard() {
     // "- that is you" REMOVED at w21 by the owner: the board
     // is drawn from your side and the clocks say you/them, so
     // the suffix repeated what the whole panel already shows.
-    turnLine.textContent = colorWord(api.pos.turn) + " to move.";
+    turnLine.textContent = colourLabel(api.pos.turn) + " to move.";
   }
 
   // Once a game exists, THE GAME IS THE STATUS (w13). Seek and
