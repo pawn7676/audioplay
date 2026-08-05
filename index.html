@@ -149,13 +149,6 @@
     <button id="btnSignIn" class="primary">Sign in with Lichess</button>
     <button id="btnSignOut" disabled>Sign out</button>
   </div>
-  <p class="hint">Signing in happens on lichess.org, so
-  this site never sees your password. Lichess will ask you
-  to allow three things: read challenges, send and accept
-  challenges, and play games. That is all it can do — it
-  cannot change your account or read your email. You can
-  revoke it any time under Preferences &rarr; Security on
-  Lichess, or by signing out here.</p>
   <div class="stats" id="lichessLine">Not signed in.</div>
   <div class="row">
     <label>minutes <input id="seekMinutes" class="numin" type="number" min="1" max="180" value="15"></label>
@@ -183,6 +176,19 @@
     </select></label>
     <button id="btnChallenge" disabled>Challenge</button>
   </div>
+  </details>
+</div>
+
+<div class="panel" id="panelInstructions">
+  <details open>
+  <summary>Instructions</summary>
+  <p class="hint">Signing in happens on lichess.org, so
+  this site never sees your password. Lichess will ask you
+  to allow this site to do 3 things on your behalf: read
+  challenges, send and accept challenges, and play games.
+  You can revoke this site's access any time under
+  Preferences &rarr; Security on Lichess, or by signing out
+  here.</p>
   <p class="hint">Sign in once and the page waits for a
   game — one started here, in the Lichess app, or by a
   friend's challenge. Nothing else to set up.</p>
@@ -487,6 +493,15 @@
    *         HELD wake lock, live settings flips mid-game,
    *         and the v134 read-back race fix all seen working
    *         on device. Zero retries in the entire game.
+   *    w22  INSTRUCTIONS BECOME A PANEL. The four hint
+   *         paragraphs leave the Lichess panel for their
+   *         own collapsible "Instructions" panel at the
+   *         bottom of the page - open by default so a
+   *         first visitor still meets them, remembered
+   *         like every panel so the owner collapses them
+   *         once and they stay down. The sign-in paragraph
+   *         is reworded to the owner's text ("allow this
+   *         site to do 3 things on your behalf...").
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
@@ -3512,7 +3527,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w21";
+  VERSION = "w22";
 
   var RULES = makeRules();
 
