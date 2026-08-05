@@ -502,11 +502,15 @@
    *         once and they stay down. The sign-in paragraph
    *         is reworded to the owner's text ("allow this
    *         site to do 3 things on your behalf...").
+   *    w23  the "SET loaded:" boot line, inherited from
+   *         v135 - the first shared-tree change to flow
+   *         into both targets from one edit. See v135 in
+   *         us-header.js for the reasoning.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
 
-  var VERSION = "v134";
+  var VERSION = "v135";
 
   // LEAVE TOKEN EMPTY. The token is asked for once and kept
   // by the Userscripts app, so a new version of the script
@@ -3527,7 +3531,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w22";
+  VERSION = "w23";
 
   var RULES = makeRules();
 
@@ -5723,6 +5727,12 @@ function initBoard() {
    *  regardless - they are the only thing on the page that
    *  moves between server events. */
 
+  function settingsSummary() {
+    return Object.keys(CFG).map(function (k) {
+      return k + "=" + (CFG[k] ? "on" : "off");
+    }).join(" ") + (VOICE_NAME ? " voice=" + VOICE_NAME : " voice=system");
+  }
+
   var paintedState = "";
 
   function repaintTick() {
@@ -5750,6 +5760,9 @@ function initBoard() {
     });
     setInterval(repaintTick, 500);
     log("UI", "script loaded " + VERSION);
+    // same line as the userscript's boot (v135): the flips
+    // were logged, the starting state never was
+    log("SET", "loaded: " + settingsSummary());
   }
 
   if (document.readyState === "loading") {
