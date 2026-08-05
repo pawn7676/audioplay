@@ -27,7 +27,7 @@
     --red:     #f34335;
     --text:    #888888;
     --btn-bg:  #242220;
-    --chip-on: #3a5a2a;
+    --button-on: #3a5a2a;
     --warn:    #d0a24c;
     --dim:     #6b6b6b;
     --ok: var(--green); --bad: var(--red); --brass: var(--accent);
@@ -39,8 +39,6 @@
     font-weight: 500;
     padding: 12px; max-width: 760px; margin: 0 auto;
   }
-  h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: .01em; color: var(--accent); }
-  h1 .version { color: var(--text); font-size: .8rem; margin-left: .4em; font-family: Menlo, monospace; font-weight: 600; }
   .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
   /* Button rules are SCOPED to .panel (w21): the shared UI
      creates its own buttons with inline styles, and the
@@ -61,16 +59,16 @@
   .panel button:focus, .panel button:focus-visible { outline: none; box-shadow: none; }
   .panel button:disabled { opacity: .35; }
   .panel button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-  .panel button.chip { flex: 0 0 auto; padding: 10px 12px; }
-  .panel button.chip#chipPractice { color: var(--warn); }
-  .panel button.on { background: var(--chip-on); color: #e6efe0; }
-  /* The round button, exactly the userscript's: play
-     triangle = off, hollow circle = on, filled = hearing */
-  #bigBtn {
-    flex: 0 0 auto; width: 72px; height: 72px; border-radius: 50%;
-    font-size: 26px; line-height: 1; padding: 0;
-    display: flex; align-items: center; justify-content: center;
-  }
+  /* THE VOICE ROW MATCHES THE PAGE (w32). The shared UI
+     builds these buttons with its own inline sizing, which
+     is right where it lives (floating over lichess.org) and
+     wrong here - they came out shorter and smaller than
+     "Find an opponent" sitting directly below them. The
+     code clears that inline sizing for the row, and this
+     rule is what they land on: the same .panel button
+     appearance, not stretched to fill the row. */
+  #voicemove-ui button { flex: 0 0 auto; }
+  #voicemove-ui > div { flex-wrap: wrap; gap: 8px; }
   .panel { background: var(--surface); border-radius: 8px; padding: 12px; margin-top: 12px; }
   .panel h2, .panel > details > summary {
     font-size: .8rem; font-weight: 600; letter-spacing: .12em;
@@ -125,11 +123,9 @@
   <g id="black-pawn"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" stroke="#000" stroke-width="1.5" stroke-linecap="round"/></g>
 </defs></svg>
 
-<h1>Audioplay</h1>
-
 <div class="panel" id="panelControls">
   <h2>Voice</h2>
-  <!-- the shared UI's chip row is re-parented in here by
+  <!-- the shared UI's button row is re-parented in here by
        buildWebUI (w21); empty in the markup on purpose -->
 </div>
 
@@ -180,7 +176,10 @@
 </div>
 
 <div class="panel" id="panelInstructions">
-  <details open>
+  <!-- collapsed on a first load (w32): it is the longest
+       panel on the page and it is reference material, not
+       something to read past on the way to a game -->
+  <details>
   <summary>Instructions</summary>
   <p class="hint">Signing in happens on lichess.org, so
   this site never sees your password. Lichess will ask you
@@ -196,7 +195,7 @@
   microphone and the speech — iOS requires the tap. Then
   walk to your board: say moves like "echo four", "knight
   takes delta five", "castle kingside". "repeat" re-speaks
-  the last move, "clock" speaks the times. The "clock" chip
+  the last move, "clock" speaks the times. The "clock" button
   is a black screen with just the two clocks, side to move
   drawn heavier, everything else spoken; tap it to come
   back. "practice" parses moves and answers with a random
@@ -472,11 +471,11 @@
    *         UNPROVEN: no real game has been played on w20.
    *    w21  THE FIRST DEVICE FINDINGS, from the owner's
    *         first look at w20 on the iPad. Three fixes:
-   *         (1) the chip row joins the page - floating
+   *         (1) the button row joins the page - floating
    *         bottom-right was shaped for lichess.org and
    *         covered the page's own content here; it now
    *         lives in a Voice panel at the top, and the
-   *         settings panel opens BELOW its chip. buildUI
+   *         settings panel opens BELOW its button. buildUI
    *         stays verbatim; the re-parent is a web delta.
    *         (2) the page's button CSS is SCOPED to .panel:
    *         bare selectors were bleeding flex and padding
@@ -506,9 +505,9 @@
    *         v135 - the first shared-tree change to flow
    *         into both targets from one edit. See v135 in
    *         us-header.js for the reasoning.
-   *    w24  the settings panel opens UNDER ITS CHIP, both
+   *    w24  the settings panel opens UNDER ITS BUTTON, both
    *         axes. The userscript's right:10px pin was the
-   *         chip's own corner there; here it read as a
+   *         button's own corner there; here it read as a
    *         random spot on the right. Also the session's
    *         log proved two more things in passing: the
    *         account event stream RECONNECTED after a real
@@ -541,12 +540,12 @@
    *         then settings, clock, log, practice. Done with
    *         row-reverse, not by reordering buildUI - the
    *         shared UI stays re-copyable. Note the settings
-   *         panel still anchors to its chip (w24), which
+   *         panel still anchors to its button (w24), which
    *         now sits further right; the clamp keeps it on
    *         screen.
    *    w28  w27 DID NOTHING and shipped anyway. The flip
    *         went on wrapEl, whose only child is the row
-   *         that really holds the chips - reversing a list
+   *         that really holds the buttons - reversing a list
    *         of one. It is on the inner row now. The test
    *         that passed had grepped the SOURCE for
    *         "row-reverse" instead of asking the DOM what
@@ -560,7 +559,7 @@
    *         off, "listening"/"voice on" in green when on.
    *         The circle was the userscript's thumb target
    *         floating over lichess.org; in a panel it only
-   *         forced a 72px row with gaps around every chip.
+   *         forced a 72px row with gaps around every button.
    *         It stays visibly the must-press control, but
    *         by wearing the same blue as "Sign in with
    *         Lichess" and saying so in words rather than by
@@ -581,11 +580,24 @@
    *         - a layout trick that happens to look right at
    *         ONE width is not a layout. Now the DOM order
    *         is the reading order at every width.
+   *    w32  three things the owner asked for on seeing the
+   *         page whole: the voice buttons now match the
+   *         page's own buttons (the shared UI's inline
+   *         sizing is CLEARED so the stylesheet decides,
+   *         rather than a second set of numbers to keep in
+   *         step); the "Audioplay" title is gone, since the
+   *         tab already says it and the first screen is
+   *         worth more; and Instructions starts COLLAPSED,
+   *         because it is the longest panel and it is
+   *         reference, not something to read past on the
+   *         way to a game. Carries v137's rename - they are
+   *         buttons, not "chips". Dead w19 CSS for buttons
+   *         this page never builds went too.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
 
-  var VERSION = "v136";
+  var VERSION = "v137";
 
   // LEAVE TOKEN EMPTY. The token is asked for once and kept
   // by the Userscripts app, so a new version of the script
@@ -602,7 +614,7 @@
 
   /*--------------- PERSISTED SETTINGS (v124) ----------------
    * Everything below in SETTING_DEFAULTS is a TOGGLE ON THE
-   * SCREEN: the "settings" chip in section 12 opens a panel
+   * SCREEN: the "settings" button in section 12 opens a panel
    * of switches, changes persist in localStorage, and these
    * values are only the FIRST-RUN defaults. Flipping a value
    * here does nothing once the panel has saved - clear the
@@ -778,9 +790,9 @@
   // panel. Set false once the pacing sounds right.
   var SPEAK_DEBUG = false;
 
-  // The practice chip. False builds the UI without it, and
+  // The practice button. False builds the UI without it, and
   // the mode becomes unreachable — the #voicetest hash that
-  // was its second door is gone (v112), so the chip is the
+  // was its second door is gone (v112), so the button is the
   // only one. dryRun then stays false for the whole session
   // and every branch that tests it is simply never taken.
   // The code stays: it is how the grammar gets exercised
@@ -3625,7 +3637,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w31";
+  VERSION = "w32";
 
   var RULES = makeRules();
 
@@ -4499,14 +4511,14 @@ function initBoard() {
 }
   /*================== 12W. UI (website) ===========================\
    *
-   *  The website's section 12: the v133 userscript's chip row,
+   *  The website's section 12: the v133 userscript's button row,
    *  settings panel and floating log panel VERBATIM except for
    *  three web deltas marked "WEB:" below, plus the page
    *  furniture appended at the bottom (account, seek,
    *  challenge, status, clocks, panels - salvaged from the w19
    *  site, where it played game 17).
    *
-   *  TWO UI IDIOMS ON ONE PAGE, on purpose: the floating chips
+   *  TWO UI IDIOMS ON ONE PAGE, on purpose: the floating buttons
    *  are the userscript's, kept byte-close so v-series UI work
    *  ports by re-copying; the panels are the page's own. The
    *  cosmetic mismatch is the price of sharing, and it was
@@ -4515,7 +4527,7 @@ function initBoard() {
    *  exact churn the shared sections exist to avoid.
    *
    *  THE WEB DELTAS, and why each exists:
-   *  1. The log panel has no "token" chip: sign-in is PKCE
+   *  1. The log panel has no "token" button: sign-in is PKCE
    *     (section 11W) and Sign out lives on the page.
    *  2. The round button no longer owns the connection - the
    *     w19 site decided this and game 17 proved it: SIGN-IN
@@ -4531,26 +4543,26 @@ function initBoard() {
    *================================================================*/
 
 
-  var wrapEl, bigBtn, logPanel, logChip, testChip, clkChip, setChip, setPanel;
+  var wrapEl, bigBtn, logPanel, logBtn, practiceBtn, clockBtn, settingsBtn, setPanel;
 
-  var CHIP_OFF = "#242220";
-  var CHIP_ON = "#3a5a2a";
+  var BUTTON_OFF = "#242220";
+  var BUTTON_ON = "#3a5a2a";
 
-  // A lit chip means that thing is currently ON, matching
+  // A lit button means that thing is currently ON, matching
   // the round button. Called from renderButton so every
   // control is repainted from one place.
-  function paintChip(el, on, offColor) {
+  function paintButton(el, on, offColor) {
     if (!el) return;
-    el.style.background = on ? CHIP_ON : CHIP_OFF;
+    el.style.background = on ? BUTTON_ON : BUTTON_OFF;
     el.style.color = on ? "#e6efe0" : offColor;
   }
 
   function renderButton() {
-    paintChip(testChip, dryRun, "#d0a24c");
-    paintChip(logChip, !!(logPanel && logPanel.style.display !== "none"),
+    paintButton(practiceBtn, dryRun, "#d0a24c");
+    paintButton(logBtn, !!(logPanel && logPanel.style.display !== "none"),
               "#91bddf");
-    paintChip(clkChip, clockModeOn(), "#91bddf");
-    paintChip(setChip, !!(setPanel && setPanel.style.display !== "none"),
+    paintButton(clockBtn, clockModeOn(), "#91bddf");
+    paintButton(settingsBtn, !!(setPanel && setPanel.style.display !== "none"),
               "#91bddf");
     if (!bigBtn) return;
     // WEB (delta 4): a labelled pill, not a 72px circle -
@@ -4558,18 +4570,18 @@ function initBoard() {
     paintVoiceButton();
   }
 
-  // Built only when PRACTICE_MODE = true. testChip stays null
+  // Built only when PRACTICE_MODE = true. practiceBtn stays null
   // otherwise, which every other reference already tolerates:
-  // paintChip returns on a falsy element, and the chip is the
+  // paintButton returns on a falsy element, and the button is the
   // only thing that ever sets dryRun true.
-  function buildPracticeChip() {
-    testChip = document.createElement("button");
-    testChip.textContent = "Practice";   /* WEB w30: capitalised */
-    testChip.style.cssText =
+  function buildPracticeButton() {
+    practiceBtn = document.createElement("button");
+    practiceBtn.textContent = "Practice";   /* WEB w30: capitalised */
+    practiceBtn.style.cssText =
       "font-size:12px;padding:6px 12px;border-radius:10px;" +
-      "background:" + CHIP_OFF + ";color:#d0a24c;" +
+      "background:" + BUTTON_OFF + ";color:#d0a24c;" +
       "border:1px solid #3a3530;";
-    testChip.addEventListener("click", function () {
+    practiceBtn.addEventListener("click", function () {
       wakeSpeech();
       setTimeout(loadVoices, 300);
       if (dryRun) {
@@ -4608,44 +4620,44 @@ function initBoard() {
     var row = document.createElement("div");
     row.style.cssText = "display:flex;align-items:center;gap:8px;";
 
-    if (PRACTICE_MODE) buildPracticeChip();
+    if (PRACTICE_MODE) buildPracticeButton();
 
-    logChip = document.createElement("button");
-    logChip.textContent = "Log";   /* WEB w30: capitalised */
-    logChip.style.cssText =
+    logBtn = document.createElement("button");
+    logBtn.textContent = "Log";   /* WEB w30: capitalised */
+    logBtn.style.cssText =
       "font-size:12px;padding:6px 12px;border-radius:10px;" +
-      "background:" + CHIP_OFF + ";color:#91bddf;" +
+      "background:" + BUTTON_OFF + ";color:#91bddf;" +
       "border:1px solid #3a3530;";
 
     bigBtn = document.createElement("button");
     bigBtn.style.cssText =
       "width:72px;height:72px;border-radius:50%;font-size:26px;line-height:1;" +
       "display:flex;align-items:center;justify-content:center;padding:0;" +
-      "background:" + CHIP_OFF + ";color:#91bddf;" +
+      "background:" + BUTTON_OFF + ";color:#91bddf;" +
       "border:1px solid #3a3530;touch-action:manipulation;-webkit-user-select:none;user-select:none;";
 
-    clkChip = document.createElement("button");
-    clkChip.textContent = "Clock";   /* WEB w30: capitalised */
-    clkChip.style.cssText = logChip.style.cssText;
-    clkChip.addEventListener("click", function () {
+    clockBtn = document.createElement("button");
+    clockBtn.textContent = "Clock";   /* WEB w30: capitalised */
+    clockBtn.style.cssText = logBtn.style.cssText;
+    clockBtn.addEventListener("click", function () {
       toggleClockMode();
     });
 
-    // THE SETTINGS PANEL (v124). One "settings" chip, one
+    // THE SETTINGS PANEL (v124). One "settings" button, one
     // panel of switches. Every persisted setting lives
     // here so nothing behavioural is buried in the source
     // any more; the file's values are first-run defaults
-    // only. The panel follows the chip aesthetic - a lit
+    // only. The panel follows the button aesthetic - a lit
     // pill is ON, same colors as everything else - and the
     // rows are grouped the way the modes are grouped:
     // all modes, voice mode, clock mode. Clock
     // mode's full-screen overlay sits above it, and
     // enterClockMode() closes it besides, so the switches
     // are only ever seen with the clock down.
-    setChip = document.createElement("button");
-    setChip.textContent = "Settings";   /* WEB w30: capitalised */
-    setChip.style.cssText = logChip.style.cssText;
-    setChip.addEventListener("click", function () {
+    settingsBtn = document.createElement("button");
+    settingsBtn.textContent = "Settings";   /* WEB w30: capitalised */
+    settingsBtn.style.cssText = logBtn.style.cssText;
+    settingsBtn.addEventListener("click", function () {
       var open = setPanel.style.display !== "none";
       if (!open) {
         // anchor just above the tallest thing in the row -
@@ -4700,7 +4712,7 @@ function initBoard() {
         "border:1px solid #3a3530;";
       var paint = function () {
         pill.textContent = CFG[key] ? "on" : "off";
-        paintChip(pill, CFG[key], "#91bddf");
+        paintButton(pill, CFG[key], "#91bddf");
       };
       pill.addEventListener("click", function () {
         CFG[key] = !CFG[key];
@@ -4757,15 +4769,15 @@ function initBoard() {
     });
     document.body.appendChild(setPanel);
 
-    if (testChip) row.appendChild(testChip);
-    row.appendChild(logChip);
-    row.appendChild(clkChip);
-    row.appendChild(setChip);
+    if (practiceBtn) row.appendChild(practiceBtn);
+    row.appendChild(logBtn);
+    row.appendChild(clockBtn);
+    row.appendChild(settingsBtn);
     row.appendChild(bigBtn);
     wrapEl.appendChild(row);
     document.body.appendChild(wrapEl);
 
-    // CHIP POSITIONING IS A CLOSED CASE — leave this alone.
+    // BUTTON POSITIONING IS A CLOSED CASE — leave this alone.
     // The row is plain position:fixed, bottom/right, as it
     // was through v74. iOS rubber-band overscroll can leave
     // it sitting low until the next real page interaction
@@ -4795,7 +4807,7 @@ function initBoard() {
     bar.style.cssText =
       "display:flex;gap:8px;padding:8px;border-bottom:1px solid #3a3530;" +
       "font-family:system-ui,sans-serif;";
-    // WEB: no "token" chip - sign-in is PKCE, Sign out is on
+    // WEB: no "token" button - sign-in is PKCE, Sign out is on
     // the page (delta 1 in the header)
     // WEB (w30): capitalised, like every other button on
     // the page. `name` stays lower case - it is the switch
@@ -4830,7 +4842,7 @@ function initBoard() {
     logPanel.appendChild(logBody);
     document.body.appendChild(logPanel);
 
-    logChip.addEventListener("click", function () {
+    logBtn.addEventListener("click", function () {
       var open = logPanel.style.display !== "none";
       logPanel.style.display = open ? "none" : "flex";
       if (!open) {
@@ -4887,10 +4899,10 @@ function initBoard() {
   // lichess.org at the bottom-right, where a thumb finds it
   // without looking. In a panel at the top of our own page
   // it only forces a 72px-tall row, leaving gaps above and
-  // below every chip beside it - the owner asked whether it
+  // below every button beside it - the owner asked whether it
   // was earning that space, and it was not.
   //
-  // WHAT IT MUST STILL DO is say that it is not one chip
+  // WHAT IT MUST STILL DO is say that it is not one button
   // among five: it is the one control that MUST be pressed
   // before anything speaks or listens (iOS gives no
   // microphone without a real tap - section 9). So the
@@ -4898,13 +4910,13 @@ function initBoard() {
   // ALREADY SPEAKS: off, it wears the same blue as "Sign in
   // with Lichess", the page's other must-press; on, it
   // wears the same green as a signed-in account and a lit
-  // chip. Both times it says what it is in words, because
+  // button. Both times it says what it is in words, because
   // a triangle assumes the reader knows the convention.
   //
   // The symbol stays as a prefix - it carries the state at
   // a glance from across the room, where the words will not
   // be readable - and the pill has a fixed width so the
-  // chips beside it never shift as the label changes.
+  // buttons beside it never shift as the label changes.
   //
   // THE WORDS ARE SHORT BECAUSE THE PANEL IS THE SUBJECT
   // (w30): the heading above already says VOICE, so the
@@ -4928,21 +4940,38 @@ function initBoard() {
     } else {
       bigBtn.textContent = listening
         ? "\u25CF Listening" : "\u25CB On";
-      bigBtn.style.background = CHIP_ON;
+      bigBtn.style.background = BUTTON_ON;
       bigBtn.style.color = "#e6efe0";
-      bigBtn.style.borderColor = CHIP_ON;
+      bigBtn.style.borderColor = BUTTON_ON;
     }
+  }
+
+  // THE VOICE BUTTONS LOOK LIKE THE PAGE'S BUTTONS (w32).
+  // The shared UI sizes its buttons inline - 12px text, 6px
+  // padding - which is right floating over lichess.org and
+  // wrong in a panel above "Find an opponent", where they
+  // read as a smaller, different kind of control. The inline
+  // sizing is CLEARED rather than overwritten, so the
+  // stylesheet is the single place the look is decided; only
+  // what a stylesheet cannot know is set from here - the
+  // state colour, and a fixed width so the row does not
+  // twitch as the label changes.
+  function adoptPageButtonLook(b) {
+    if (!b || !b.style) return;
+    ["fontSize", "padding", "borderRadius", "lineHeight",
+     "width", "height", "minHeight", "fontWeight",
+     "border", "borderColor", "display", "gap"].forEach(function (k) {
+      b.style[k] = "";
+    });
+    b.style.flex = "0 0 auto";
+    b.style.touchAction = "manipulation";
   }
 
   function restyleVoiceButton() {
     if (!bigBtn) return;
-    bigBtn.style.cssText =
-      "font-size:13px;font-weight:600;padding:8px 14px;" +
-      "border-radius:10px;min-width:96px;text-align:center;" +
-      "display:inline-flex;align-items:center;" +
-      "justify-content:center;gap:6px;line-height:1;" +
-      "border:1px solid #3a3530;touch-action:manipulation;" +
-      "-webkit-user-select:none;user-select:none;";
+    adoptPageButtonLook(bigBtn);
+    bigBtn.style.minWidth = "124px";
+    bigBtn.style.textAlign = "center";
     paintVoiceButton();
   }
 
@@ -5013,7 +5042,7 @@ function initBoard() {
     renderStatus();
   }
 
-  // The signed-in green is the SAME green the chips use for
+  // The signed-in green is the SAME green the buttons use for
   // "on", because it means the same thing: this is running.
   var SIGNED_IN_BG = "#3a5a2a";
   var SIGNED_IN_FG = "#e6efe0";
@@ -5058,7 +5087,7 @@ function initBoard() {
   var OPPONENT_KEY = "audioplay.web.opponent";
 
   function buildWebUI() {
-    buildUI();                    // the shared chip row et al
+    buildUI();                    // the shared button row et al
     statusLine = el("lichessLine");
     clockLine = el("clockLine");
     turnLine = el("turnLine");
@@ -5117,7 +5146,7 @@ function initBoard() {
                     el("seekRated").checked, el("challengeColour").value);
     });
 
-    // WEB (w21): the chip row joins the page. Floating
+    // WEB (w21): the button row joins the page. Floating
     // bottom-right was the right shape OVER lichess.org;
     // over our own page it covered the hints and the
     // challenge row. buildUI() is untouched - the row is
@@ -5125,11 +5154,11 @@ function initBoard() {
     // flow. The settings and log panels stay overlays
     // (transient, closable), but the settings anchor
     // assumed the button was near the bottom, so opening
-    // now pins the panel BELOW the chip instead.
+    // now pins the panel BELOW the button instead.
     var host = el("panelControls");
     if (host && wrapEl) {
       // REVERSED (w27, fixed w28): the userscript builds the
-      // row with the chips first and the round button last,
+      // row with the buttons first and the round button last,
       // because there it sits in the bottom-right corner
       // where the button lands nearest the thumb. On the
       // page the row starts at the left margin and the
@@ -5139,7 +5168,7 @@ function initBoard() {
       //
       // IT MUST GO ON THE INNER ROW. wrapEl is a wrapper
       // whose only child is the row that actually holds the
-      // chips and the button (see buildUI: row.appendChild
+      // buttons and the button (see buildUI: row.appendChild
       // x5, then wrapEl.appendChild(row)). w27 styled
       // wrapEl, reversing a list of ONE, and nothing moved
       // on screen. Reached as firstChild rather than by
@@ -5160,33 +5189,37 @@ function initBoard() {
       // of after-the-fact move as re-parenting the row.
       // The order is stated outright rather than inherited
       // from buildUI's append sequence: Start first, then
-      // Settings, and Practice LAST - it is the one chip
+      // Settings, and Practice LAST - it is the one button
       // that quietly stops moves reaching Lichess, so it
       // sits furthest from the button pressed every game.
       // appendChild moves a node that already has a parent,
       // so re-appending in order IS the reorder.
-      var chipRow = wrapEl.firstChild;
-      if (chipRow && chipRow.appendChild) {
-        [bigBtn, setChip, clkChip, logChip, testChip]
-          .forEach(function (b) { if (b) chipRow.appendChild(b); });
-        chipRow.style.flexWrap = "wrap";
-        chipRow.style.gap = "8px";
-        chipRow.style.rowGap = "8px";
+      var buttonRow = wrapEl.firstChild;
+      if (buttonRow && buttonRow.appendChild) {
+        [bigBtn, settingsBtn, clockBtn, logBtn, practiceBtn]
+          .forEach(function (b) {
+            if (!b) return;
+            if (b !== bigBtn) adoptPageButtonLook(b);
+            buttonRow.appendChild(b);
+          });
+        buttonRow.style.flexWrap = "wrap";
+        buttonRow.style.gap = "8px";
+        buttonRow.style.rowGap = "8px";
       }
       host.appendChild(wrapEl);
-      if (setChip && setPanel) {
-        setChip.addEventListener("click", function () {
+      if (settingsBtn && setPanel) {
+        settingsBtn.addEventListener("click", function () {
           if (setPanel.style.display === "none") return;
-          // ANCHORED TO THE CHIP IN BOTH AXES (w24). The
+          // ANCHORED TO THE BUTTON IN BOTH AXES (w24). The
           // userscript pins the panel right:10px because its
-          // chips live in the bottom-right corner, so the
-          // right edge WAS the chip. Here the chip is top
+          // buttons live in the bottom-right corner, so the
+          // right edge WAS the button. Here the button is top
           // left; w21 fixed the vertical half and left the
-          // panel opening "below the chip but at the far
+          // panel opening "below the button but at the far
           // right" - the owner rightly asked if that was on
-          // purpose. It opens under the chip, left-aligned,
+          // purpose. It opens under the button, left-aligned,
           // clamped so it never runs off a narrow screen.
-          var r = setChip.getBoundingClientRect();
+          var r = settingsBtn.getBoundingClientRect();
           var w = window.innerWidth || 1024;
           setPanel.style.bottom = "auto";
           setPanel.style.top = Math.max(8, r.bottom + 8) + "px";
@@ -5200,7 +5233,7 @@ function initBoard() {
     // NO DOUBLE-TAP ZOOM ON THE OVERLAYS (w25). Two quick
     // taps on two settings pills read as a double-tap and
     // Safari zoomed the page. The page's own buttons are
-    // covered by the scoped .panel button CSS, and the chip
+    // covered by the scoped .panel button CSS, and the button
     // row picked that up when it moved into the Voice panel
     // (w21) - but the settings and log panels attach to
     // document.body, OUTSIDE any .panel, so the same w21
@@ -5642,7 +5675,7 @@ function initBoard() {
   // here, so the rows were repeating the ear. See
   // CFG.clockShowMoves in section 1, which restores them.
   //
-  // In: the "clock" chip, and ONLY the chip (v98).
+  // In: the "clock" button, and ONLY the button (v98).
   // Out: tap anywhere on it.
   //
   // A screen wake lock is held while the overlay is up, so
