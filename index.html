@@ -537,6 +537,41 @@
    *         "Fisher hotel five" for Bh5, "Bush golf six"
    *         for g6, "Push Charlie to" for c2, and the
    *         first-word demotion firing thirteen times.
+   *    w27  the voice row is REVERSED: round button first,
+   *         then settings, clock, log, practice. Done with
+   *         row-reverse, not by reordering buildUI - the
+   *         shared UI stays re-copyable. Note the settings
+   *         panel still anchors to its chip (w24), which
+   *         now sits further right; the clamp keeps it on
+   *         screen.
+   *    w28  w27 DID NOTHING and shipped anyway. The flip
+   *         went on wrapEl, whose only child is the row
+   *         that really holds the chips - reversing a list
+   *         of one. It is on the inner row now. The test
+   *         that passed had grepped the SOURCE for
+   *         "row-reverse" instead of asking the DOM what
+   *         got styled; it now walks the built tree and
+   *         checks the element that contains the buttons.
+   *         A test that cannot fail when the feature is
+   *         broken is worse than no test: it spends the
+   *         owner's trust to prove nothing.
+   *    w29  the round button becomes a labelled pill:
+   *         "start voice" in the page's primary blue when
+   *         off, "listening"/"voice on" in green when on.
+   *         The circle was the userscript's thumb target
+   *         floating over lichess.org; in a panel it only
+   *         forced a 72px row with gaps around every chip.
+   *         It stays visibly the must-press control, but
+   *         by wearing the same blue as "Sign in with
+   *         Lichess" and saying so in words rather than by
+   *         being three times the size of its neighbours.
+   *    w30  every button label capitalised - Practice, Log,
+   *         Clock, Settings, Copy, Clear, Close - matching
+   *         the page's own buttons, which always were. The
+   *         voice button says "Start" alone: the panel
+   *         heading above it already says VOICE, so
+   *         repeating the word was the label doing the
+   *         panel's job.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
@@ -3581,7 +3616,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w26";
+  VERSION = "w30";
 
   var RULES = makeRules();
 
@@ -4478,6 +4513,9 @@ function initBoard() {
    *     OWNS THE CONNECTION, THE BUTTON OWNS THE VOICE. A game
    *     keeps streaming (and the board keeps drawing) with the
    *     mic off, so the off path tears down no network.
+   *  4. The voice button is a labelled pill, not the
+   *     userscript's 72px circle (w29) - paintVoiceButton
+   *     and restyleVoiceButton, with the page furniture.
    *  3. Leaving practice mode rejoins a live game via
    *     rejoinCurrent() (11W): dryStart took the api state
    *     over, and the account stream only announces NEW games.
@@ -4506,9 +4544,9 @@ function initBoard() {
     paintChip(setChip, !!(setPanel && setPanel.style.display !== "none"),
               "#91bddf");
     if (!bigBtn) return;
-    if (!running) { bigBtn.textContent = "\u25B6"; bigBtn.style.background = CHIP_OFF; }
-    else if (listening) { bigBtn.textContent = "\u25CF"; bigBtn.style.background = CHIP_ON; }
-    else { bigBtn.textContent = "\u25CB"; bigBtn.style.background = CHIP_ON; }
+    // WEB (delta 4): a labelled pill, not a 72px circle -
+    // see paintVoiceButton with the page furniture below.
+    paintVoiceButton();
   }
 
   // Built only when PRACTICE_MODE = true. testChip stays null
@@ -4517,7 +4555,7 @@ function initBoard() {
   // only thing that ever sets dryRun true.
   function buildPracticeChip() {
     testChip = document.createElement("button");
-    testChip.textContent = "practice";
+    testChip.textContent = "Practice";   /* WEB w30: capitalised */
     testChip.style.cssText =
       "font-size:12px;padding:6px 12px;border-radius:10px;" +
       "background:" + CHIP_OFF + ";color:#d0a24c;" +
@@ -4564,7 +4602,7 @@ function initBoard() {
     if (PRACTICE_MODE) buildPracticeChip();
 
     logChip = document.createElement("button");
-    logChip.textContent = "log";
+    logChip.textContent = "Log";   /* WEB w30: capitalised */
     logChip.style.cssText =
       "font-size:12px;padding:6px 12px;border-radius:10px;" +
       "background:" + CHIP_OFF + ";color:#91bddf;" +
@@ -4578,7 +4616,7 @@ function initBoard() {
       "border:1px solid #3a3530;touch-action:manipulation;-webkit-user-select:none;user-select:none;";
 
     clkChip = document.createElement("button");
-    clkChip.textContent = "clock";
+    clkChip.textContent = "Clock";   /* WEB w30: capitalised */
     clkChip.style.cssText = logChip.style.cssText;
     clkChip.addEventListener("click", function () {
       toggleClockMode();
@@ -4596,7 +4634,7 @@ function initBoard() {
     // enterClockMode() closes it besides, so the switches
     // are only ever seen with the clock down.
     setChip = document.createElement("button");
-    setChip.textContent = "settings";
+    setChip.textContent = "Settings";   /* WEB w30: capitalised */
     setChip.style.cssText = logChip.style.cssText;
     setChip.addEventListener("click", function () {
       var open = setPanel.style.display !== "none";
@@ -4750,9 +4788,12 @@ function initBoard() {
       "font-family:system-ui,sans-serif;";
     // WEB: no "token" chip - sign-in is PKCE, Sign out is on
     // the page (delta 1 in the header)
+    // WEB (w30): capitalised, like every other button on
+    // the page. `name` stays lower case - it is the switch
+    // value below, not a label.
     ["copy", "clear", "close"].forEach(function (name) {
       var b = document.createElement("button");
-      b.textContent = name;
+      b.textContent = name.charAt(0).toUpperCase() + name.slice(1);
       b.style.cssText =
         "font-size:12px;padding:6px 12px;border-radius:8px;background:#242220;" +
         "color:#91bddf;border:1px solid #3a3530;";
@@ -4760,8 +4801,8 @@ function initBoard() {
         if (name === "copy") {
           try {
             navigator.clipboard.writeText(LOG.join("\n"));
-            b.textContent = "copied";
-            setTimeout(function () { b.textContent = "copy"; }, 1200);
+            b.textContent = "Copied";
+            setTimeout(function () { b.textContent = "Copy"; }, 1200);
           } catch (e) { b.textContent = "no clipboard"; }
         } else if (name === "clear") { LOG.length = 0; logBody.textContent = ""; }
         else { logPanel.style.display = "none"; renderButton(); }
@@ -4831,6 +4872,70 @@ function initBoard() {
    * w9/w12 the sign-in button, w13 the-game-is-the-status,
    * w19 remembered panels) were made on the real page and
    * travel with the code. */
+
+  // THE VOICE BUTTON IS A PILL HERE (w29). The userscript's
+  // 72px circle is right in its own home: it floats over
+  // lichess.org at the bottom-right, where a thumb finds it
+  // without looking. In a panel at the top of our own page
+  // it only forces a 72px-tall row, leaving gaps above and
+  // below every chip beside it - the owner asked whether it
+  // was earning that space, and it was not.
+  //
+  // WHAT IT MUST STILL DO is say that it is not one chip
+  // among five: it is the one control that MUST be pressed
+  // before anything speaks or listens (iOS gives no
+  // microphone without a real tap - section 9). So the
+  // distinction moves from SIZE to LANGUAGE THE PAGE
+  // ALREADY SPEAKS: off, it wears the same blue as "Sign in
+  // with Lichess", the page's other must-press; on, it
+  // wears the same green as a signed-in account and a lit
+  // chip. Both times it says what it is in words, because
+  // a triangle assumes the reader knows the convention.
+  //
+  // The symbol stays as a prefix - it carries the state at
+  // a glance from across the room, where the words will not
+  // be readable - and the pill has a fixed width so the
+  // chips beside it never shift as the label changes.
+  //
+  // THE WORDS ARE SHORT BECAUSE THE PANEL IS THE SUBJECT
+  // (w30): the heading above already says VOICE, so the
+  // button says only what it does or what it is doing -
+  // "Start", then "Listening" or "On". Note the small
+  // inconsistency the owner chose, and it is the right
+  // choice: "Start" is an ACTION and the other two are
+  // STATES. Off, the only thing worth saying is what will
+  // happen if you press it, because nothing is happening
+  // yet; on, the useful fact is whether the mic is live -
+  // which "Stop" would hide.
+  var VOICE_BTN_BLUE = "#91bddf";
+
+  function paintVoiceButton() {
+    if (!bigBtn) return;
+    if (!running) {
+      bigBtn.textContent = "\u25B6 Start";
+      bigBtn.style.background = VOICE_BTN_BLUE;
+      bigBtn.style.color = "#15130f";
+      bigBtn.style.borderColor = VOICE_BTN_BLUE;
+    } else {
+      bigBtn.textContent = listening
+        ? "\u25CF Listening" : "\u25CB On";
+      bigBtn.style.background = CHIP_ON;
+      bigBtn.style.color = "#e6efe0";
+      bigBtn.style.borderColor = CHIP_ON;
+    }
+  }
+
+  function restyleVoiceButton() {
+    if (!bigBtn) return;
+    bigBtn.style.cssText =
+      "font-size:13px;font-weight:600;padding:8px 14px;" +
+      "border-radius:10px;min-width:96px;text-align:center;" +
+      "display:inline-flex;align-items:center;" +
+      "justify-content:center;gap:6px;line-height:1;" +
+      "border:1px solid #3a3530;touch-action:manipulation;" +
+      "-webkit-user-select:none;user-select:none;";
+    paintVoiceButton();
+  }
 
   var statusLine, clockLine, turnLine;
 
@@ -5014,8 +5119,31 @@ function initBoard() {
     // now pins the panel BELOW the chip instead.
     var host = el("panelControls");
     if (host && wrapEl) {
+      // REVERSED (w27, fixed w28): the userscript builds the
+      // row with the chips first and the round button last,
+      // because there it sits in the bottom-right corner
+      // where the button lands nearest the thumb. On the
+      // page the row starts at the left margin and the
+      // owner wants the button first. row-reverse flips the
+      // ORDER without touching buildUI's append sequence,
+      // so the shared code stays re-copyable.
+      //
+      // IT MUST GO ON THE INNER ROW. wrapEl is a wrapper
+      // whose only child is the row that actually holds the
+      // chips and the button (see buildUI: row.appendChild
+      // x5, then wrapEl.appendChild(row)). w27 styled
+      // wrapEl, reversing a list of ONE, and nothing moved
+      // on screen. Reached as firstChild rather than by
+      // name because `row` is a local inside buildUI.
       wrapEl.style.cssText =
         "display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
+      restyleVoiceButton();
+      var chipRow = wrapEl.firstChild;
+      if (chipRow && chipRow.style) {
+        chipRow.style.flexDirection = "row-reverse";
+        chipRow.style.justifyContent = "flex-end";
+        chipRow.style.flexWrap = "wrap";
+      }
       host.appendChild(wrapEl);
       if (setChip && setPanel) {
         setChip.addEventListener("click", function () {
