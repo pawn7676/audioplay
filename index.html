@@ -69,6 +69,12 @@
      appearance, not stretched to fill the row. */
   #voicemove-ui button { flex: 0 0 auto; }
   #voicemove-ui > div { flex-wrap: wrap; gap: 8px; }
+  #timeRow { display: contents; }
+  .panel button.tc { flex: 0 0 auto; padding: 10px 12px;
+    font-variant-numeric: tabular-nums; }
+  .panel button.tc.picked { background: var(--button-on);
+    color: #e6efe0; border-color: var(--button-on); }
+  #timeCustom { width: 5.5em; }
   .panel { background: var(--surface); border-radius: 8px; padding: 12px; margin-top: 12px; }
   .panel h2, .panel > details > summary {
     font-size: .8rem; font-weight: 600; letter-spacing: .12em;
@@ -147,8 +153,27 @@
   </div>
   <div class="stats" id="lichessLine">Not signed in.</div>
   <div class="row">
-    <label>minutes <input id="seekMinutes" class="numin" type="number" min="1" max="180" value="15"></label>
-    <label>increment <input id="seekIncrement" class="numin" type="number" min="0" max="60" value="10"></label>
+    <!-- Time controls as PRESETS (w33): the pairs anyone
+         recognises from Lichess's own quick-pairing grid,
+         minus bullet - saying a move takes longer than a
+         bullet game can spare. (The owner doubts blitz too;
+         it stays until a real game settles it.) The chosen
+         one is remembered; Custom is a box that takes the
+         same #+# the presets show, selected the moment what
+         is typed parses. -->
+    <span id="timeRow">
+    <button class="tc" data-tc="3+0">3+0</button>
+    <button class="tc" data-tc="3+2">3+2</button>
+    <button class="tc" data-tc="5+0">5+0</button>
+    <button class="tc" data-tc="5+3">5+3</button>
+    <button class="tc" data-tc="10+0">10+0</button>
+    <button class="tc" data-tc="10+5">10+5</button>
+    <button class="tc" data-tc="15+10">15+10</button>
+    <button class="tc" data-tc="30+0">30+0</button>
+    <button class="tc" data-tc="30+20">30+20</button>
+    <input id="timeCustom" class="numin" type="text"
+           inputmode="numeric" placeholder="Custom" size="7">
+    </span>
     <label><input type="checkbox" id="seekRated"> Rated</label>
   </div>
   <div class="row">
@@ -156,7 +181,7 @@
     <button id="btnSeekCancel" disabled>Cancel seek</button>
   </div>
   <div class="row">
-    <label>opponent <select id="challengeWho">
+    <label>Opponent <select id="challengeWho">
       <option value="maia1">maia1 (easiest)</option>
       <option value="maia5">maia5</option>
       <option value="maia9">maia9 (strongest)</option>
@@ -225,6 +250,23 @@
  */
 (function () {
   "use strict";
+
+  /*===================== THE PROJECT, FROZEN AND LIVING ===========
+   *
+   *  THE USERSCRIPT IS FROZEN AT v137 (owner's decision,
+   *  Aug 5 2026). The website is the project now; the
+   *  userscript stays installed as a working fallback and
+   *  its sources stay in the tree, unmaintained. What this
+   *  changes day to day: the numbered section files serve
+   *  ONLY the website and may evolve freely; the w-series
+   *  is the only version line; the harness guards the
+   *  frozen v137 ARTIFACT (userscript-frozen.sha256), not
+   *  its buildability. What it does not change: us-header
+   *  is still binding reading - its constraints, platform
+   *  findings and closed cases did not freeze with the
+   *  code they were learned in. THIS FILE is the header of
+   *  record now.
+   *================================================================*/
 
   /*==================== THE WEBSITE, AT w20 =======================
    *
@@ -593,6 +635,17 @@
    *         way to a game. Carries v137's rename - they are
    *         buttons, not "chips". Dead w19 CSS for buttons
    *         this page never builds went too.
+   *    w33  TIME CONTROLS ARE PRESET BUTTONS - the pairs
+   *         from Lichess's own quick-pairing grid, minus
+   *         bullet (a spoken move costs seconds a bullet
+   *         game does not have; the owner doubts blitz too,
+   *         and it stays until a real game settles it).
+   *         3+0 through 30+20 plus a Custom box that takes
+   *         the same #+# and selects itself when the text
+   *         parses. The choice is remembered; seek and
+   *         challenge read selectedTimeControl(), never the
+   *         DOM. Also the session the FREEZE was decided -
+   *         see the notice at the top of this header.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
@@ -3637,7 +3690,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w32";
+  VERSION = "w33";
 
   var RULES = makeRules();
 
@@ -5086,6 +5139,81 @@ function initBoard() {
   // shared settings panel).
   var OPPONENT_KEY = "audioplay.web.opponent";
 
+  // TIME CONTROL IS A PICKED PRESET (w33), remembered like
+  // the opponent. The truth lives in one place - the picked
+  // state - and seek and challenge both read it through
+  // selectedTimeControl(), never the DOM. The Custom box
+  // selects itself the moment its text parses as #+#, and
+  // holds the selection while being edited even when
+  // invalid; only ACTING on an invalid custom (seek or
+  // challenge) says so, in the status line, because
+  // interrupting typing to complain is worse than waiting
+  // to be asked.
+  var TIME_KEY = "audioplay.web.timecontrol";
+  var pickedTime = "15+10";           // today's default default
+
+  function parseTimeControl(text) {
+    var m = /^\s*(\d{1,3})\s*\+\s*(\d{1,3})\s*$/.exec(text || "");
+    if (!m) return null;
+    var mins = +m[1], inc = +m[2];
+    if (mins < 1 || mins > 180 || inc > 60) return null;
+    return { minutes: mins, increment: inc };
+  }
+
+  function selectedTimeControl() {
+    if (pickedTime === "custom") {
+      return parseTimeControl(el("timeCustom").value);
+    }
+    return parseTimeControl(pickedTime);
+  }
+
+  function paintTimeRow() {
+    var box = el("timeCustom");
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#timeRow button.tc"),
+      function (b) {
+        b.classList.toggle("picked",
+          b.getAttribute("data-tc") === pickedTime);
+      });
+    if (box) {
+      box.style.borderColor =
+        pickedTime === "custom" ? SIGNED_IN_BG : "";
+      box.style.background =
+        pickedTime === "custom" ? "#20281c" : "";
+    }
+  }
+
+  function pickTime(value) {
+    pickedTime = value;
+    try { localStorage.setItem(TIME_KEY, value === "custom"
+      ? "custom:" + el("timeCustom").value : value); }
+    catch (e) {}
+    paintTimeRow();
+  }
+
+  function wireTimeRow() {
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#timeRow button.tc"),
+      function (b) {
+        b.addEventListener("click", function () {
+          pickTime(b.getAttribute("data-tc"));
+        });
+      });
+    var box = el("timeCustom");
+    if (box) box.addEventListener("input", function () {
+      if (parseTimeControl(box.value)) pickTime("custom");
+    });
+    var saved = "";
+    try { saved = localStorage.getItem(TIME_KEY) || ""; } catch (e) {}
+    if (saved.indexOf("custom:") === 0) {
+      if (box) box.value = saved.slice(7);
+      if (parseTimeControl(saved.slice(7))) pickedTime = "custom";
+    } else if (parseTimeControl(saved)) {
+      pickedTime = saved;
+    }
+    paintTimeRow();
+  }
+
   function buildWebUI() {
     buildUI();                    // the shared button row et al
     statusLine = el("lichessLine");
@@ -5107,8 +5235,9 @@ function initBoard() {
     });
 
     seekBtn.addEventListener("click", function () {
-      startSeek(el("seekMinutes").value, el("seekIncrement").value,
-                el("seekRated").checked);
+      var tc = selectedTimeControl();
+      if (!tc) { uiStatus("Custom time looks like 10+5."); return; }
+      startSeek(tc.minutes, tc.increment, el("seekRated").checked);
       renderAccount();
     });
     seekCancelBtn.addEventListener("click", function () {
@@ -5136,13 +5265,15 @@ function initBoard() {
     } else if (savedOpp) {
       oppSel.value = savedOpp;
     }
+    wireTimeRow();
     syncOpponent();
     oppSel.addEventListener("change", syncOpponent);
     oppOther.addEventListener("change", syncOpponent);
 
     challengeBtn.addEventListener("click", function () {
-      sendChallenge(opponentName(),
-                    el("seekMinutes").value, el("seekIncrement").value,
+      var tc = selectedTimeControl();
+      if (!tc) { uiStatus("Custom time looks like 10+5."); return; }
+      sendChallenge(opponentName(), tc.minutes, tc.increment,
                     el("seekRated").checked, el("challengeColour").value);
     });
 
