@@ -9,10 +9,12 @@ browser, no server anywhere in this project.
 ## Before changing anything
 
 Read `src/00-header.js` — the header of record. It carries
-the project's constraints, the w-series history, and the
-reasoning behind decisions that look arbitrary. Then read the
-header of whatever file you are about to touch. **The
-comments are the documentation**; there is no wiki.
+the project's constraints and the reasoning behind decisions
+that look arbitrary. Then read the header of whatever file
+you are about to touch. **The comments are the
+documentation**; there is no wiki. The one exception is the
+w-series history, which is a changelog rather than reasoning
+next to code: it lives in `HISTORY.md` at the repo root.
 `frozen-userscript/us-header.js` is also binding: its
 platform findings and closed cases did not freeze with the
 code they were learned in.
@@ -20,10 +22,15 @@ code they were learned in.
 ## Commands
 
 ```
-node build.js          # src/ -> index.html  (the deployed page)
+node build.js manifest.txt index.html   # the deployed page
 node test_harness.js   # must be all-pass before any commit
 node perft_check.js    # only when src/13-rules.js changes
 ```
+
+Pass the output path. Bare `node build.js` writes
+`dist/index.html`, which GitHub Pages does not serve — the
+root `index.html` is the deploy, and it would silently stay
+stale.
 
 `build.js` is pure concatenation: it joins the files named in
 `manifest.txt`, in order, and inlines them into
@@ -38,6 +45,7 @@ never grow transforms, minification, or dependencies.
 - `index.html` at the repo root — **GENERATED**. Never edit
   by hand; run the build. It is what GitHub Pages serves.
 - `manifest.txt` — the load order.
+- `HISTORY.md` — the w-series history, one entry per bump.
 - `frozen-userscript/` — the userscript, frozen at v137,
   kept as a working fallback. Do not edit, do not build,
   do not "fix". `test_harness.js` checks the artifact's
@@ -67,9 +75,14 @@ never grow transforms, minification, or dependencies.
 
 One line: `w`-series, assigned in `src/11-lichess.js` as
 `VERSION = "wNN"`. Bump for any behavioural change and add
-an entry to the history in `src/00-header.js` saying WHY,
-not what. Never displayed on screen — it appears in log
-lines, so a pasted log says which build produced it.
+an entry to `HISTORY.md` saying WHY, not what — the diff
+already says what. Never displayed on screen — it appears in
+log lines, so a pasted log says which build produced it.
+
+Entries go at the END of `HISTORY.md`, oldest first: they
+refer back and forward to each other, so the order is the
+story. Several record a mistake and the rule it earned
+(`w18`, `w28`, `w31`, `w37`) — do not tidy those away.
 
 ## Testing
 
@@ -88,8 +101,9 @@ lessons are baked in:
 
 ## Deploying
 
-`node build.js` writes the root `index.html`. Committing it
-is the deploy; GitHub Pages serves it directly. Always run
+`node build.js manifest.txt index.html` writes the root
+`index.html`. Committing it is the deploy; GitHub Pages
+serves it directly. Always run
 the harness first, and say in the PR what the owner should
 look for on the device — much of this project can only be
 proven by a real game.
