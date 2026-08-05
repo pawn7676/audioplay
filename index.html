@@ -42,7 +42,13 @@
   h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: .01em; color: var(--accent); }
   h1 .version { color: var(--text); font-size: .8rem; margin-left: .4em; font-family: Menlo, monospace; font-weight: 600; }
   .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
-  button {
+  /* Button rules are SCOPED to .panel (w21): the shared UI
+     creates its own buttons with inline styles, and the
+     bare selectors here were bleeding flex/padding into
+     them - the on/off pills came out different sizes. On
+     lichess.org no page CSS ever reached those elements;
+     on our page it must be told not to. */
+  .panel button {
     touch-action: manipulation; -webkit-user-select: none; user-select: none;
     -webkit-appearance: none; appearance: none;
     font-family: inherit; font-size: .95rem; font-weight: 600;
@@ -51,13 +57,13 @@
     padding: 10px 14px; flex: 1 1 auto;
     transition: transform .08s ease, opacity .08s ease;
   }
-  button:active { transform: scale(.96); opacity: .5; }
-  button:focus, button:focus-visible { outline: none; box-shadow: none; }
-  button:disabled { opacity: .35; }
-  button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-  button.chip { flex: 0 0 auto; padding: 10px 12px; }
-  button.chip#chipPractice { color: var(--warn); }
-  button.on { background: var(--chip-on); color: #e6efe0; }
+  .panel button:active { transform: scale(.96); opacity: .5; }
+  .panel button:focus, .panel button:focus-visible { outline: none; box-shadow: none; }
+  .panel button:disabled { opacity: .35; }
+  .panel button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .panel button.chip { flex: 0 0 auto; padding: 10px 12px; }
+  .panel button.chip#chipPractice { color: var(--warn); }
+  .panel button.on { background: var(--chip-on); color: #e6efe0; }
   /* The round button, exactly the userscript's: play
      triangle = off, hollow circle = on, filled = hearing */
   #bigBtn {
@@ -120,6 +126,12 @@
 </defs></svg>
 
 <h1>Audioplay</h1>
+
+<div class="panel" id="panelControls">
+  <h2>Voice</h2>
+  <!-- the shared UI's chip row is re-parented in here by
+       buildWebUI (w21); empty in the markup on purpose -->
+</div>
 
 <div class="panel" id="panelBoard">
   <details open>
@@ -452,6 +464,22 @@
    *         v134 the day v134 landed, the first proof the
    *         re-copy discipline works.
    *         UNPROVEN: no real game has been played on w20.
+   *    w21  THE FIRST DEVICE FINDINGS, from the owner's
+   *         first look at w20 on the iPad. Three fixes:
+   *         (1) the chip row joins the page - floating
+   *         bottom-right was shaped for lichess.org and
+   *         covered the page's own content here; it now
+   *         lives in a Voice panel at the top, and the
+   *         settings panel opens BELOW its chip. buildUI
+   *         stays verbatim; the re-parent is a web delta.
+   *         (2) the page's button CSS is SCOPED to .panel:
+   *         bare selectors were bleeding flex and padding
+   *         into the shared UI's created buttons, which no
+   *         page CSS could ever reach on lichess.org - the
+   *         on/off pills came out different sizes. (3) the
+   *         turn line's "- that is you" is gone at the
+   *         owner's word: the board is drawn from your side
+   *         and the clocks say you/them already.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
@@ -3477,7 +3505,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w20";
+  VERSION = "w21";
 
   var RULES = makeRules();
 
@@ -4758,9 +4786,10 @@ function initBoard() {
     if (!turnLine) return;
     if (!api.pos) { turnLine.textContent = ""; return; }
     if (api.over) { turnLine.textContent = "Game over."; return; }
-    var yours = api.pos.turn === api.myColor;
-    turnLine.textContent = colorWord(api.pos.turn) + " to move" +
-      (api.myColor ? (yours ? " - that is you." : ".") : ".");
+    // "- that is you" REMOVED at w21 by the owner: the board
+    // is drawn from your side and the clocks say you/them, so
+    // the suffix repeated what the whole panel already shows.
+    turnLine.textContent = colorWord(api.pos.turn) + " to move.";
   }
 
   // Once a game exists, THE GAME IS THE STATUS (w13). Seek and
@@ -4897,6 +4926,30 @@ function initBoard() {
                     el("seekMinutes").value, el("seekIncrement").value,
                     el("seekRated").checked, el("challengeColour").value);
     });
+
+    // WEB (w21): the chip row joins the page. Floating
+    // bottom-right was the right shape OVER lichess.org;
+    // over our own page it covered the hints and the
+    // challenge row. buildUI() is untouched - the row is
+    // re-parented into the Voice panel and restyled to
+    // flow. The settings and log panels stay overlays
+    // (transient, closable), but the settings anchor
+    // assumed the button was near the bottom, so opening
+    // now pins the panel BELOW the chip instead.
+    var host = el("panelControls");
+    if (host && wrapEl) {
+      wrapEl.style.cssText =
+        "display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
+      host.appendChild(wrapEl);
+      if (setChip && setPanel) {
+        setChip.addEventListener("click", function () {
+          if (setPanel.style.display === "none") return;
+          var r = setChip.getBoundingClientRect();
+          setPanel.style.bottom = "auto";
+          setPanel.style.top = Math.max(8, r.bottom + 8) + "px";
+        });
+      }
+    }
 
     restorePanels();
     renderAccount();
