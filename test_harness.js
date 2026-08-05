@@ -930,6 +930,48 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 /echo takes foxtrot 3/i,
                 '"pawn echo takes" is the e-pawn, not the e-file target');
 
+  // ---- w41: file takes file, and who counts as "on the file" ----
+  // UNIQUENESS SPANS PIECES, NOT JUST PAWNS. "echo takes" can
+  // be the e-pawn or a piece on the e-file whose name the mic
+  // ate, so both must be counted before anything is played.
+  // Here Rxe7 and exf3 are both captures from the e-file.
+  setBoard("4k3/4p3/8/4R3/8/5n2/4P3/K7 w - - 0 1");
+  say("echo takes");
+  await sleep(120);
+  const eFile = heard().join(" | ");
+  check("a PIECE on the file counts too, so it asks (" + eFile + ")",
+        /did you mean/i.test(eFile) &&
+        vm.runInContext("!!pending", sandbox) === true);
+  // and with the rook gone it is the pawn's alone, played
+  await onBoard("4k3/4p3/8/8/8/5n2/4P3/K7 w - - 0 1", "echo takes",
+                /echo takes foxtrot 3/i,
+                "one capture left on the file plays at once");
+
+  // FILE TAKES FILE. 1.c4 d5 2.Nc3 a6: "charlie takes delta"
+  // is cxd5 OR Nxd5 with the knight's name lost, so it asks.
+  await onBoard("rnbqkbnr/1pp1pppp/p7/3p4/2P5/2N5/PP1PPPPP/R1BQKBNR w KQkq - 0 3",
+                "charlie takes delta", /did you mean/i,
+                '"charlie takes delta" with cxd5 AND Nxd5 asks');
+  // 1.c4 d5: only the pawn can do it, so it plays at once
+  await onBoard("rnbqkbnr/ppp1pppp/8/3p4/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 0 2",
+                "charlie takes delta", /charlie takes delta 5/i,
+                '"charlie takes delta" with only cxd5 plays');
+  // the target half is NAMED when nothing fits, or the
+  // sentence blames the wrong file
+  await onBoard("rnbqkbnr/ppp1pppp/8/3p4/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 0 2",
+                "charlie takes hotel",
+                /no capture from the charlie file onto the hotel file/i,
+                "a target that fits nothing is named in the refusal");
+  // an origin SQUARE with a target file, same machinery
+  await onBoard(GAME, "echo five takes foxtrot", takesF6,
+                '"echo five takes foxtrot" resolves to exf6');
+  // and the form that already worked is still untouched: a
+  // lone file after "takes" with NO origin before it is still
+  // the half-square repair's destination-file guess
+  await onBoard("4k3/8/8/3Qn3/8/8/8/4K3 w - - 0 1", "queen takes",
+                /queen takes echo 5/i,
+                '"queen takes" still belongs to the v117 repair');
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();

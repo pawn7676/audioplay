@@ -87,12 +87,34 @@
   // contains it; handleTranscripts resets it per utterance.
   var nearMissLogged = {};
 
+  /* A SECOND HALF-SQUARE, PAST THE TAKE WORD, IS THE TARGET'S
+   * (w41). "charlie takes delta" is a whole move to the ear -
+   * the c-pawn takes on the d-file - but through w40 the two
+   * dangling files landed in the same slot and the second
+   * simply erased the first, leaving "- x - d -", a request
+   * with nothing to say, answered "Say again."
+   *
+   * It fires only where an origin was ALREADY spoken before
+   * the take word, which is what makes it safe: with no
+   * origin behind it, a lone file after "takes" is still the
+   * destination-file guess the half-square repair has always
+   * made of "queen takes delta", and that reading is
+   * untouched. Two halves straddling the take word could not
+   * mean anything at all before this, so nothing that worked
+   * can change.
+   */
+  function danglingIsTarget(req) {
+    return !!(req.capture &&
+              (req.squares.length || req.fromFile || req.fromRank));
+  }
+
   function parseTranscript(raw, noFuzzy) {
     var toks = wordsOf(raw);
     var req = { castle: null, piece: null, capture: false, squares: [],
                 fromFile: null, fromRank: null, trailingPiece: null,
                 promoKw: false, victim: null,
-                takeAt: -1, fromBeforeTake: false };
+                takeAt: -1, fromBeforeTake: false,
+                toFile: null, toRank: null };
     var syms = [], i, tk;
     for (i = 0; i < toks.length; i++) {
       tk = toks[i];
@@ -257,19 +279,24 @@
         if (i + 1 < syms.length && syms[i + 1].t === "rank") {
           req.squares.push(s.v + syms[i + 1].v);
           i++;
+        } else if (danglingIsTarget(req)) {
+          req.toFile = s.v;
         } else {
           // recomputed, not or-ed: a later dangling file
-          // OVERWRITES an earlier one ("echo takes delta"
-          // keeps only the d), so the flag must describe the
-          // file that survived, not the one that did not.
+          // OVERWRITES an earlier one, so the flag must
+          // describe the file that survived, not the one that
+          // did not.
           req.fromFile = s.v;
           req.fromBeforeTake = !req.capture;
         }
         continue;
       }
       if (s.t === "rank") {
-        req.fromRank = s.v;
-        req.fromBeforeTake = !req.capture;
+        if (danglingIsTarget(req)) req.toRank = s.v;
+        else {
+          req.fromRank = s.v;
+          req.fromBeforeTake = !req.capture;
+        }
       }
     }
     return req;
@@ -515,10 +542,16 @@
 
   function describeReq(req) {
     if (req.castle) return "castle:" + req.castle;
+    // The half-square field carries BOTH halves now (w41):
+    // "charlie takes delta" prints "- x - c>d -", the same
+    // from>to shape the square field uses, so a pasted log
+    // still shows which end of the move each one was.
+    var half = (req.fromFile || "") + (req.fromRank || "");
+    var target = (req.toFile || "") + (req.toRank || "");
     return [req.piece || "-", req.capture ? "x" : "-",
             req.squares.join(">") ||
               (req.victim ? "<" + req.victim + ">" : "-"),
-            (req.fromFile || "") + (req.fromRank || "") || "-",
+            (half + (target ? ">" + target : "")) || "-",
             req.trailingPiece || "-"].join(" ");
   }
 

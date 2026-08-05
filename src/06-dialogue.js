@@ -766,6 +766,9 @@
           if (origin.length === 2 ? s !== origin
               : /[a-h]/.test(origin) ? s[0] !== origin
                                      : s[1] !== origin) return false;
+          var t = RULES.sqName(m.to);
+          if (req.toFile && t[0] !== req.toFile) return false;
+          if (req.toRank && t[1] !== req.toRank) return false;
           if (req.piece && m.piece !== req.piece) return false;
           if (req.victim && m.captured !== req.victim) return false;
           return true;
@@ -774,11 +777,19 @@
           // Silence is not an answer, and neither is "not a
           // legal move" when we know exactly what is wrong -
           // the v117 shape of "the queen has nothing to take".
+          // Name the target half too when one was heard, or
+          // "no capture from the charlie file" is a lie the
+          // moment cxb5 is sitting there legal and it was the
+          // DELTA file that had nothing on it.
+          var whither = req.toFile
+                ? " onto the " + SPOKEN_FILE[req.toFile] + " file"
+                : req.toRank ? " onto rank " + req.toRank : "";
           speak((origin.length === 2
-                   ? "Nothing on " + spokenSquare(origin) + " can take"
+                   ? "Nothing on " + spokenSquare(origin) + " can take" + whither
                    : /[a-h]/.test(origin)
-                       ? "No capture from the " + SPOKEN_FILE[origin] + " file"
-                       : "No capture from rank " + origin) +
+                       ? "No capture from the " + SPOKEN_FILE[origin] +
+                         " file" + whither
+                       : "No capture from rank " + origin + whither) +
                 ". Say again.");
           return;
         }

@@ -451,3 +451,35 @@ SHORTEST one, and the shortest one is the least likely to have been
 tested - every test written for this grammar had spelled the move out in
 full. w37 said a feature used twice is a different feature. This is its
 sibling: a feature used in a hurry is a different feature.
+
+### w41
+
+FILE TAKES FILE, AND WHO COUNTS AS BEING ON THE FILE. Two halves of the
+same sentence, both from the owner reading w40 back.
+
+"charlie takes delta" is a whole move to the ear and was nothing at all
+to the parser: both dangling files landed in one slot, the second erased
+the first, and the request arrived as "- x - d -" with nothing to say.
+Now a half-square spoken PAST the take word is the target's, and only
+when an origin was already spoken before it - with nothing behind it a
+lone file after "takes" is still the destination-file guess the v117
+repair has always made of "queen takes delta", untouched. Two halves
+straddling the take word could not mean anything before this, so nothing
+that worked can change. After 1.c4 d5 it plays cxd5 at once; after 1.c4
+d5 2.Nc3 a6 the same words could be cxd5 or Nxd5 with the knight's name
+lost to the mic, and it asks. The PRS line carries both halves now -
+"- x - c>d -" - or a pasted log would not show which end was which.
+
+The other half was already true and had nothing proving it: uniqueness
+on a bare origin file is counted over every capture from that file,
+pieces as well as pawns, precisely BECAUSE "echo takes" may be a piece
+whose name was eaten. Only the pawn's own captures would have been the
+w40 fix quietly reintroducing the game6 bug it was modelled on. There is
+now a board in the harness where a rook and a pawn can both capture off
+the e-file, and it must ask.
+
+Both tests cost a FEN each and both were wrong on the first run - the
+knight I put on f3 to be captured was checking the king on e1, so the
+only legal move in the position was the capture I was trying not to be
+unique. A test that passes because the position is forced proves the
+opposite of what it claims. Check the move list, not the diagram.
