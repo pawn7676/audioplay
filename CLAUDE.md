@@ -22,15 +22,16 @@ code they were learned in.
 ## Commands
 
 ```
-node build.js manifest.txt index.html   # the deployed page
+node build.js          # src/ -> index.html  (the deployed page)
 node test_harness.js   # must be all-pass before any commit
 node perft_check.js    # only when src/13-rules.js changes
 ```
 
-Pass the output path. Bare `node build.js` writes
-`dist/index.html`, which GitHub Pages does not serve — the
-root `index.html` is the deploy, and it would silently stay
-stale.
+`node build.js` writes the ROOT `index.html`, which is what
+Pages serves. There is no `dist/` and there should not be
+one: the page lives at the root so the URL stays short, and
+the build writing anywhere else is how a "deploy" comes to
+change nothing.
 
 `build.js` is pure concatenation: it joins the files named in
 `manifest.txt`, in order, and inlines them into
@@ -46,6 +47,7 @@ never grow transforms, minification, or dependencies.
   by hand; run the build. It is what GitHub Pages serves.
 - `manifest.txt` — the load order.
 - `HISTORY.md` — the w-series history, one entry per bump.
+- `.github/workflows/checks.yml` — the checks GitHub runs.
 - `frozen-userscript/` — the userscript, frozen at v137,
   kept as a working fallback. Do not edit, do not build,
   do not "fix". `test_harness.js` checks the artifact's
@@ -99,11 +101,52 @@ lessons are baked in:
   never by returning to it — which is exactly where it
   broke (w37).
 
-## Deploying
+`.github/workflows/checks.yml` runs all three commands on
+every pull request and every push to `main`. Running them
+locally is still the rule — CI is the backstop, not the
+first line — but it means an edit made in GitHub's web UI,
+where there is no terminal and the harness CANNOT be run, is
+checked too. Those used to reach the live page unexamined.
 
-`node build.js manifest.txt index.html` writes the root
-`index.html`. Committing it is the deploy; GitHub Pages
-serves it directly. Always run
-the harness first, and say in the PR what the owner should
-look for on the device — much of this project can only be
-proven by a real game.
+The third check rebuilds `index.html` and diffs it against
+the committed file. The deployed page is generated but
+committed by hand, so it can fall behind `src/` silently:
+Pages keeps serving the old build while the source says
+otherwise. That is the w18 shape — an edit that did not
+land, failing quietly.
+
+## Working on this repo
+
+The GitHub loop, settled 5 Aug 2026. It exists so the owner
+is not a gatekeeper on every step.
+
+1. Branch off `main`: `claude/<short-description>`.
+2. Edit `src/` only. Never the root `index.html`.
+3. `node build.js` — regenerate the page. Commit it too;
+   committing it IS the deploy.
+4. `node test_harness.js`, all-pass. Add a test for what
+   changed, and ask the built DOM.
+5. Bump `VERSION` and add a `HISTORY.md` entry if behaviour
+   changed. Neither, if it did not.
+6. Push, open a PR, wait for the checks, merge when green.
+   The branch deletes itself — the repo does that.
+
+**Nothing is live until the merge.** Pages serves `main`; a
+pushed branch changes nothing the owner can see. After
+merging, the device needs a HARD reload — a normal one
+serves the cached build, which is what w19 was about.
+
+**Do not stop at each step for permission.** Routine work —
+docs, refactors, a fix with a test behind it — goes through
+that loop and gets reported when it is done. Ask first only
+where judgement is owed: behaviour the owner must feel on
+the device, a constraint pulling against the request, or
+anything the harness cannot prove. Say plainly what to look
+for on the device; much of this project is only provable by
+a real game.
+
+**Branch protection on `main` is deliberately off.** It was
+weighed on 5 Aug 2026 and declined: with one person and CI
+already running on every push, requiring reviews would add
+clicks for the owner and no safety. Revisit it only if a
+second contributor appears. The checks are the safety net.
