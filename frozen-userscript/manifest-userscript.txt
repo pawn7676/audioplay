@@ -1,0 +1,36 @@
+# Lichess Audioplay — userscript build manifest.
+#
+# FROZEN AT v137 (owner's decision, Aug 5 2026). The website
+# is the project now; the userscript is kept as a working
+# fallback, not developed. Its sources (us-header, 11, 12,
+# 15) and the canon file lichess_audioplay.js must not
+# change - userscript-frozen.sha256 is the fingerprint the
+# harness checks. The other numbered files now serve the
+# WEBSITE and may evolve freely; this manifest would no
+# longer rebuild v137 after they do, and that is expected.
+# us-header.js remains binding reading - the constraints,
+# platform findings and closed cases in it did not freeze.
+# build.js concatenates these src/ files in order.
+# Section files 01-15 keep the userscript's section numbers.
+#
+# SHARED with the future website target: 02-10, 13, 14
+# USERSCRIPT-ONLY: us-header (metadata + version history + IIFE open),
+#   01 (settings via GM storage), 11 (token-based Lichess API),
+#   12 (UI injected into lichess.org), 15 (boot: watch for game page)
+us-header.js
+01-settings.js
+02-log.js
+03-vocabulary.js
+04-parsing.js
+05-matching.js
+06-dialogue.js
+07-speech-out.js
+08-chimes.js
+09-mic.js
+10-keepalive.js
+11-lichess.js
+12-ui.js
+13-rules.js
+14-clock.js
+15-boot.js
+closure-footer.js
