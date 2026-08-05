@@ -74,7 +74,25 @@
     font-variant-numeric: tabular-nums; }
   .panel button.tc.picked { background: var(--button-on);
     color: #e6efe0; border-color: var(--button-on); }
-  #timeCustom { width: 5.5em; }
+  /* The custom box is a BUTTON THAT YOU TYPE IN (w36), not
+     a form field: same surface, text and border as the
+     presets beside it, and the same green when picked. It
+     had no colour of its own before, so it inherited the
+     browser's black text - invisible the moment the picked
+     green went behind it. */
+  #timeCustom {
+    width: 5.5em; font: inherit; font-weight: 600;
+    padding: 10px 12px; border-radius: 8px; text-align: center;
+    background: var(--btn-bg); color: var(--accent);
+    border: 1px solid var(--border);
+    -webkit-appearance: none; appearance: none;
+    font-variant-numeric: tabular-nums;
+  }
+  #timeCustom::placeholder { color: var(--dim); font-weight: 600; }
+  #timeCustom.picked {
+    background: var(--button-on); color: #e6efe0;
+    border-color: var(--button-on);
+  }
   .panel { background: var(--surface); border-radius: 8px; padding: 12px; margin-top: 12px; }
   .panel h2, .panel > details > summary {
     font-size: .8rem; font-weight: 600; letter-spacing: .12em;
@@ -171,7 +189,7 @@
     <button class="tc" data-tc="15+10">15+10</button>
     <button class="tc" data-tc="30+0">30+0</button>
     <button class="tc" data-tc="30+20">30+20</button>
-    <input id="timeCustom" class="numin" type="text"
+    <input id="timeCustom" type="text"
            inputmode="numeric" placeholder="Custom" size="7">
     </span>
     <label><input type="checkbox" id="seekRated"> Rated</label>
@@ -665,6 +683,28 @@
    *         nothing else. Junk in storage reads as never
    *         chosen - a stale value should leave a clean
    *         row, not a broken one.
+   *    w36  the Custom box was UNREADABLE when picked:
+   *         black browser-default text on the picked
+   *         green, because the box had no colour of its
+   *         own and w33 set only a background, inline. It
+   *         is now styled like the presets beside it -
+   *         same surface, text, border - and "picked" is
+   *         the same CSS class for all ten controls
+   *         instead of inline colours on one of them. The
+   *         general rule this keeps proving: state set
+   *         inline from code cannot see what the
+   *         stylesheet already decided.
+   *    w37  a custom time could not be chosen TWICE. The
+   *         box only re-picked on "input", which fires
+   *         when the text changes - so tapping back into a
+   *         box that already said 40+30, after pressing a
+   *         preset, gave a cursor and stayed dark with no
+   *         way back to green short of retyping. Focus is
+   *         the missing event. Found by the owner in
+   *         thirty seconds of use; the w33 tests had only
+   *         ever TYPED into the box, never returned to it.
+   *         Worth remembering when writing the next test:
+   *         a feature used twice is a different feature.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
@@ -3709,7 +3749,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w35";
+  VERSION = "w37";
 
   var RULES = makeRules();
 
@@ -5206,11 +5246,10 @@ function initBoard() {
         b.classList.toggle("picked",
           b.getAttribute("data-tc") === pickedTime);
       });
-    if (box) {
-      box.style.borderColor =
-        pickedTime === "custom" ? SIGNED_IN_BG : "";
-      box.style.background =
-        pickedTime === "custom" ? "#20281c" : "";
+    // the same class the presets use, so one CSS rule
+    // decides what "picked" looks like for all ten
+    if (box && box.classList) {
+      box.classList.toggle("picked", pickedTime === "custom");
     }
   }
 
@@ -5238,10 +5277,25 @@ function initBoard() {
         });
       });
     var box = el("timeCustom");
-    if (box) box.addEventListener("input", function () {
-      if (parseTimeControl(box.value)) pickTime("custom");
-      else if (pickedTime === "custom") pickTime(null);
-    });
+    if (box) {
+      box.addEventListener("input", function () {
+        if (parseTimeControl(box.value)) pickTime("custom");
+        else if (pickedTime === "custom") pickTime(null);
+      });
+      // TAPPING BACK INTO A CUSTOM TIME RE-PICKS IT (w37).
+      // "input" fires only when the text CHANGES, so a box
+      // that already said 40+30 could not be chosen again
+      // after a preset was pressed: it took the cursor and
+      // stayed dark, with no way back to green short of
+      // retyping. Focus is the missing event - the box is a
+      // button you type in, and pressing a button that
+      // already holds a valid time is a choice like any
+      // other. An EMPTY box on focus changes nothing: the
+      // current pick stands until the typing parses.
+      box.addEventListener("focus", function () {
+        if (parseTimeControl(box.value)) pickTime("custom");
+      });
+    }
 
     // A LATER VISIT PICKS UP WHERE THE LAST ONE LEFT OFF.
     // Anything unreadable is treated as never chosen, not
