@@ -506,6 +506,27 @@
    *         v135 - the first shared-tree change to flow
    *         into both targets from one edit. See v135 in
    *         us-header.js for the reasoning.
+   *    w24  the settings panel opens UNDER ITS CHIP, both
+   *         axes. The userscript's right:10px pin was the
+   *         chip's own corner there; here it read as a
+   *         random spot on the right. Also the session's
+   *         log proved two more things in passing: the
+   *         account event stream RECONNECTED after a real
+   *         "Load failed" drop (18:14:42-45), and the v129
+   *         message-channel invariant fired live, forcing
+   *         show-messages back on when both were switched
+   *         off.
+   *    w25  no double-tap zoom on the overlays: two quick
+   *         taps on two settings pills zoomed the page. The
+   *         w21 CSS scoping that fixed the pill sizes also
+   *         took touch-action:manipulation away from the
+   *         body-attached panels; restored inline on both
+   *         panels and their buttons. If the owner ever
+   *         reports the same zoom on lichess.org, this
+   *         belongs in the shared section 12 as a v-bump -
+   *         the pills never carried touch-action there
+   *         either, lichess's own CSS just may have covered
+   *         it.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
@@ -3531,7 +3552,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w23";
+  VERSION = "w25";
 
   var RULES = makeRules();
 
@@ -4970,12 +4991,47 @@ function initBoard() {
       if (setChip && setPanel) {
         setChip.addEventListener("click", function () {
           if (setPanel.style.display === "none") return;
+          // ANCHORED TO THE CHIP IN BOTH AXES (w24). The
+          // userscript pins the panel right:10px because its
+          // chips live in the bottom-right corner, so the
+          // right edge WAS the chip. Here the chip is top
+          // left; w21 fixed the vertical half and left the
+          // panel opening "below the chip but at the far
+          // right" - the owner rightly asked if that was on
+          // purpose. It opens under the chip, left-aligned,
+          // clamped so it never runs off a narrow screen.
           var r = setChip.getBoundingClientRect();
+          var w = window.innerWidth || 1024;
           setPanel.style.bottom = "auto";
           setPanel.style.top = Math.max(8, r.bottom + 8) + "px";
+          setPanel.style.right = "auto";
+          setPanel.style.left =
+            Math.max(8, Math.min(r.left, w - 270)) + "px";
         });
       }
     }
+
+    // NO DOUBLE-TAP ZOOM ON THE OVERLAYS (w25). Two quick
+    // taps on two settings pills read as a double-tap and
+    // Safari zoomed the page. The page's own buttons are
+    // covered by the scoped .panel button CSS, and the chip
+    // row picked that up when it moved into the Voice panel
+    // (w21) - but the settings and log panels attach to
+    // document.body, OUTSIDE any .panel, so the same w21
+    // scoping that fixed their pill sizes also took
+    // touch-action away from them. Set inline, on the
+    // panels and every button in them. (user-scalable=no in
+    // the viewport meta does not help: iOS ignores it for
+    // accessibility, by design.)
+    [setPanel, logPanel].forEach(function (p) {
+      if (!p) return;
+      p.style.touchAction = "manipulation";
+      if (!p.querySelectorAll) return;   // harness stub
+      Array.prototype.forEach.call(
+        p.querySelectorAll("button"), function (b) {
+          b.style.touchAction = "manipulation";
+        });
+    });
 
     restorePanels();
     renderAccount();
