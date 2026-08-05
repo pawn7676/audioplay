@@ -1,17 +1,29 @@
-<!DOCTYPE html>
 <!-- Layout and STATIC style only. The project's front door
-     is web-header.js in src/ (and us-header.js for the
-     shared pipeline) - read those first. THIS FILE IS A
-     TEMPLATE: build.js replaces the AUDIOPLAY_JS line below
-     with the concatenated script, producing the ONE file
-     that gets uploaded. The CSS is BoardEye's, trimmed.
+     is 00-header.js in src/ - read it first. (us-header.js,
+     in frozen-userscript/, is still binding reading: the
+     constraints, platform findings and closed cases in it
+     did not freeze with the code they were learned in.)
+
+     THIS FILE IS A TEMPLATE: build.js replaces the
+     AUDIOPLAY_JS line below with the concatenated script,
+     producing the ONE file that gets uploaded. The CSS is
+     BoardEye's, trimmed.
 
      NO VERSION NUMBER IS DISPLAYED ANYWHERE (w6). VERSION
      lives in the log lines, where a pasted dump says which
-     build produced it. NO STATE APPEARANCE LIVES HERE (w11):
-     anything whose look changes with what the program is
-     DOING is styled from the code that knows the state. What
-     stays here is the resting appearance. -->
+     build produced it.
+
+     WHO OWNS STATE APPEARANCE (w11, amended at w36). The
+     original rule said no state appearance lives here.
+     That was too strong, and w36 broke it on purpose: the
+     Custom time box had its background set inline by code
+     that could not see the text colour the stylesheet had
+     already chosen, so it went black-on-green. The rule
+     that survives is the useful half - THE STYLESHEET OWNS
+     WHAT EACH STATE LOOKS LIKE; THE CODE OWNS WHICH STATE
+     IS CURRENT, and says so by toggling a class (.picked,
+     .on, .primary). Code should set a colour directly only
+     where a stylesheet cannot know the value. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -261,7 +273,7 @@
  *
  *  THIS FILE IS GENERATED. Do not edit dist/ output by hand:
  *  the source lives in src/, one file per section, and
- *  "node build.js manifest-web.txt" reassembles this page.
+ *  "node build.js" reassembles this page.
  *  The same src/ sections build the userscript byte-for-byte
  *  ("node build.js"), which is the whole point: ONE voice
  *  pipeline, TWO one-file deploys.
@@ -301,8 +313,8 @@
    *  section files (src/01-10, 13, 14 — settings, log,
    *  vocabulary, parsing, matching, dialogue, speech, chimes,
    *  mic, keep-alive, rules, clock mode) and wraps this
-   *  page's own shell around them: web-11 (PKCE sign-in and
-   *  the account event stream), web-12 (the page), web-15
+   *  page's own shell around them: 11 (PKCE sign-in and
+   *  the account event stream), 12 (the page), 15
    *  (boot). The w19 site survives as reference/ — its PKCE
    *  flow, page furniture and remembered-panels code were
    *  salvaged into the web files, each block keeping its
@@ -509,7 +521,7 @@
    *        default for a first visit.
    *
    *    w20  THE REBUILD on shared v134 sections, as above.
-   *         VERSION is reassigned in web-11 (section 1 is
+   *         VERSION is reassigned in 11-lichess (section 1 is
    *         shared and byte-frozen until a joint bump).
    *         Gains over w19, inherited from v105-v134 in
    *         one step: the settings panel (v124) with
@@ -705,6 +717,20 @@
    *         ever TYPED into the box, never returned to it.
    *         Worth remembering when writing the next test:
    *         a feature used twice is a different feature.
+   *    w38  THE SHADOWS ARE GONE. src/ held two copies of
+   *         sections 11, 12 and 15 - the userscript's and
+   *         the web-* files that actually built - which was
+   *         the sharing arrangement's last remnant and an
+   *         invitation to edit the wrong one. The
+   *         userscript's four sources moved to
+   *         frozen-userscript/ beside its canon artifact
+   *         and sha; the web-* files took the plain names.
+   *         One manifest, one target, one file per section.
+   *         The template's own header was rewritten too:
+   *         it still pointed at us-header as the front
+   *         door, and it still carried the w11 rule that
+   *         w36 deliberately broke - see the amendment
+   *         there for who owns state appearance now.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
@@ -3749,7 +3775,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w37";
+  VERSION = "w38";
 
   var RULES = makeRules();
 
