@@ -1,0 +1,63 @@
+# The checks CLAUDE.md already requires, run by GitHub
+# instead of by whoever remembered. Nothing here is new and
+# nothing here is clever: it is the same commands, on a
+# machine that never forgets.
+#
+# It earns its keep on edits made in GitHub's web UI, where
+# there is no terminal and the harness CANNOT be run at all -
+# until now those reached the live page unchecked. Same for
+# any commit pushed in a hurry.
+#
+# No dependencies, by the project's own rule. Node ships with
+# the runner; the harness and perft need nothing else.
+name: checks
+
+on:
+  push:
+    branches: [main]     # the deploy branch - hand edits land here
+  pull_request:          # and every proposed change before it does
+
+permissions:
+  contents: read         # this workflow only ever reads the repo
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Stubs a browser, boots the page, drives it. Exits
+      # non-zero on any failure, which is what fails the run.
+      - name: test harness
+        run: node test_harness.js
+
+      # Move generation against known counts. CLAUDE.md only
+      # asks for this when 13-rules.js changes; it takes
+      # seconds, so it always runs rather than resting on a
+      # condition being written correctly.
+      - name: perft
+        run: node perft_check.js
+
+      # The root index.html is GENERATED and committed by
+      # hand, so it can fall behind src/ silently - the page
+      # keeps serving the last build while the source says
+      # otherwise. Rebuild it and check nothing moved.
+      - name: index.html matches src/
+        run: |
+          node build.js manifest.txt "$RUNNER_TEMP/rebuilt.html"
+          if ! diff -q "$RUNNER_TEMP/rebuilt.html" index.html; then
+            echo
+            echo "The committed index.html does NOT match src/."
+            echo "GitHub Pages would keep serving the old page."
+            echo
+            echo "Fix, then commit the result:"
+            echo "  node build.js manifest.txt index.html"
+            echo
+            echo "If you meant to edit the page itself, edit"
+            echo "src/ - index.html at the root is generated."
+            exit 1
+          fi
+          echo "index.html is the build of the current src/."
