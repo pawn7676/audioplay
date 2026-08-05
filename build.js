@@ -5,7 +5,14 @@
  * is that template with its AUDIOPLAY_JS line replaced by the
  * concatenation (how the website becomes one index.html).
  *
- *   node build.js            -> dist/index.html, the whole site
+ *   node build.js            -> index.html, the deployed page
+ *
+ * The default output is the ROOT index.html, which is the file
+ * GitHub Pages serves. It used to default to dist/index.html,
+ * which nothing serves: a bare "node build.js" then looked
+ * like a deploy and changed nothing the world could see. A
+ * default that quietly does the useless thing is a trap, and
+ * this one caught the documentation itself.
  *
  * This is the project's whole build system. It began so the
  * userscript and website could share section files; the
@@ -18,7 +25,7 @@ const fs = require("fs");
 const path = require("path");
 
 const manifest = process.argv[2] || "manifest.txt";
-const outFile  = process.argv[3] || "dist/index.html";
+const outFile  = process.argv[3] || "index.html";
 
 let template = null;
 const names = fs.readFileSync(manifest, "utf8").split("\n")
