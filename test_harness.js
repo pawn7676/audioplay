@@ -972,6 +972,80 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 /queen takes echo 5/i,
                 '"queen takes" still belongs to the v117 repair');
 
+  // ---- w42: "takes charlie" needs no piece name ----
+  // Game w41-1, 16:32:18. The owner said "takes charlie"
+  // TWICE, got "Say again." both times, added the word "rook"
+  // and played Rxc6 on the third. The sentence was complete;
+  // the half-square repair just refused to run without a
+  // piece. Replayed as the game actually went, rather than
+  // from a FEN, so the position is checkable against the log.
+  function setGame(ucis) {
+    vm.runInContext(`
+      dryRun = true; running = true;
+      pending = null; confirmAction = null;
+      partialAsk = null; pieceAsk = null;
+      api.pos = new RULES.Position();
+      ${JSON.stringify(ucis)}.forEach(function (u) { api.pos.applyUci(u); });
+      api.moves = []; api.myColor = "w"; api.over = false;
+    `, sandbox);
+    heard();
+  }
+  const W41_GAME = ["c2c4","e7e6","b1c3","h7h6","d2d4","g8e7","e2e4","a7a6",
+                    "b2b4","h8h7","f2f4","b7b6","g1f3","h6h5","h2h4","a6a5",
+                    "d1a4","c8a6","b4a5","g7g5","f4g5","c7c6","a1b1","f7f5",
+                    "b1b6","f8h6","g5h6","h7f7"];
+
+  setGame(W41_GAME);
+  say("takes charlie");
+  await sleep(120);
+  const takesC = heard().join(" | ");
+  // TWO captures land on the c-file here, Qxc6 and Rxc6, so
+  // the honest answer is the question - not the rook. That is
+  // the game6 count doing its job: the queen could also take
+  // there, and the rook is what was meant.
+  check('"takes charlie" is heard at all now (' + takesC + ")",
+        !/say again/i.test(takesC));
+  check("it asks for the missing half, naming what survived",
+        /I heard takes charlie\. Say the rank/i.test(takesC));
+  check("the lead is never \"undefined\"", !/undefined/i.test(takesC));
+  say("six");
+  await sleep(120);
+  const six = heard().join(" | ");
+  check("the rank completes it (" + six + ")", /did you mean/i.test(six));
+  say("no");
+  await sleep(120);
+  say("yes");
+  await sleep(120);
+  check("and the rook capture from the log is reachable",
+        /rook takes charlie 6/i.test(heard().join(" | ")));
+
+  // the form that DID work in the log still works, unchanged
+  setGame(W41_GAME);
+  say("rook takes charlie");
+  await sleep(120);
+  check("\"rook takes charlie\" still plays Rxc6 at once",
+        /rook takes charlie 6/i.test(heard().join(" | ")));
+
+  // one capture onto the file: play it, no question
+  await onBoard("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1", "takes delta",
+                /echo takes delta 5/i,
+                "a unique piece-less capture onto a file plays");
+
+  // REGRESSIONS. A named piece with half a square keeps its
+  // own wording - the lead must still say the piece.
+  await onBoard("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1", "queen alpha",
+                /I heard queen alpha\. Say the rank/i,
+                "a named piece still leads with the piece");
+  // and a dangling file with NO take word must stay inert: a
+  // square with no piece named is a push, never a piece move
+  setGame(W41_GAME);
+  say("charlie");
+  await sleep(120);
+  const bareFile = heard().join(" | ");
+  check("a bare file without \"takes\" is still not a move (" +
+        bareFile + ")",
+        !/did you mean/i.test(bareFile) && !/takes/i.test(bareFile));
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();

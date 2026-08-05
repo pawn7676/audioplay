@@ -384,15 +384,24 @@
   function askPartial(req, want, chk, mate) {
     partialAsk = { req: req, want: want, chk: !!chk, mate: !!mate,
                    ply: api.moves.length };
+    // THE LEAD IS WHAT WAS ACTUALLY HEARD (w42). Every branch
+    // used to open with PIECE_NAME[req.piece], which reads
+    // back "I heard undefined charlie" the moment a request
+    // with no piece in it reaches here - which the half-square
+    // repair now allows, on purpose. When no piece was named
+    // the take word is the only thing there is to say back,
+    // and saying it is the point: the user hears which half
+    // survived and answers the other one.
+    var lead = req.piece ? PIECE_NAME[req.piece] : "takes";
     if (want === "target") {
-      speak("I heard " + PIECE_NAME[req.piece] +
-            " takes. Say the target.");
+      speak("I heard " + lead + (req.piece ? " takes" : "") +
+            ". Say the target.");
     } else if (want === "rank") {
-      speak("I heard " + PIECE_NAME[req.piece] + " " +
+      speak("I heard " + lead + " " +
             (SPOKEN_FILE[req.fromFile] || req.fromFile) +
             ". Say the rank.");
     } else {
-      speak("I heard " + PIECE_NAME[req.piece] + " to rank " +
+      speak("I heard " + lead + (req.piece ? " to rank " : " on rank ") +
             req.fromRank + ". Say the file.");
     }
   }
@@ -841,10 +850,34 @@
       // demanding the whole move again (v117): the file
       // arrived intact, so "I heard queen alpha. say the
       // rank." wastes nothing, and "eight" completes it.
-      if (req.piece && !req.squares.length && !req.victim &&
-          (req.fromFile || req.fromRank)) {
+      //
+      // THE PIECE NAME IS NOT REQUIRED WHEN "TAKES" WAS HEARD
+      // (w42). Game w41-1 said "takes charlie" TWICE, got
+      // "Say again." both times, added the word "rook" and
+      // played Rxc6 on the third - the sentence was complete
+      // and the only thing missing was the word the mic eats
+      // most often. Requiring a piece here made the repair
+      // useless in exactly the case it was built for.
+      //
+      // Safe on the count this file has used since v111, and
+      // on the one game6 taught: uniqueness is taken over
+      // EVERY capture landing there, pawn and piece alike, so
+      // a mover lost off the front cannot move the wrong
+      // piece - it can only turn one candidate into several,
+      // which asks. That is the same bar "echo takes" meets
+      // in the origin repair above.
+      //
+      // A capture word is required for the piece-less form.
+      // Without one this would relax a bare dangling file
+      // into every piece's moves to that file, which is the
+      // bare-square rule read backwards: a square with no
+      // piece named is a pawn PUSH and must never become a
+      // piece move. "takes" is what says otherwise.
+      if (!req.squares.length && !req.victim &&
+          (req.fromFile || req.fromRank) &&
+          (req.piece || req.capture)) {
         var half = api.pos.legalMoves().filter(function (m) {
-          if (m.piece !== req.piece) return false;
+          if (req.piece && m.piece !== req.piece) return false;
           if (req.capture && !m.captured) return false;
           var t = RULES.sqName(m.to);
           if (req.fromFile && t[0] !== req.fromFile) return false;
@@ -869,19 +902,27 @@
           }
           if (narrowed.length === 1) {
             // A UNIQUE FIT PLAYS AT ONCE (v119, was
-            // mate-only in v118). The piece was NAMED and
-            // only one of its moves fits everything heard,
-            // which is exactly the v111 bar: "queen takes
-            // queen" has played unconfirmed since then
-            // with the same shape of evidence - named
-            // mover, destination inferred by uniqueness.
+            // mate-only in v118). Only one move fits
+            // everything heard, which is exactly the v111
+            // bar: "queen takes queen" has played
+            // unconfirmed since then on the same evidence -
+            // destination inferred by uniqueness.
             // Confirming here while v111 played was the
             // file disagreeing with itself. The residual
             // risk is the one v111 already accepted and
-            // documented: thinking out loud with a piece
-            // name in it. Watch the logs; a bare-square
-            // request still confirms, because there the
-            // PIECE is inferred, not named.
+            // documented: thinking out loud with a move in
+            // it. Watch the logs.
+            //
+            // w42 note: this used to add "and the piece was
+            // NAMED", which was true then and is not now -
+            // the piece-less capture form reaches here too.
+            // What carries it is the count, not the naming:
+            // the fits are drawn from every legal move that
+            // lands there, so a lost mover widens the list
+            // and asks rather than picking wrong. A
+            // bare-square request with no take word still
+            // confirms, because nothing there rules out a
+            // push.
             if (!CFG.confirmMyMove) {
               log("CND", "half-square repair: only " +
                   narrowed[0].san + " fits, playing");

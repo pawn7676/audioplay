@@ -483,3 +483,40 @@ knight I put on f3 to be captured was checking the king on e1, so the
 only legal move in the position was the capture I was trying not to be
 unique. A test that passes because the position is forced proves the
 opposite of what it claims. Check the move list, not the diagram.
+
+### w42
+
+"TAKES CHARLIE" NEEDED NO PIECE NAME, AND SAID SO TWICE. Game w41-1 at
+16:32:18: the owner said it, got "Say again.", said it again, got the same,
+added the word "rook" and played Rxc6 on the third try. The sentence was
+complete both times. The v116 half-square repair - the one that reads a
+dangling file as the destination's and would have answered it - was gated
+on a piece being named, so it sat out the exact case it was built for. The
+mic eats the first word more than any other; requiring it there made the
+repair useless whenever it was needed most.
+
+The gate is now a piece OR a take word. Safe on the count this file has
+used since v111: the fits are drawn from every legal move landing there,
+pawn and piece alike, so a mover lost off the front of the utterance can
+only widen the list, never pick the wrong piece. In the logged position it
+widens to exactly that - Qxc6 and Rxc6 both land on the c-file - so the
+answer is the question, not the rook. That is game6's lesson still paying
+out.
+
+A take word is REQUIRED for the piece-less form, and that line is the whole
+safety. Without one this would relax a bare dangling file into every
+piece's moves to that file, which is the bare-square rule read backwards: a
+square with no piece named is a pawn PUSH and must never become a piece
+move. There is a test that a bare "charlie" is still not a move.
+
+Also askPartial: every branch opened with the piece name, so the first
+piece-less request to reach it would have said "I heard undefined charlie."
+It now leads with whatever actually survived - the piece if one was named,
+the take word if not. Found by writing the test, not by hearing it, which
+is the only reason it is a footnote instead of an entry of its own.
+
+The rule this earned, and it is w40's rule from the other side: w40 fixed
+the sentences that named the pawn and left out the victim. This one names
+the victim and leaves out the pawn. Both were refused for the same reason -
+a repair gated on the word most likely to be missing. When a repair exists
+BECAUSE the mic drops words, it must not require the word it drops.
