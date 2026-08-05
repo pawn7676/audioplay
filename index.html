@@ -527,11 +527,21 @@
    *         the pills never carried touch-action there
    *         either, lichess's own CSS just may have covered
    *         it.
+   *    w26  cancel closes a repair question, from v136 in
+   *         the shared section 6 - the second shared-tree
+   *         change to reach both targets from one edit.
+   *         PROVEN THE SAME SESSION: the website's second
+   *         full game, 45 minutes against maia5, won by
+   *         underpromotion (c1=B#). Read the log for what
+   *         the parser now absorbs without a retry -
+   *         "Fisher hotel five" for Bh5, "Bush golf six"
+   *         for g6, "Push Charlie to" for c2, and the
+   *         first-word demotion firing thirteen times.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
 
-  var VERSION = "v135";
+  var VERSION = "v136";
 
   // LEAVE TOKEN EMPTY. The token is asked for once and kept
   // by the Userscripts app, so a new version of the script
@@ -2550,6 +2560,25 @@
       speak("Resign the game? Yes or no."); return; }
     if (cmd === "draw") { confirmAction = "offerdraw";
       speak("Offer a draw? Yes or no."); return; }
+    // CANCEL CLOSES A REPAIR QUESTION TOO (v136, game
+    // w25-1 at 18:42:58). The yes/no walk and the
+    // confirmations have taken "cancel" since v92, but the
+    // two REPAIR questions - askPartial's "say the rank"
+    // and askPiece's "which piece" - kept their state in
+    // partialAsk/pieceAsk and fell through to the silent
+    // return below. The owner said "cancel" twice into an
+    // open "say the rank" and heard NOTHING either time,
+    // then waited a hundred seconds before playing
+    // something else. Silence is the one answer an
+    // eyes-free user cannot read: it is indistinguishable
+    // from not being heard at all. Same words as the
+    // pending path, because it is the same act.
+    if (cmd === "cancel" && (partialAsk || pieceAsk)) {
+      partialAsk = null; pieceAsk = null;
+      log("CND", "repair question cancelled");
+      speak("Cancelled. Say the move again.");
+      return;
+    }
     if (cmd === "yes" || cmd === "no" || cmd === "cancel") return;
 
     // Is there anything move-shaped in ANY reading. The mic
@@ -3552,7 +3581,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w25";
+  VERSION = "w26";
 
   var RULES = makeRules();
 
