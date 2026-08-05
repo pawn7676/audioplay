@@ -646,6 +646,25 @@
    *         challenge read selectedTimeControl(), never the
    *         DOM. Also the session the FREEZE was decided -
    *         see the notice at the top of this header.
+   *    w34  no default time control, and no memory of the
+   *         last one: the row is clean on every load and
+   *         picking is one deliberate tap. w33 had both a
+   *         15+10 default and a remembered choice, which
+   *         are the same thing wearing two hats - either
+   *         one lights a button the owner did not press
+   *         this session. Seeking or challenging with
+   *         nothing picked says "Pick a time control
+   *         first."; with a Custom box that does not parse
+   *         it says that instead. Neither sends anything.
+   *    w35  the memory comes back, the default does not.
+   *         The owner's distinction, and w34 collapsed it:
+   *         a FIRST visit picks nothing, because the page
+   *         has no business guessing; a LATER visit
+   *         restores what was chosen, because you already
+   *         said. Null now means "not chosen yet" and
+   *         nothing else. Junk in storage reads as never
+   *         chosen - a stale value should leave a clean
+   *         row, not a broken one.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
@@ -3690,7 +3709,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w33";
+  VERSION = "w35";
 
   var RULES = makeRules();
 
@@ -5149,8 +5168,19 @@ function initBoard() {
   // challenge) says so, in the status line, because
   // interrupting typing to complain is worse than waiting
   // to be asked.
+  // NO DEFAULT, BUT THE LAST CHOICE IS REMEMBERED (w35).
+  // The distinction the owner drew, and it is a real one:
+  // a FIRST visit has nothing picked, because the page has
+  // no business guessing; a LATER visit restores what you
+  // chose, because you already told it. w33 had a built-in
+  // 15+10 default (wrong: never chosen by anyone), w34
+  // removed the memory with it (wrong the other way: it
+  // made you re-pick something you had already decided).
+  // Null means "not chosen yet" and nothing else, which is
+  // why clearing the Custom box un-picks rather than
+  // falling back to anything.
   var TIME_KEY = "audioplay.web.timecontrol";
-  var pickedTime = "15+10";           // today's default default
+  var pickedTime = null;
 
   function parseTimeControl(text) {
     var m = /^\s*(\d{1,3})\s*\+\s*(\d{1,3})\s*$/.exec(text || "");
@@ -5161,6 +5191,7 @@ function initBoard() {
   }
 
   function selectedTimeControl() {
+    if (!pickedTime) return null;
     if (pickedTime === "custom") {
       return parseTimeControl(el("timeCustom").value);
     }
@@ -5185,9 +5216,16 @@ function initBoard() {
 
   function pickTime(value) {
     pickedTime = value;
-    try { localStorage.setItem(TIME_KEY, value === "custom"
-      ? "custom:" + el("timeCustom").value : value); }
-    catch (e) {}
+    try {
+      if (!value) localStorage.removeItem(TIME_KEY);
+      else localStorage.setItem(TIME_KEY, value === "custom"
+        ? "custom:" + el("timeCustom").value : value);
+    } catch (e) {
+      // Safari refuses localStorage in some privacy modes.
+      // The pick still works for this session; only the
+      // remembering is lost, and saying so beats silence.
+      log("ERR", "could not save time control: " + e.message);
+    }
     paintTimeRow();
   }
 
@@ -5202,12 +5240,22 @@ function initBoard() {
     var box = el("timeCustom");
     if (box) box.addEventListener("input", function () {
       if (parseTimeControl(box.value)) pickTime("custom");
+      else if (pickedTime === "custom") pickTime(null);
     });
+
+    // A LATER VISIT PICKS UP WHERE THE LAST ONE LEFT OFF.
+    // Anything unreadable is treated as never chosen, not
+    // as an error: a stale or hand-edited value should
+    // leave a clean row, not a broken one.
     var saved = "";
-    try { saved = localStorage.getItem(TIME_KEY) || ""; } catch (e) {}
+    try { saved = localStorage.getItem(TIME_KEY) || ""; }
+    catch (e) { log("ERR", "could not read time control: " + e.message); }
     if (saved.indexOf("custom:") === 0) {
-      if (box) box.value = saved.slice(7);
-      if (parseTimeControl(saved.slice(7))) pickedTime = "custom";
+      var custom = saved.slice(7);
+      if (parseTimeControl(custom)) {
+        if (box) box.value = custom;
+        pickedTime = "custom";
+      }
     } else if (parseTimeControl(saved)) {
       pickedTime = saved;
     }
@@ -5236,7 +5284,11 @@ function initBoard() {
 
     seekBtn.addEventListener("click", function () {
       var tc = selectedTimeControl();
-      if (!tc) { uiStatus("Custom time looks like 10+5."); return; }
+      if (!tc) {
+        uiStatus(pickedTime ? "Custom time looks like 10+5."
+                            : "Pick a time control first.");
+        return;
+      }
       startSeek(tc.minutes, tc.increment, el("seekRated").checked);
       renderAccount();
     });
@@ -5272,7 +5324,11 @@ function initBoard() {
 
     challengeBtn.addEventListener("click", function () {
       var tc = selectedTimeControl();
-      if (!tc) { uiStatus("Custom time looks like 10+5."); return; }
+      if (!tc) {
+        uiStatus(pickedTime ? "Custom time looks like 10+5."
+                            : "Pick a time control first.");
+        return;
+      }
       sendChallenge(opponentName(), tc.minutes, tc.increment,
                     el("seekRated").checked, el("challengeColour").value);
     });
