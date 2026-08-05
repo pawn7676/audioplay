@@ -412,3 +412,74 @@ first as on any score sheet, instead of "you" and "them" - the colours
 are what the game is about, and you/them made the reader translate
 twice. Which clock is YOURS is still marked by colour, so naming them
 properly cost nothing.
+
+### w40
+
+A CAPTURE MAY NAME THE PAWN INSTEAD OF THE VICTIM. Four utterances in
+forty seconds, all refused, all meaning the same obvious thing: with a
+pawn on e5 and a knight on f6, "echo takes", "echo five takes", "pawn
+echo five takes" and "echo five takes night" each got "Say again." or
+"that's not a legal move" before the long form finally landed. The owner
+was naming the pawn and leaving out what the board already made obvious,
+which is what anyone standing at a board does; the grammar only ever
+listened for the other half of the sentence.
+
+The fix costs nothing because word order was already in the utterance and
+we were throwing it away. Every capture form that works puts the
+destination AFTER the take word - "foxtrot takes golf five", "takes echo
+five" - so a square spoken BEFORE it cannot be the destination, and
+reading it as the origin cannot change the meaning of anything that
+already worked. The parser now remembers where the take word fell instead
+of guessing from the position.
+
+A unique fit plays unasked, on the v111 count: uniqueness is taken over
+every legal capture from that origin, pieces as well as pawns, so a
+misheard word can only turn one candidate into several, which asks. A
+named origin square is the strongest evidence in the grammar - it pins
+the mover to the one piece standing there, which "queen takes" never
+did. Two victims from one origin still asks.
+
+One thing was deliberately reordered rather than added: "pawn echo takes"
+used to reach the half-square repair, which reads a dangling file as the
+DESTINATION's. That rule was learned from "queen alpha check me", a move
+with no capture in it; with a take word the file is the origin, as
+findMoves has always read it. Only a file spoken before the take word is
+diverted.
+
+The rule this earned: the form the owner reaches for under time is the
+SHORTEST one, and the shortest one is the least likely to have been
+tested - every test written for this grammar had spelled the move out in
+full. w37 said a feature used twice is a different feature. This is its
+sibling: a feature used in a hurry is a different feature.
+
+### w41
+
+FILE TAKES FILE, AND WHO COUNTS AS BEING ON THE FILE. Two halves of the
+same sentence, both from the owner reading w40 back.
+
+"charlie takes delta" is a whole move to the ear and was nothing at all
+to the parser: both dangling files landed in one slot, the second erased
+the first, and the request arrived as "- x - d -" with nothing to say.
+Now a half-square spoken PAST the take word is the target's, and only
+when an origin was already spoken before it - with nothing behind it a
+lone file after "takes" is still the destination-file guess the v117
+repair has always made of "queen takes delta", untouched. Two halves
+straddling the take word could not mean anything before this, so nothing
+that worked can change. After 1.c4 d5 it plays cxd5 at once; after 1.c4
+d5 2.Nc3 a6 the same words could be cxd5 or Nxd5 with the knight's name
+lost to the mic, and it asks. The PRS line carries both halves now -
+"- x - c>d -" - or a pasted log would not show which end was which.
+
+The other half was already true and had nothing proving it: uniqueness
+on a bare origin file is counted over every capture from that file,
+pieces as well as pawns, precisely BECAUSE "echo takes" may be a piece
+whose name was eaten. Only the pawn's own captures would have been the
+w40 fix quietly reintroducing the game6 bug it was modelled on. There is
+now a board in the harness where a rook and a pawn can both capture off
+the e-file, and it must ask.
+
+Both tests cost a FEN each and both were wrong on the first run - the
+knight I put on f3 to be captured was checking the king on e1, so the
+only legal move in the position was the capture I was trying not to be
+unique. A test that passes because the position is forced proves the
+opposite of what it claims. Check the move list, not the diagram.

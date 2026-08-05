@@ -1,4 +1,4 @@
-  /*======================== 3. VOCABULARY =========================*/
+  /*========================== VOCABULARY ==========================*/
 
   /* The lists below are written ONE ENTRY PER VALUE: every
    * spelling iOS has been heard to return for the a-file, for
@@ -12,7 +12,7 @@
    * Grouped, the first cannot happen and the second throws at
    * load. Both were routes to a quiet wrong move.
    *
-   * expand() must stay INSIDE section 3: the parser test slices
+   * expand() must stay INSIDE this file: the parser test slices
    * this file from the 3. VOCABULARY header to 6. DIALOGUE, and
    * anything above the header is not in the slice. */
   function expand(groups) {
@@ -215,7 +215,7 @@
   // homophone. Both invent a move component out of ordinary
   // speech. These are never guessed at. To disable this
   // guard, empty the list and delete the FUZZY_NEVER line
-  // in fuzzyToken, in section 4.
+  // in fuzzyToken, in parsing.js.
   var FUZZY_NEVER = wordSet(
     "lord load word ward cord form good goods gone going cold " +
     "hold told sold bold fold food wood hood mood door does " +

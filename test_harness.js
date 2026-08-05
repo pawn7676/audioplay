@@ -8,19 +8,19 @@
  * restart). Anything thrown, any missing global, fails loudly.
  *
  * WHAT THIS TESTS IS WHAT SHIPS: the same src/ files build.js
- * concatenates into dist/index.html, in the same order. Only
- * 00-header.js and closure-footer.js are skipped - they hold
+ * concatenates into the root index.html, in the same order.
+ * Only header.js and closure-footer.js are skipped - they hold
  * no code, just the closure and its documentation.
  *
  * The w19 harness's silent-mode, low-time, voice-dropdown and
  * MODE_SETTINGS tests are gone WITH THEIR FEATURES: silent
  * mode left canon at v109, the rest were w-era apparatus the
- * w20 rebuild retired (see 00-header.js). Do not resurrect a
+ * w20 rebuild retired (see header.js). Do not resurrect a
  * test without its feature.
  *
  *   node test_harness.js
  *
- * Perft, whenever 13-rules.js changes (it is FROZEN):
+ * Perft, whenever rules.js changes (it is FROZEN):
  *   node perft_check.js
  */
 
@@ -183,14 +183,14 @@ vm.createContext(sandbox);
 // The manifest is the load order; the wrapper files hold no
 // code. CONCATENATED INTO ONE SCRIPT before evaluating, not
 // run file by file: the shipped build is one script, so a
-// function in a late section (makeRules, section 13) hoists
-// above a top-level call in an early one (RULES, section 11).
+// function declared late (makeRules, in rules.js) hoists
+// above a top-level call in an earlier one (RULES, in lichess.js).
 // Separate evaluations lose that hoisting and fail on code
 // the real page runs fine.
 const order = fs.readFileSync("manifest.txt", "utf8").split("\n")
   .map(s => s.trim())
   .filter(s => s && !s.startsWith("#") && !s.startsWith("@"))
-  .filter(s => s !== "00-header.js" && s !== "closure-footer.js");
+  .filter(s => s !== "header.js" && s !== "closure-footer.js");
 const wholeSrc = order
   .map(f => fs.readFileSync("src/" + f, "utf8")).join("");
 vm.runInContext(wholeSrc, sandbox, { filename: "concat(manifest)" });
@@ -265,7 +265,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   }
   await sleep(200); heard();   // let the random reply land
 
-  // ---- clock mode, as v133 ships it (section 14) ----
+  // ---- clock mode, as v133 ships it (clock.js) ----
   vm.runInContext("enterClockMode();", sandbox);
   check("clock mode reports on",
         vm.runInContext("clockModeOn()", sandbox) === true);
@@ -518,7 +518,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("the Voice panel hosts the buttons",
         tmpl.includes('id="panelControls"'));
   check("the button row is re-parented into it",
-        fs.readFileSync("src/12-ui.js", "utf8")
+        fs.readFileSync("src/ui.js", "utf8")
           .includes('el("panelControls")'));
 
   // ---- w19: panel open/closed survives a reload ----
@@ -535,7 +535,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // ---- w25: no double-tap zoom on the overlays ----
   check("overlays and their buttons get touch-action",
         /touchAction = "manipulation"/.test(
-          fs.readFileSync("src/12-ui.js", "utf8")));
+          fs.readFileSync("src/ui.js", "utf8")));
 
   // ---- w29: the voice button is a labelled pill ----
   const btnState = () => vm.runInContext(`
@@ -632,7 +632,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("Start is first in the DOM (" + rowOrder.join(", ") + ")",
         /Start/.test(rowOrder[0]));
   // ask the built row, NOT the source: the first draft of
-  // this check grepped 12-ui.js for "row-reverse" and failed
+  // this check grepped ui.js for "row-reverse" and failed
   // on its own explanatory comment
   check("no row-reverse trick left - it wraps wrong on a phone",
         styled.innerDir !== "row-reverse");
@@ -641,13 +641,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         /Practice/.test(rowOrder[rowOrder.length - 1]));
 
   // ---- w24: the settings panel anchors to its button ----
-  const w12 = fs.readFileSync("src/12-ui.js", "utf8");
+  const srcUi = fs.readFileSync("src/ui.js", "utf8");
   check("settings panel anchored on both axes",
-        w12.includes('setPanel.style.left') &&
-        w12.includes('setPanel.style.top') &&
-        w12.includes('setPanel.style.right =\n') ===
-          w12.includes('setPanel.style.right =\n') /* keep simple */ &&
-        /style\.right\s*=\s*"auto"/.test(w12));
+        srcUi.includes('setPanel.style.left') &&
+        srcUi.includes('setPanel.style.top') &&
+        srcUi.includes('setPanel.style.right =\n') ===
+          srcUi.includes('setPanel.style.right =\n') /* keep simple */ &&
+        /style\.right\s*=\s*"auto"/.test(srcUi));
 
   // ---- w33: time controls are presets ----
   // w34: the row is clean at load. Checked FIRST, before any
@@ -827,14 +827,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // ---- w20: the web deltas themselves ----
   // delta 2: sign-in owns the connection - the voice-off path
   // must not abort the game stream
-  const src12 = fs.readFileSync("src/12-ui.js", "utf8");
-  const offPath = src12.slice(src12.indexOf("voice play off") - 800,
-                              src12.indexOf("voice play off"));
+  const srcUiOff = fs.readFileSync("src/ui.js", "utf8");
+  const offPath = srcUiOff.slice(srcUiOff.indexOf("voice play off") - 800,
+                              srcUiOff.indexOf("voice play off"));
   check("voice off tears down no network",
         !/streamAbort|pollTimer|reconnectTimer/.test(offPath));
   // delta 3: leaving practice rejoins through the account API
   check("practice off rejoins a live game",
-        /rejoinCurrent\(\)/.test(src12));
+        /rejoinCurrent\(\)/.test(srcUiOff));
   // THE USERSCRIPT IS FROZEN AT v137 (Aug 5 2026): its
   // identity is the canon FILE, not continued buildability.
   // The numbered section files now serve the website and may
@@ -848,6 +848,129 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     .update(fs.readFileSync("frozen-userscript/lichess_audioplay.js")).digest("hex");
   check("frozen userscript artifact untouched (v137)",
         canonSha === frozen);
+
+  // ---- w40: a capture may name its ORIGIN ----
+  // Game w39-1, 14:29:28 to 14:30:03: four ways of saying
+  // "the e-pawn takes" refused in a row, then the long form
+  // accepted. Each utterance is driven on the board it was
+  // actually spoken on. setBoard is used everywhere below
+  // because practice's own random reply moves a piece and
+  // flips the turn - see the note at the bishop test above.
+  function setBoard(fen) {
+    vm.runInContext(`
+      dryRun = true; running = true;
+      pending = null; confirmAction = null;
+      partialAsk = null; pieceAsk = null;
+      api.pos = new RULES.Position(${JSON.stringify(fen)});
+      api.moves = []; api.myColor = "w"; api.over = false;
+    `, sandbox);
+    heard();
+  }
+  async function onBoard(fen, utt, want, name) {
+    setBoard(fen);
+    say(utt);
+    await sleep(120);
+    const out = heard().join(" | ");
+    check((name || utt) + " (" + (out || "silence") + ")", want.test(out));
+  }
+
+  // 1.e4 Nf6 2.e5 c6 - the game position. The ONLY capture
+  // from e5, and the only one from the whole e-file, is exf6.
+  const GAME = "rnbqkb1r/pp1ppppp/2p2n2/4P3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3";
+  const takesF6 = /echo takes foxtrot 6/i;
+  await onBoard(GAME, "echo five takes", takesF6);
+  await onBoard(GAME, "echo takes", takesF6);
+  await onBoard(GAME, "pawn echo five takes", takesF6);
+  await onBoard(GAME, "echo five takes night", takesF6);
+  // the long form, which already worked, still works
+  await onBoard(GAME, "echo five takes foxtrot six", takesF6);
+
+  // nothing to take: a TRUE sentence, not "not a legal move"
+  await onBoard("k7/8/8/4P3/8/8/8/K7 w - - 0 1", "echo five takes",
+                /nothing on echo 5 can take/i);
+  await onBoard("k7/8/8/4P3/8/8/8/K7 w - - 0 1", "echo takes",
+                /no capture from the echo file/i);
+
+  // TWO victims from one origin: ask, never guess
+  setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
+  say("echo five takes");
+  await sleep(120);
+  const twoWays = heard().join(" | ");
+  check("two victims ask instead of guessing (" + twoWays + ")",
+        /did you mean/i.test(twoWays) &&
+        vm.runInContext("!!pending", sandbox) === true);
+  say("yes");
+  await sleep(120);
+  check("and yes plays one of them",
+        /echo takes (delta 6|foxtrot 6)/i.test(heard().join(" | ")));
+
+  // THE DESTINATION FORM SURVIVES UNTOUCHED: white pawn d4,
+  // black pawn e5, and "takes echo five" is still dxe5.
+  //
+  // The repair is additive - it runs only where the ordinary
+  // reading came back empty - so on THIS board "echo five
+  // takes" also plays dxe5, and that is correct rather than a
+  // near miss. For a whole square the two readings can never
+  // both be live: if e5 carries a piece of ours the origin
+  // reading has something to work with and nothing of ours can
+  // capture onto its own square; if it carries theirs the
+  // origin reading is empty and only the destination reading
+  // remains. One capture in the room either way.
+  const D4E5 = "k7/8/8/4p3/3P4/8/8/K7 w - - 0 1";
+  await onBoard(D4E5, "takes echo five", /delta takes echo 5/i,
+                'the destination form survives: "takes echo five"');
+  await onBoard(D4E5, "echo five takes", /delta takes echo 5/i,
+                "a live destination reading is never overridden");
+
+  // The one deliberate reordering: "pawn echo takes" used to
+  // reach the half-square repair, which reads a dangling file
+  // as the DESTINATION file - here that would be dxe5. With a
+  // take word the file is the origin, so it must be exf3.
+  await onBoard("k7/8/8/4p3/3P4/5n2/4P3/K7 w - - 0 1", "pawn echo takes",
+                /echo takes foxtrot 3/i,
+                '"pawn echo takes" is the e-pawn, not the e-file target');
+
+  // ---- w41: file takes file, and who counts as "on the file" ----
+  // UNIQUENESS SPANS PIECES, NOT JUST PAWNS. "echo takes" can
+  // be the e-pawn or a piece on the e-file whose name the mic
+  // ate, so both must be counted before anything is played.
+  // Here Rxe7 and exf3 are both captures from the e-file.
+  setBoard("4k3/4p3/8/4R3/8/5n2/4P3/K7 w - - 0 1");
+  say("echo takes");
+  await sleep(120);
+  const eFile = heard().join(" | ");
+  check("a PIECE on the file counts too, so it asks (" + eFile + ")",
+        /did you mean/i.test(eFile) &&
+        vm.runInContext("!!pending", sandbox) === true);
+  // and with the rook gone it is the pawn's alone, played
+  await onBoard("4k3/4p3/8/8/8/5n2/4P3/K7 w - - 0 1", "echo takes",
+                /echo takes foxtrot 3/i,
+                "one capture left on the file plays at once");
+
+  // FILE TAKES FILE. 1.c4 d5 2.Nc3 a6: "charlie takes delta"
+  // is cxd5 OR Nxd5 with the knight's name lost, so it asks.
+  await onBoard("rnbqkbnr/1pp1pppp/p7/3p4/2P5/2N5/PP1PPPPP/R1BQKBNR w KQkq - 0 3",
+                "charlie takes delta", /did you mean/i,
+                '"charlie takes delta" with cxd5 AND Nxd5 asks');
+  // 1.c4 d5: only the pawn can do it, so it plays at once
+  await onBoard("rnbqkbnr/ppp1pppp/8/3p4/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 0 2",
+                "charlie takes delta", /charlie takes delta 5/i,
+                '"charlie takes delta" with only cxd5 plays');
+  // the target half is NAMED when nothing fits, or the
+  // sentence blames the wrong file
+  await onBoard("rnbqkbnr/ppp1pppp/8/3p4/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 0 2",
+                "charlie takes hotel",
+                /no capture from the charlie file onto the hotel file/i,
+                "a target that fits nothing is named in the refusal");
+  // an origin SQUARE with a target file, same machinery
+  await onBoard(GAME, "echo five takes foxtrot", takesF6,
+                '"echo five takes foxtrot" resolves to exf6');
+  // and the form that already worked is still untouched: a
+  // lone file after "takes" with NO origin before it is still
+  // the half-square repair's destination-file guess
+  await onBoard("4k3/8/8/3Qn3/8/8/8/4K3 w - - 0 1", "queen takes",
+                /queen takes echo 5/i,
+                '"queen takes" still belongs to the v117 repair');
 
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);

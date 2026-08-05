@@ -1,4 +1,4 @@
-  /*======================== 14. CLOCK MODE ========================*/
+  /*========================== CLOCK MODE ==========================*/
 
   // A full-screen, pure black overlay showing only the two
   // clocks, SIDE BY SIDE (v97): yours on the side set by
@@ -16,7 +16,7 @@
   // Each side's last move sat under its clock from v73 to
   // v92 and is now off by default: the moves are spoken
   // here, so the rows were repeating the ear. See
-  // CFG.clockShowMoves in section 1, which restores them.
+  // CFG.clockShowMoves in settings.js, which restores them.
   //
   // In: the "clock" button, and ONLY the button (v98).
   // Out: tap anywhere on it.

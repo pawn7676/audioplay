@@ -1,4 +1,4 @@
-  /*================= 9. MIC / SPEECH RECOGNITION ==================*/
+  /*=================== MIC / SPEECH RECOGNITION ===================*/
 
   var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   var recognition = null, listening = false, running = false;

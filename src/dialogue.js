@@ -1,4 +1,4 @@
-  /*========================= 6. DIALOGUE ==========================*/
+  /*=========================== DIALOGUE ===========================*/
 
   // practice mode: nothing is ever sent to Lichess
   var dryRun = false;
@@ -7,7 +7,7 @@
   var confirmAction = null;  // key into CONFIRMS
 
   // THE PIECE QUESTION IS ANSWERABLE (v92). When a bare
-  // square can only be reached by a piece, section 6 says
+  // square can only be reached by a piece, this file says
   // so and names the pieces — "no pawn can go there. say
   // queen, king or bishop." Through v91 that question had
   // nowhere to land: the branch spoke and returned, so the
@@ -475,7 +475,7 @@
     // "castles" was answered "that's not a legal move", and
     // one naming a currently legal move would have been
     // PLAYED. Any reading may carry the memo word, see
-    // memoTranscript in section 4. A pending yes/no
+    // memoTranscript in parsing.js. A pending yes/no
     // question survives a memo untouched.
     var memoText = memoTranscript(transcripts);
     if (memoText) {
@@ -725,6 +725,100 @@
         var pk = partialAsk;
         speak("That does not fit.");
         askPartial(pk.req, pk.want, pk.chk, pk.mate);
+        return;
+      }
+      // THE ORIGIN NAMED, THE VICTIM NOT (w40). "echo five
+      // takes" and "echo takes" mean the pawn on e5, or the
+      // one on the e-file, takes whatever it can - and until
+      // now both died, one as "not a legal move" and one as
+      // "Say again.", because a lone square is read as the
+      // destination and nothing captures onto e5. See
+      // originCapture in parsing.js for why word order settles
+      // which square was meant.
+      //
+      // WHY A UNIQUE FIT PLAYS UNASKED. The filter below spans
+      // EVERY legal capture from that origin - pawn, piece, en
+      // passant alike - so uniqueness is counted over
+      // everything the sentence could possibly have meant.
+      // That is the same safety v111 and v121 leaned on, and
+      // here it is stronger: a named origin SQUARE pins the
+      // mover to the one piece standing on it, which is more
+      // than "queen takes" ever knew. A named origin FILE
+      // plays on the same count - in game w39-1 nothing else
+      // on the e-file could capture at all, so "echo takes"
+      // had exactly one meaning. Several fits ask, as always.
+      //
+      // IT SITS ABOVE THE HALF-SQUARE REPAIR ON PURPOSE.
+      // "pawn echo takes" used to reach that repair, which
+      // reads a dangling file as the DESTINATION's - a rule
+      // learned from "queen alpha check me", a move with no
+      // capture in it. With a take word the file is the
+      // origin: findMoves has always read req.fromFile that
+      // way, and the grammar's own capture form puts the
+      // from-file first. Only a file that arrived BEFORE the
+      // take word is diverted here; every other half-square
+      // case is untouched.
+      var origin = originCapture(req);
+      if (origin) {
+        var ocaps = api.pos.legalMoves().filter(function (m) {
+          if (!m.captured) return false;
+          var s = RULES.sqName(m.from);
+          if (origin.length === 2 ? s !== origin
+              : /[a-h]/.test(origin) ? s[0] !== origin
+                                     : s[1] !== origin) return false;
+          var t = RULES.sqName(m.to);
+          if (req.toFile && t[0] !== req.toFile) return false;
+          if (req.toRank && t[1] !== req.toRank) return false;
+          if (req.piece && m.piece !== req.piece) return false;
+          if (req.victim && m.captured !== req.victim) return false;
+          return true;
+        });
+        if (!ocaps.length) {
+          // Silence is not an answer, and neither is "not a
+          // legal move" when we know exactly what is wrong -
+          // the v117 shape of "the queen has nothing to take".
+          // Name the target half too when one was heard, or
+          // "no capture from the charlie file" is a lie the
+          // moment cxb5 is sitting there legal and it was the
+          // DELTA file that had nothing on it.
+          var whither = req.toFile
+                ? " onto the " + SPOKEN_FILE[req.toFile] + " file"
+                : req.toRank ? " onto rank " + req.toRank : "";
+          speak((origin.length === 2
+                   ? "Nothing on " + spokenSquare(origin) + " can take" + whither
+                   : /[a-h]/.test(origin)
+                       ? "No capture from the " + SPOKEN_FILE[origin] +
+                         " file" + whither
+                       : "No capture from rank " + origin + whither) +
+                ". Say again.");
+          return;
+        }
+        var ocands = ocaps.map(function (m) {
+          return { m: m, san: api.pos.sanOf(m) };
+        });
+        if (transcripts.some(saysCheck)) {
+          var ock = ocands.filter(function (c2) {
+            return /[+#]$/.test(c2.san);
+          });
+          if (ock.length) ocands = ock;
+        }
+        if (transcripts.some(saysMate)) {
+          var ocm = ocands.filter(function (c2) {
+            return c2.san.slice(-1) === "#";
+          });
+          if (ocm.length) ocands = ocm;
+        }
+        if (ocands.length === 1 && !CFG.confirmMyMove) {
+          log("CND", "origin capture: only " + ocands[0].san +
+              " fits, playing");
+          acceptMove(ocands[0]);
+          return;
+        }
+        log("CND", "origin capture: " + ocands.map(function (c2) {
+          return c2.san;
+        }).join(",") + " fit, asking");
+        pending = { cands: ocands, idx: 0 };
+        askCandidate();
         return;
       }
       // A PIECE WITH HALF A SQUARE (v116). Game20's mating
@@ -1021,7 +1115,7 @@
             alt.map(function (m) { return api.pos.sanOf(m); }).join(",") +
             " could");
         // askPiece leaves the question open: see pieceAsk
-        // in the section 6 state block for why it is kept
+        // in the state block at the top of this file for why
         askPiece(alt, "No pawn can go there.");
         return;
       }

@@ -35,29 +35,22 @@ jobs:
         run: node test_harness.js
 
       # Move generation against known counts. CLAUDE.md only
-      # asks for this when 13-rules.js changes; it takes
+      # asks for this when rules.js changes; it takes
       # seconds, so it always runs rather than resting on a
       # condition being written correctly.
       - name: perft
         run: node perft_check.js
 
-      # The root index.html is GENERATED and committed by
-      # hand, so it can fall behind src/ silently - the page
-      # keeps serving the last build while the source says
-      # otherwise. Rebuild it and check nothing moved.
-      - name: index.html matches src/
-        run: |
-          node build.js manifest.txt "$RUNNER_TEMP/rebuilt.html"
-          if ! diff -q "$RUNNER_TEMP/rebuilt.html" index.html; then
-            echo
-            echo "The committed index.html does NOT match src/."
-            echo "GitHub Pages would keep serving the old page."
-            echo
-            echo "Fix, then commit the result:"
-            echo "  node build.js manifest.txt index.html"
-            echo
-            echo "If you meant to edit the page itself, edit"
-            echo "src/ - index.html at the root is generated."
-            exit 1
-          fi
-          echo "index.html is the build of the current src/."
+      # The page itself is NOT checked here any more, because
+      # there is nothing left to check: index.html is no
+      # longer committed. deploy.yml builds it on the way to
+      # Pages, so the deployed page cannot disagree with src/
+      # - the job that used to live here existed only to catch
+      # that disagreement.
+      #
+      # What is still worth proving is that the build RUNS:
+      # a manifest naming a file that does not exist, or a
+      # template whose AUDIOPLAY_JS line went missing, would
+      # otherwise first be discovered by a failed deploy.
+      - name: the page still builds
+        run: node build.js manifest.txt "$RUNNER_TEMP/page.html"

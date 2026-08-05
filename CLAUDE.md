@@ -8,7 +8,7 @@ browser, no server anywhere in this project.
 
 ## Before changing anything
 
-Read `src/00-header.js` — the header of record. It carries
+Read `src/header.js` — the header of record. It carries
 the project's constraints and the reasoning behind decisions
 that look arbitrary. Then read the header of whatever file
 you are about to touch. **The comments are the
@@ -22,29 +22,35 @@ code they were learned in.
 ## Commands
 
 ```
-node build.js          # src/ -> index.html  (the deployed page)
 node test_harness.js   # must be all-pass before any commit
-node perft_check.js    # only when src/13-rules.js changes
+node perft_check.js    # only when src/rules.js changes
+node build.js          # writes index.html locally, to LOOK at
 ```
-
-`node build.js` writes the ROOT `index.html`, which is what
-Pages serves. There is no `dist/` and there should not be
-one: the page lives at the root so the URL stays short, and
-the build writing anywhere else is how a "deploy" comes to
-change nothing.
 
 `build.js` is pure concatenation: it joins the files named in
 `manifest.txt`, in order, and inlines them into
 `src/index.html` at its lone `AUDIOPLAY_JS` line. It must
 never grow transforms, minification, or dependencies.
 
+**You do not commit the built page.** `index.html` is
+gitignored. `.github/workflows/deploy.yml` runs the same
+build on every push to `main` and publishes the result
+straight to Pages, so the deployed page is generated from
+whatever `src/` says at that commit and cannot disagree with
+it. Run `build.js` locally when you want to open the real
+page in a browser; the output is scratch.
+
 ## Layout
 
 - `src/` — the only place code is edited. One file per
-  section, `01`..`15`, plus `00-header.js`, `board.js`,
-  `closure-footer.js`, and `index.html` (the TEMPLATE).
-- `index.html` at the repo root — **GENERATED**. Never edit
-  by hand; run the build. It is what GitHub Pages serves.
+  job, named for what it does, plus `header.js` and
+  `closure-footer.js` (which open and close the closure
+  around all of it) and `index.html` (the TEMPLATE).
+  The files carried numeric prefixes once; load order is
+  `manifest.txt`'s job, not the filenames'.
+- `index.html` at the repo root — **GENERATED and
+  GITIGNORED**. Built on demand locally, built again by the
+  deploy workflow. Never edit it, never commit it.
 - `manifest.txt` — the load order.
 - `HISTORY.md` — the w-series history, one entry per bump.
 - `.github/workflows/checks.yml` — the checks GitHub runs.
@@ -56,7 +62,7 @@ never grow transforms, minification, or dependencies.
 
 ## Rules that are not style preferences
 
-1. **FAIR PLAY.** `src/13-rules.js` says what is legal and
+1. **FAIR PLAY.** `src/rules.js` says what is legal and
    what a move is called. It never evaluates, suggests, or
    ranks. Engine help would make this a cheating device and
    get the owner banned. Do not add it in any form.
@@ -75,7 +81,7 @@ never grow transforms, minification, or dependencies.
 
 ## Versioning
 
-One line: `w`-series, assigned in `src/11-lichess.js` as
+One line: `w`-series, assigned in `src/lichess.js` as
 `VERSION = "wNN"`. Bump for any behavioural change and add
 an entry to `HISTORY.md` saying WHY, not what — the diff
 already says what. Never displayed on screen — it appears in
@@ -108,12 +114,18 @@ first line — but it means an edit made in GitHub's web UI,
 where there is no terminal and the harness CANNOT be run, is
 checked too. Those used to reach the live page unexamined.
 
-The third check rebuilds `index.html` and diffs it against
-the committed file. The deployed page is generated but
-committed by hand, so it can fall behind `src/` silently:
-Pages keeps serving the old build while the source says
-otherwise. That is the w18 shape — an edit that did not
-land, failing quietly.
+The third check only proves the build RUNS — a manifest
+naming a file that is not there, or a template that lost its
+`AUDIOPLAY_JS` line, should not first be discovered by a
+failed deploy.
+
+It used to do more: it rebuilt `index.html` and diffed it
+against the committed copy, because the page was generated
+but committed by hand and could fall behind `src/` silently
+— Pages serving the old build while the source said
+otherwise, the w18 shape. `deploy.yml` removed the thing
+that could drift instead of checking it, which is the better
+end of that trade: there is no second copy to keep in step.
 
 ## Working on this repo
 
@@ -122,19 +134,19 @@ is not a gatekeeper on every step.
 
 1. Branch off `main`: `claude/<short-description>`.
 2. Edit `src/` only. Never the root `index.html`.
-3. `node build.js` — regenerate the page. Commit it too;
-   committing it IS the deploy.
-4. `node test_harness.js`, all-pass. Add a test for what
+3. `node test_harness.js`, all-pass. Add a test for what
    changed, and ask the built DOM.
-5. Bump `VERSION` and add a `HISTORY.md` entry if behaviour
+4. Bump `VERSION` and add a `HISTORY.md` entry if behaviour
    changed. Neither, if it did not.
-6. Push, open a PR, wait for the checks, merge when green.
+5. Push, open a PR, wait for the checks, merge when green.
    The branch deletes itself — the repo does that.
 
-**Nothing is live until the merge.** Pages serves `main`; a
-pushed branch changes nothing the owner can see. After
-merging, the device needs a HARD reload — a normal one
-serves the cached build, which is what w19 was about.
+**Nothing is live until the merge.** Merging `main` is what
+runs the deploy; a pushed branch changes nothing the owner
+can see. The deploy takes a minute or so after the merge —
+watch the `deploy` workflow, not just `checks`. Then the
+device needs a HARD reload: a normal one serves the cached
+build, which is what w19 was about.
 
 **Do not stop at each step for permission.** Routine work —
 docs, refactors, a fix with a test behind it — goes through

@@ -1,0 +1,6 @@
+
+# The deployed page is BUILT by .github/workflows/deploy.yml
+# and published straight to Pages. It is not committed: a
+# generated file in the tree is a file that can fall behind
+# the source that generates it.
+index.html

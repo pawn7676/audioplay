@@ -1,4 +1,4 @@
-  /*======================== 10. KEEP-ALIVE ========================*/
+  /*========================== KEEP-ALIVE ==========================*/
 
   var keepAlive = null;
   // A WebAudio oscillator does not hold the iOS audio
