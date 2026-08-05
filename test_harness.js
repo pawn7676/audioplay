@@ -849,6 +849,87 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("frozen userscript artifact untouched (v137)",
         canonSha === frozen);
 
+  // ---- w40: a capture may name its ORIGIN ----
+  // Game w39-1, 14:29:28 to 14:30:03: four ways of saying
+  // "the e-pawn takes" refused in a row, then the long form
+  // accepted. Each utterance is driven on the board it was
+  // actually spoken on. setBoard is used everywhere below
+  // because practice's own random reply moves a piece and
+  // flips the turn - see the note at the bishop test above.
+  function setBoard(fen) {
+    vm.runInContext(`
+      dryRun = true; running = true;
+      pending = null; confirmAction = null;
+      partialAsk = null; pieceAsk = null;
+      api.pos = new RULES.Position(${JSON.stringify(fen)});
+      api.moves = []; api.myColor = "w"; api.over = false;
+    `, sandbox);
+    heard();
+  }
+  async function onBoard(fen, utt, want, name) {
+    setBoard(fen);
+    say(utt);
+    await sleep(120);
+    const out = heard().join(" | ");
+    check((name || utt) + " (" + (out || "silence") + ")", want.test(out));
+  }
+
+  // 1.e4 Nf6 2.e5 c6 - the game position. The ONLY capture
+  // from e5, and the only one from the whole e-file, is exf6.
+  const GAME = "rnbqkb1r/pp1ppppp/2p2n2/4P3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3";
+  const takesF6 = /echo takes foxtrot 6/i;
+  await onBoard(GAME, "echo five takes", takesF6);
+  await onBoard(GAME, "echo takes", takesF6);
+  await onBoard(GAME, "pawn echo five takes", takesF6);
+  await onBoard(GAME, "echo five takes night", takesF6);
+  // the long form, which already worked, still works
+  await onBoard(GAME, "echo five takes foxtrot six", takesF6);
+
+  // nothing to take: a TRUE sentence, not "not a legal move"
+  await onBoard("k7/8/8/4P3/8/8/8/K7 w - - 0 1", "echo five takes",
+                /nothing on echo 5 can take/i);
+  await onBoard("k7/8/8/4P3/8/8/8/K7 w - - 0 1", "echo takes",
+                /no capture from the echo file/i);
+
+  // TWO victims from one origin: ask, never guess
+  setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
+  say("echo five takes");
+  await sleep(120);
+  const twoWays = heard().join(" | ");
+  check("two victims ask instead of guessing (" + twoWays + ")",
+        /did you mean/i.test(twoWays) &&
+        vm.runInContext("!!pending", sandbox) === true);
+  say("yes");
+  await sleep(120);
+  check("and yes plays one of them",
+        /echo takes (delta 6|foxtrot 6)/i.test(heard().join(" | ")));
+
+  // THE DESTINATION FORM SURVIVES UNTOUCHED: white pawn d4,
+  // black pawn e5, and "takes echo five" is still dxe5.
+  //
+  // The repair is additive - it runs only where the ordinary
+  // reading came back empty - so on THIS board "echo five
+  // takes" also plays dxe5, and that is correct rather than a
+  // near miss. For a whole square the two readings can never
+  // both be live: if e5 carries a piece of ours the origin
+  // reading has something to work with and nothing of ours can
+  // capture onto its own square; if it carries theirs the
+  // origin reading is empty and only the destination reading
+  // remains. One capture in the room either way.
+  const D4E5 = "k7/8/8/4p3/3P4/8/8/K7 w - - 0 1";
+  await onBoard(D4E5, "takes echo five", /delta takes echo 5/i,
+                'the destination form survives: "takes echo five"');
+  await onBoard(D4E5, "echo five takes", /delta takes echo 5/i,
+                "a live destination reading is never overridden");
+
+  // The one deliberate reordering: "pawn echo takes" used to
+  // reach the half-square repair, which reads a dangling file
+  // as the DESTINATION file - here that would be dxe5. With a
+  // take word the file is the origin, so it must be exf3.
+  await onBoard("k7/8/8/4p3/3P4/5n2/4P3/K7 w - - 0 1", "pawn echo takes",
+                /echo takes foxtrot 3/i,
+                '"pawn echo takes" is the e-pawn, not the e-file target');
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();

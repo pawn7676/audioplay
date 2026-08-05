@@ -91,7 +91,8 @@
     var toks = wordsOf(raw);
     var req = { castle: null, piece: null, capture: false, squares: [],
                 fromFile: null, fromRank: null, trailingPiece: null,
-                promoKw: false, victim: null };
+                promoKw: false, victim: null,
+                takeAt: -1, fromBeforeTake: false };
     var syms = [], i, tk;
     for (i = 0; i < toks.length; i++) {
       tk = toks[i];
@@ -192,7 +193,17 @@
       if (s.t === "promo-kw") {
         afterPromoKw = true; req.promoKw = true; continue;
       }
-      if (s.t === "take") { req.capture = true; continue; }
+      if (s.t === "take") {
+        // WHERE THE TAKE WORD FELL (w40). takeAt is how many
+        // whole squares had already been spoken when the
+        // FIRST take word arrived, and fromBeforeTake (below)
+        // says the same about a dangling file or rank. Nothing
+        // reads them but originCapture; see the note there for
+        // why word order is worth remembering.
+        if (req.takeAt < 0) req.takeAt = req.squares.length;
+        req.capture = true;
+        continue;
+      }
       if (s.t === "piece") {
         // A SECOND PIECE NAME, AFTER "TAKES" AND BEFORE ANY
         // SQUARE, IS THE VICTIM (v111): "queen takes queen".
@@ -246,16 +257,70 @@
         if (i + 1 < syms.length && syms[i + 1].t === "rank") {
           req.squares.push(s.v + syms[i + 1].v);
           i++;
-        } else req.fromFile = s.v;
+        } else {
+          // recomputed, not or-ed: a later dangling file
+          // OVERWRITES an earlier one ("echo takes delta"
+          // keeps only the d), so the flag must describe the
+          // file that survived, not the one that did not.
+          req.fromFile = s.v;
+          req.fromBeforeTake = !req.capture;
+        }
         continue;
       }
-      if (s.t === "rank") req.fromRank = s.v;
+      if (s.t === "rank") {
+        req.fromRank = s.v;
+        req.fromBeforeTake = !req.capture;
+      }
     }
     return req;
   }
 
   function reqIsEmpty(req) {
     return !req.castle && !req.squares.length && !req.victim;
+  }
+
+  /* A CAPTURE MAY NAME THE ORIGIN INSTEAD OF THE TARGET (w40).
+   *
+   * Game w39-1 lost four utterances in forty seconds to one
+   * gap. With a pawn on e5 and a knight on f6 the owner said
+   * "echo takes", "echo five takes", "pawn echo five takes"
+   * and "echo five takes night" - and was refused each time,
+   * because findMoves reads a lone square as the DESTINATION
+   * and nothing captures onto e5. He was naming the pawn and
+   * leaving out what the board already made obvious.
+   *
+   * WORD ORDER IS THE WHOLE DISCRIMINATOR, and it is free:
+   * every capture form that works today puts the destination
+   * AFTER the take word - "foxtrot takes golf five", "takes
+   * echo five", "echo five takes foxtrot six". So a square or
+   * a dangling file spoken BEFORE it cannot be the
+   * destination, and reading it as the origin cannot change
+   * the meaning of anything that already worked. That is why
+   * the parser now remembers where the take word fell rather
+   * than guessing from what is on the board.
+   *
+   * Returns what was named - a square "e5", a file "e", a
+   * rank "5" - or null when this is not that shape. The
+   * repair that uses it is in section 6; it fires only where
+   * the ordinary reading found nothing.
+   *
+   * KNOWN AND LEFT STANDING: "echo five takes knight" puts
+   * the knight in trailingPiece, the PROMOTION slot, because
+   * the piece branch above treats any piece name after a
+   * square as a promotion choice - which quietly contradicts
+   * v121's "a piece name after takes is the VICTIM". The
+   * origin repair resolves that utterance anyway, by
+   * uniqueness, and unpicking the slot risks "bravo takes
+   * alpha eight queen". Worth fixing the day a log needs it.
+   */
+  function originCapture(req) {
+    if (!req.capture || req.castle) return null;
+    if (req.squares.length === 1 && req.takeAt === 1) return req.squares[0];
+    if (!req.squares.length && req.fromBeforeTake &&
+        (req.fromFile || req.fromRank)) {
+      return req.fromFile || req.fromRank;
+    }
+    return null;
   }
 
   function saysCheck(raw) {

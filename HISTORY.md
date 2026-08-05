@@ -412,3 +412,42 @@ first as on any score sheet, instead of "you" and "them" - the colours
 are what the game is about, and you/them made the reader translate
 twice. Which clock is YOURS is still marked by colour, so naming them
 properly cost nothing.
+
+### w40
+
+A CAPTURE MAY NAME THE PAWN INSTEAD OF THE VICTIM. Four utterances in
+forty seconds, all refused, all meaning the same obvious thing: with a
+pawn on e5 and a knight on f6, "echo takes", "echo five takes", "pawn
+echo five takes" and "echo five takes night" each got "Say again." or
+"that's not a legal move" before the long form finally landed. The owner
+was naming the pawn and leaving out what the board already made obvious,
+which is what anyone standing at a board does; the grammar only ever
+listened for the other half of the sentence.
+
+The fix costs nothing because word order was already in the utterance and
+we were throwing it away. Every capture form that works puts the
+destination AFTER the take word - "foxtrot takes golf five", "takes echo
+five" - so a square spoken BEFORE it cannot be the destination, and
+reading it as the origin cannot change the meaning of anything that
+already worked. The parser now remembers where the take word fell instead
+of guessing from the position.
+
+A unique fit plays unasked, on the v111 count: uniqueness is taken over
+every legal capture from that origin, pieces as well as pawns, so a
+misheard word can only turn one candidate into several, which asks. A
+named origin square is the strongest evidence in the grammar - it pins
+the mover to the one piece standing there, which "queen takes" never
+did. Two victims from one origin still asks.
+
+One thing was deliberately reordered rather than added: "pawn echo takes"
+used to reach the half-square repair, which reads a dangling file as the
+DESTINATION's. That rule was learned from "queen alpha check me", a move
+with no capture in it; with a take word the file is the origin, as
+findMoves has always read it. Only a file spoken before the take word is
+diverted.
+
+The rule this earned: the form the owner reaches for under time is the
+SHORTEST one, and the shortest one is the least likely to have been
+tested - every test written for this grammar had spelled the move out in
+full. w37 said a feature used twice is a different feature. This is its
+sibling: a feature used in a hurry is a different feature.
