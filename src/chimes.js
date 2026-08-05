@@ -1,4 +1,4 @@
-  /*========================== 8. CHIMES ===========================*/
+  /*============================ CHIMES ============================*/
 
   // REMOVED in v68, deliberately and after real testing: do
   // not bring chimes back without new evidence. Ten chimes
@@ -13,6 +13,6 @@
   // ("ok.", the rejection sentence, the yes/no question)
   // and the renderer, BEEPS table, element cache, beep()
   // and warmChimes() were deleted. The keep-alive silent
-  // WAV in section 10 is unrelated and stays: it holds the
+  // WAV in keepalive.js is unrelated and stays: it holds the
   // iOS audio session, it is not a chime.
 

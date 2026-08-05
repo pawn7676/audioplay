@@ -1,4 +1,4 @@
-  /*======= 13. EMBEDDED CHESS RULES / LEGAL MOVE GENERATOR ========*/
+  /*========= EMBEDDED CHESS RULES / LEGAL MOVE GENERATOR ==========*/
 
   /* FROZEN. Verified by perft: startpos depth 4 = 197281,
    * Kiwipete depth 3 = 97862. Re-run both after ANY edit here.

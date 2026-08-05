@@ -1,4 +1,4 @@
-  /*========================== 4. PARSING ==========================*/
+  /*=========================== PARSING ============================*/
 
   /* Safari mangles words the homophone lists cannot all anticipate
    * ("foxtrott", "delter", "charlies"). As a LAST resort, accept a
@@ -83,8 +83,9 @@
   }
 
   // See the near-miss logging note inside parseTranscript.
-  // Declared here so the parser test slice (sections 3-5)
-  // contains it; handleTranscripts resets it per utterance.
+  // Declared here so the parser test slice (vocabulary,
+  // parsing and matching) contains it; handleTranscripts
+  // resets it per utterance.
   var nearMissLogged = {};
 
   /* A SECOND HALF-SQUARE, PAST THE TAKE WORD, IS THE TARGET'S
@@ -328,7 +329,7 @@
    *
    * Returns what was named - a square "e5", a file "e", a
    * rank "5" - or null when this is not that shape. The
-   * repair that uses it is in section 6; it fires only where
+   * repair that uses it is in dialogue.js; it fires only where
    * the ordinary reading found nothing.
    *
    * KNOWN AND LEFT STANDING: "echo five takes knight" puts

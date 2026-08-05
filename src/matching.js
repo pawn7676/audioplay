@@ -1,4 +1,4 @@
-  /*=================== 5. MATCHING AND RANKING ====================*/
+  /*===================== MATCHING AND RANKING =====================*/
 
   function findMoves(pos, req, ignoreStrict) {
     var legal = pos.legalMoves();

@@ -1,8 +1,9 @@
-  /*============ 11W. LICHESS BOARD API (website) ==================\
+  /*====================== LICHESS BOARD API =======================\
    *
-   *  The website's section 11. Built at w20 from the v134
-   *  userscript's section 11 with exactly three transplants,
-   *  all salvaged from the w19 site and proven in game 17:
+   *  The page's Lichess layer. Built at w20 from the v134
+   *  userscript's board-API section with exactly three
+   *  transplants, all salvaged from the w19 site and proven
+   *  in game 17:
    *    - the token block is PKCE sign-in (no pasted tokens;
    *      the token lives in THIS origin's localStorage, which
    *      is ours alone - the userscript's GM-storage reasoning
@@ -22,7 +23,7 @@
    *  that way when v134 landed (the read-back race fix and
    *  its pollOnce twin arrived by re-copy, untouched).
    *
-   *  VERSION is reassigned here, not in section 1 (shared,
+   *  VERSION is reassigned here, not in settings.js (shared,
    *  and byte-frozen until the next joint bump): the w-series
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/

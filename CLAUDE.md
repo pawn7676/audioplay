@@ -8,7 +8,7 @@ browser, no server anywhere in this project.
 
 ## Before changing anything
 
-Read `src/00-header.js` — the header of record. It carries
+Read `src/header.js` — the header of record. It carries
 the project's constraints and the reasoning behind decisions
 that look arbitrary. Then read the header of whatever file
 you are about to touch. **The comments are the
@@ -24,7 +24,7 @@ code they were learned in.
 ```
 node build.js          # src/ -> index.html  (the deployed page)
 node test_harness.js   # must be all-pass before any commit
-node perft_check.js    # only when src/13-rules.js changes
+node perft_check.js    # only when src/rules.js changes
 ```
 
 `node build.js` writes the ROOT `index.html`, which is what
@@ -41,8 +41,11 @@ never grow transforms, minification, or dependencies.
 ## Layout
 
 - `src/` — the only place code is edited. One file per
-  section, `01`..`15`, plus `00-header.js`, `board.js`,
-  `closure-footer.js`, and `index.html` (the TEMPLATE).
+  job, named for what it does, plus `header.js` and
+  `closure-footer.js` (which open and close the closure
+  around all of it) and `index.html` (the TEMPLATE).
+  The files carried numeric prefixes once; load order is
+  `manifest.txt`'s job, not the filenames'.
 - `index.html` at the repo root — **GENERATED**. Never edit
   by hand; run the build. It is what GitHub Pages serves.
 - `manifest.txt` — the load order.
@@ -56,7 +59,7 @@ never grow transforms, minification, or dependencies.
 
 ## Rules that are not style preferences
 
-1. **FAIR PLAY.** `src/13-rules.js` says what is legal and
+1. **FAIR PLAY.** `src/rules.js` says what is legal and
    what a move is called. It never evaluates, suggests, or
    ranks. Engine help would make this a cheating device and
    get the owner banned. Do not add it in any form.
@@ -75,7 +78,7 @@ never grow transforms, minification, or dependencies.
 
 ## Versioning
 
-One line: `w`-series, assigned in `src/11-lichess.js` as
+One line: `w`-series, assigned in `src/lichess.js` as
 `VERSION = "wNN"`. Bump for any behavioural change and add
 an entry to `HISTORY.md` saying WHY, not what — the diff
 already says what. Never displayed on screen — it appears in

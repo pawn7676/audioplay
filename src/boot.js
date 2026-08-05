@@ -1,4 +1,4 @@
-  /*==================== 15W. BOOT (website) =======================\
+  /*============================= BOOT =============================\
    *
    *  The userscript watched lichess.org for a game page.
    *  There is no page to watch: boot is (1) finish a PKCE
@@ -7,7 +7,7 @@
    *
    *  THE REPAINT INTERVAL IS A DIRTY CHECK, and that is a
    *  w20 decision worth keeping: the v133 game handlers in
-   *  section 11W are carried VERBATIM and know nothing about
+   *  lichess.js are carried VERBATIM and know nothing about
    *  a board or a page, so instead of threading repaint
    *  calls through ported code (the churn that would undo
    *  the sharing), the tick compares a cheap fingerprint of

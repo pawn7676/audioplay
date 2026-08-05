@@ -1,14 +1,14 @@
-/* Perft for 13-rules.js (FROZEN). Run whenever it changes,
+/* Perft for rules.js (FROZEN). Run whenever it changes,
  * alongside test_harness.js. Expected:
  *   startpos depth 4 = 197281
  *   Kiwipete depth 3 = 97862  */
 "use strict";
 const fs = require("fs");
-// section 13 is closure-style source; run it inside a
+// rules.js is closure-style source; run it inside a
 // Function scope and lift makeRules out (a bare eval under
 // "use strict" would keep the declaration to itself)
 const makeRules = new Function(
-  fs.readFileSync("src/13-rules.js", "utf8") + "\nreturn makeRules;")();
+  fs.readFileSync("src/rules.js", "utf8") + "\nreturn makeRules;")();
 const R = makeRules();
 function perft(p, d) {
   if (d === 0) return 1;

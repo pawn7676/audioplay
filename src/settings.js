@@ -1,4 +1,4 @@
-  /*========================= 1. SETTINGS ==========================*/
+  /*=========================== SETTINGS ===========================*/
 
   var VERSION = "v137";
 
@@ -17,7 +17,7 @@
 
   /*--------------- PERSISTED SETTINGS (v124) ----------------
    * Everything below in SETTING_DEFAULTS is a TOGGLE ON THE
-   * SCREEN: the "settings" button in section 12 opens a panel
+   * SCREEN: the "settings" button in ui.js opens a panel
    * of switches, changes persist in localStorage, and these
    * values are only the FIRST-RUN defaults. Flipping a value
    * here does nothing once the panel has saved - clear the

@@ -1,4 +1,4 @@
-  /*========================= 6. DIALOGUE ==========================*/
+  /*=========================== DIALOGUE ===========================*/
 
   // practice mode: nothing is ever sent to Lichess
   var dryRun = false;
@@ -7,7 +7,7 @@
   var confirmAction = null;  // key into CONFIRMS
 
   // THE PIECE QUESTION IS ANSWERABLE (v92). When a bare
-  // square can only be reached by a piece, section 6 says
+  // square can only be reached by a piece, this file says
   // so and names the pieces — "no pawn can go there. say
   // queen, king or bishop." Through v91 that question had
   // nowhere to land: the branch spoke and returned, so the
@@ -475,7 +475,7 @@
     // "castles" was answered "that's not a legal move", and
     // one naming a currently legal move would have been
     // PLAYED. Any reading may carry the memo word, see
-    // memoTranscript in section 4. A pending yes/no
+    // memoTranscript in parsing.js. A pending yes/no
     // question survives a memo untouched.
     var memoText = memoTranscript(transcripts);
     if (memoText) {
@@ -733,7 +733,7 @@
       // now both died, one as "not a legal move" and one as
       // "Say again.", because a lone square is read as the
       // destination and nothing captures onto e5. See
-      // originCapture in section 4 for why word order settles
+      // originCapture in parsing.js for why word order settles
       // which square was meant.
       //
       // WHY A UNIQUE FIT PLAYS UNASKED. The filter below spans
@@ -1115,7 +1115,7 @@
             alt.map(function (m) { return api.pos.sanOf(m); }).join(",") +
             " could");
         // askPiece leaves the question open: see pieceAsk
-        // in the section 6 state block for why it is kept
+        // in the state block at the top of this file for why
         askPiece(alt, "No pawn can go there.");
         return;
       }

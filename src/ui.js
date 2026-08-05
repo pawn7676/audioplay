@@ -1,6 +1,6 @@
-  /*================== 12W. UI (website) ===========================\
+  /*============================== UI ==============================\
    *
-   *  The website's section 12: the v133 userscript's button row,
+   *  The page's furniture: the v133 userscript's button row,
    *  settings panel and floating log panel VERBATIM except for
    *  three web deltas marked "WEB:" below, plus the page
    *  furniture appended at the bottom (account, seek,
@@ -17,7 +17,7 @@
    *
    *  THE WEB DELTAS, and why each exists:
    *  1. The log panel has no "token" button: sign-in is PKCE
-   *     (section 11W) and Sign out lives on the page.
+   *     (lichess.js) and Sign out lives on the page.
    *  2. The round button no longer owns the connection - the
    *     w19 site decided this and game 17 proved it: SIGN-IN
    *     OWNS THE CONNECTION, THE BUTTON OWNS THE VOICE. A game
@@ -399,7 +399,7 @@
   // WHAT IT MUST STILL DO is say that it is not one button
   // among five: it is the one control that MUST be pressed
   // before anything speaks or listens (iOS gives no
-  // microphone without a real tap - section 9). So the
+  // microphone without a real tap - mic.js). So the
   // distinction moves from SIZE to LANGUAGE THE PAGE
   // ALREADY SPEAKS: off, it wears the same blue as "Sign in
   // with Lichess", the page's other must-press; on, it
@@ -469,7 +469,7 @@
     paintVoiceButton();
   }
 
-  // colorWord (section 4) is the SPOKEN form and stays lower
+  // colorWord (parsing.js) is the SPOKEN form and stays lower
   // case - a voice does not read capitals. This is the same
   // word for the eye, where a colour is a proper name on a
   // score sheet.
@@ -529,7 +529,7 @@
   // report. It also carries THE ONE THING A NEW PLAYER CANNOT
   // GUESS: iOS will not open a microphone without a real tap,
   // so the round button must be pressed once per session - a
-  // rule of the platform, not a choice here (see section 9).
+  // rule of the platform, not a choice here (see mic.js).
   function renderStatus() {
     if (!api.gameId || api.gameId === "PRACTICE") {
       if (dryRun) uiStatus("Practice mode.");

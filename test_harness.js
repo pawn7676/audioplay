@@ -8,19 +8,19 @@
  * restart). Anything thrown, any missing global, fails loudly.
  *
  * WHAT THIS TESTS IS WHAT SHIPS: the same src/ files build.js
- * concatenates into dist/index.html, in the same order. Only
- * 00-header.js and closure-footer.js are skipped - they hold
+ * concatenates into the root index.html, in the same order.
+ * Only header.js and closure-footer.js are skipped - they hold
  * no code, just the closure and its documentation.
  *
  * The w19 harness's silent-mode, low-time, voice-dropdown and
  * MODE_SETTINGS tests are gone WITH THEIR FEATURES: silent
  * mode left canon at v109, the rest were w-era apparatus the
- * w20 rebuild retired (see 00-header.js). Do not resurrect a
+ * w20 rebuild retired (see header.js). Do not resurrect a
  * test without its feature.
  *
  *   node test_harness.js
  *
- * Perft, whenever 13-rules.js changes (it is FROZEN):
+ * Perft, whenever rules.js changes (it is FROZEN):
  *   node perft_check.js
  */
 
@@ -183,14 +183,14 @@ vm.createContext(sandbox);
 // The manifest is the load order; the wrapper files hold no
 // code. CONCATENATED INTO ONE SCRIPT before evaluating, not
 // run file by file: the shipped build is one script, so a
-// function in a late section (makeRules, section 13) hoists
-// above a top-level call in an early one (RULES, section 11).
+// function declared late (makeRules, in rules.js) hoists
+// above a top-level call in an earlier one (RULES, in lichess.js).
 // Separate evaluations lose that hoisting and fail on code
 // the real page runs fine.
 const order = fs.readFileSync("manifest.txt", "utf8").split("\n")
   .map(s => s.trim())
   .filter(s => s && !s.startsWith("#") && !s.startsWith("@"))
-  .filter(s => s !== "00-header.js" && s !== "closure-footer.js");
+  .filter(s => s !== "header.js" && s !== "closure-footer.js");
 const wholeSrc = order
   .map(f => fs.readFileSync("src/" + f, "utf8")).join("");
 vm.runInContext(wholeSrc, sandbox, { filename: "concat(manifest)" });
@@ -265,7 +265,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   }
   await sleep(200); heard();   // let the random reply land
 
-  // ---- clock mode, as v133 ships it (section 14) ----
+  // ---- clock mode, as v133 ships it (clock.js) ----
   vm.runInContext("enterClockMode();", sandbox);
   check("clock mode reports on",
         vm.runInContext("clockModeOn()", sandbox) === true);
@@ -518,7 +518,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("the Voice panel hosts the buttons",
         tmpl.includes('id="panelControls"'));
   check("the button row is re-parented into it",
-        fs.readFileSync("src/12-ui.js", "utf8")
+        fs.readFileSync("src/ui.js", "utf8")
           .includes('el("panelControls")'));
 
   // ---- w19: panel open/closed survives a reload ----
@@ -535,7 +535,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // ---- w25: no double-tap zoom on the overlays ----
   check("overlays and their buttons get touch-action",
         /touchAction = "manipulation"/.test(
-          fs.readFileSync("src/12-ui.js", "utf8")));
+          fs.readFileSync("src/ui.js", "utf8")));
 
   // ---- w29: the voice button is a labelled pill ----
   const btnState = () => vm.runInContext(`
@@ -632,7 +632,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("Start is first in the DOM (" + rowOrder.join(", ") + ")",
         /Start/.test(rowOrder[0]));
   // ask the built row, NOT the source: the first draft of
-  // this check grepped 12-ui.js for "row-reverse" and failed
+  // this check grepped ui.js for "row-reverse" and failed
   // on its own explanatory comment
   check("no row-reverse trick left - it wraps wrong on a phone",
         styled.innerDir !== "row-reverse");
@@ -641,13 +641,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         /Practice/.test(rowOrder[rowOrder.length - 1]));
 
   // ---- w24: the settings panel anchors to its button ----
-  const w12 = fs.readFileSync("src/12-ui.js", "utf8");
+  const srcUi = fs.readFileSync("src/ui.js", "utf8");
   check("settings panel anchored on both axes",
-        w12.includes('setPanel.style.left') &&
-        w12.includes('setPanel.style.top') &&
-        w12.includes('setPanel.style.right =\n') ===
-          w12.includes('setPanel.style.right =\n') /* keep simple */ &&
-        /style\.right\s*=\s*"auto"/.test(w12));
+        srcUi.includes('setPanel.style.left') &&
+        srcUi.includes('setPanel.style.top') &&
+        srcUi.includes('setPanel.style.right =\n') ===
+          srcUi.includes('setPanel.style.right =\n') /* keep simple */ &&
+        /style\.right\s*=\s*"auto"/.test(srcUi));
 
   // ---- w33: time controls are presets ----
   // w34: the row is clean at load. Checked FIRST, before any
@@ -827,14 +827,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // ---- w20: the web deltas themselves ----
   // delta 2: sign-in owns the connection - the voice-off path
   // must not abort the game stream
-  const src12 = fs.readFileSync("src/12-ui.js", "utf8");
-  const offPath = src12.slice(src12.indexOf("voice play off") - 800,
-                              src12.indexOf("voice play off"));
+  const srcUiOff = fs.readFileSync("src/ui.js", "utf8");
+  const offPath = srcUiOff.slice(srcUiOff.indexOf("voice play off") - 800,
+                              srcUiOff.indexOf("voice play off"));
   check("voice off tears down no network",
         !/streamAbort|pollTimer|reconnectTimer/.test(offPath));
   // delta 3: leaving practice rejoins through the account API
   check("practice off rejoins a live game",
-        /rejoinCurrent\(\)/.test(src12));
+        /rejoinCurrent\(\)/.test(srcUiOff));
   // THE USERSCRIPT IS FROZEN AT v137 (Aug 5 2026): its
   // identity is the canon FILE, not continued buildability.
   // The numbered section files now serve the website and may

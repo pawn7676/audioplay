@@ -1,5 +1,5 @@
 <!-- Layout and STATIC style only. The project's front door
-     is 00-header.js in src/ - read it first. (us-header.js,
+     is header.js in src/ - read it first. (us-header.js,
      in frozen-userscript/, is still binding reading: the
      constraints, platform findings and closed cases in it
      did not freeze with the code they were learned in.)
@@ -269,14 +269,18 @@
      concatenated program: one file to upload, nothing to
      cache-mismatch. -->
 <script>
-/*  audioplay-web — the website build of Lichess Audioplay
+/*  audioplay — eyes-free voice chess on Lichess
  *
- *  THIS FILE IS GENERATED. Do not edit dist/ output by hand:
- *  the source lives in src/, one file per section, and
- *  "node build.js" reassembles this page.
- *  The same src/ sections build the userscript byte-for-byte
- *  ("node build.js"), which is the whole point: ONE voice
- *  pipeline, TWO one-file deploys.
+ *  THE PAGE YOU ARE READING IS GENERATED. The source lives
+ *  in src/, one file per job, joined in the order given by
+ *  manifest.txt; "node build.js" reassembles this page and
+ *  writes the root index.html that GitHub Pages serves.
+ *  Never edit the generated file - the next build erases it.
+ *
+ *  The files were numbered 00..15 once - a habit from the
+ *  userscript era, when this was one long scroll with
+ *  numbered sections in it. Order is the manifest's job; a
+ *  filename's job is to say what the file is FOR.
  */
 (function () {
   "use strict";
@@ -287,7 +291,7 @@
    *  Aug 5 2026). The website is the project now; the
    *  userscript stays installed as a working fallback and
    *  its sources stay in the tree, unmaintained. What this
-   *  changes day to day: the numbered section files serve
+   *  changes day to day: the pipeline files in src/ serve
    *  ONLY the website and may evolve freely; the w-series
    *  is the only version line; the harness guards the
    *  frozen v137 ARTIFACT (userscript-frozen.sha256), not
@@ -309,18 +313,18 @@
    *  WHERE THE CODE COMES FROM. w20 is a REBUILD. The first
    *  site (w1-w19) was ported from userscript v104 and then
    *  fell behind while the userscript ran on to v134. Rather
-   *  than merge, w20 cuts the v134 userscript into shared
-   *  section files (src/01-10, 13, 14 — settings, log,
-   *  vocabulary, parsing, matching, dialogue, speech, chimes,
-   *  mic, keep-alive, rules, clock mode) and wraps this
-   *  page's own shell around them: 11 (PKCE sign-in and
-   *  the account event stream), 12 (the page), 15
-   *  (boot). The w19 site survives as reference/ — its PKCE
+   *  than merge, w20 cuts the v134 userscript into one file
+   *  per job — settings, log, vocabulary, parsing, matching,
+   *  dialogue, speech-out, chimes, mic, keepalive, rules,
+   *  clock — and wraps this page's own shell around them:
+   *  lichess.js (PKCE sign-in and the account event
+   *  stream), ui.js (the page), boot.js. The w19 site
+   *  survives as reference/ — its PKCE
    *  flow, page furniture and remembered-panels code were
    *  salvaged into the web files, each block keeping its
    *  w-history. Its modes.js was NOT carried: silent mode
    *  was deleted from canon at v109, and clock mode now
-   *  ships as the userscript's own section 14.
+   *  ships as its own file, clock.js.
    *
    *  THE HEADER OF RECORD for the shared pipeline is in
    *  us-header.js (the userscript's front door): hard
@@ -345,7 +349,7 @@
    *  VERSIONS. The website counts w1, w2, ... so no number
    *  ever collides with the userscript's v-series in a log
    *  dump. Bump for any behavioural change, revert freely.
-   *  VERSION itself is assigned in 11-lichess.
+   *  VERSION itself is assigned in lichess.js.
    *
    *  THE HISTORY IS IN HISTORY.md at the repo root - w1 to
    *  w39 and everything after it. It lived here until it
@@ -358,7 +362,7 @@
    *  file's own header, next to what it explains.
    *================================================================*/
 
-  /*========================= 1. SETTINGS ==========================*/
+  /*=========================== SETTINGS ===========================*/
 
   var VERSION = "v137";
 
@@ -377,7 +381,7 @@
 
   /*--------------- PERSISTED SETTINGS (v124) ----------------
    * Everything below in SETTING_DEFAULTS is a TOGGLE ON THE
-   * SCREEN: the "settings" button in section 12 opens a panel
+   * SCREEN: the "settings" button in ui.js opens a panel
    * of switches, changes persist in localStorage, and these
    * values are only the FIRST-RUN defaults. Flipping a value
    * here does nothing once the panel has saved - clear the
@@ -697,7 +701,7 @@
   var CLOCK_MOVE_MAX_VH = 14;
   var CLOCK_MOVE_BUDGET_VW = 46; // of the 50vw half
 
-  /*========================= 2. DEBUG LOG =========================*/
+  /*========================== DEBUG LOG ===========================*/
 
   var LOG = [];
   var logBody = null;
@@ -718,7 +722,7 @@
     log("ERR", (e.message || "?") + " @" + (e.lineno || "?"));
   });
 
-  /*======================== 3. VOCABULARY =========================*/
+  /*========================== VOCABULARY ==========================*/
 
   /* The lists below are written ONE ENTRY PER VALUE: every
    * spelling iOS has been heard to return for the a-file, for
@@ -732,7 +736,7 @@
    * Grouped, the first cannot happen and the second throws at
    * load. Both were routes to a quiet wrong move.
    *
-   * expand() must stay INSIDE section 3: the parser test slices
+   * expand() must stay INSIDE this file: the parser test slices
    * this file from the 3. VOCABULARY header to 6. DIALOGUE, and
    * anything above the header is not in the slice. */
   function expand(groups) {
@@ -935,7 +939,7 @@
   // homophone. Both invent a move component out of ordinary
   // speech. These are never guessed at. To disable this
   // guard, empty the list and delete the FUZZY_NEVER line
-  // in fuzzyToken, in section 4.
+  // in fuzzyToken, in parsing.js.
   var FUZZY_NEVER = wordSet(
     "lord load word ward cord form good goods gone going cold " +
     "hold told sold bold fold food wood hood mood door does " +
@@ -945,7 +949,7 @@
     "only just must back been best nice mine name note wait " +
     "want damn hell crap oops");
 
-  /*========================== 4. PARSING ==========================*/
+  /*=========================== PARSING ============================*/
 
   /* Safari mangles words the homophone lists cannot all anticipate
    * ("foxtrott", "delter", "charlies"). As a LAST resort, accept a
@@ -1030,8 +1034,9 @@
   }
 
   // See the near-miss logging note inside parseTranscript.
-  // Declared here so the parser test slice (sections 3-5)
-  // contains it; handleTranscripts resets it per utterance.
+  // Declared here so the parser test slice (vocabulary,
+  // parsing and matching) contains it; handleTranscripts
+  // resets it per utterance.
   var nearMissLogged = {};
 
   /* A SECOND HALF-SQUARE, PAST THE TAKE WORD, IS THE TARGET'S
@@ -1275,7 +1280,7 @@
    *
    * Returns what was named - a square "e5", a file "e", a
    * rank "5" - or null when this is not that shape. The
-   * repair that uses it is in section 6; it fires only where
+   * repair that uses it is in dialogue.js; it fires only where
    * the ordinary reading found nothing.
    *
    * KNOWN AND LEFT STANDING: "echo five takes knight" puts
@@ -1502,7 +1507,7 @@
             req.trailingPiece || "-"].join(" ");
   }
 
-  /*=================== 5. MATCHING AND RANKING ====================*/
+  /*===================== MATCHING AND RANKING =====================*/
 
   function findMoves(pos, req, ignoreStrict) {
     var legal = pos.legalMoves();
@@ -1908,7 +1913,7 @@
     }));
   }
 
-  /*========================= 6. DIALOGUE ==========================*/
+  /*=========================== DIALOGUE ===========================*/
 
   // practice mode: nothing is ever sent to Lichess
   var dryRun = false;
@@ -1917,7 +1922,7 @@
   var confirmAction = null;  // key into CONFIRMS
 
   // THE PIECE QUESTION IS ANSWERABLE (v92). When a bare
-  // square can only be reached by a piece, section 6 says
+  // square can only be reached by a piece, this file says
   // so and names the pieces — "no pawn can go there. say
   // queen, king or bishop." Through v91 that question had
   // nowhere to land: the branch spoke and returned, so the
@@ -2385,7 +2390,7 @@
     // "castles" was answered "that's not a legal move", and
     // one naming a currently legal move would have been
     // PLAYED. Any reading may carry the memo word, see
-    // memoTranscript in section 4. A pending yes/no
+    // memoTranscript in parsing.js. A pending yes/no
     // question survives a memo untouched.
     var memoText = memoTranscript(transcripts);
     if (memoText) {
@@ -2643,7 +2648,7 @@
       // now both died, one as "not a legal move" and one as
       // "Say again.", because a lone square is read as the
       // destination and nothing captures onto e5. See
-      // originCapture in section 4 for why word order settles
+      // originCapture in parsing.js for why word order settles
       // which square was meant.
       //
       // WHY A UNIQUE FIT PLAYS UNASKED. The filter below spans
@@ -3025,7 +3030,7 @@
             alt.map(function (m) { return api.pos.sanOf(m); }).join(",") +
             " could");
         // askPiece leaves the question open: see pieceAsk
-        // in the section 6 state block for why it is kept
+        // in the state block at the top of this file for why
         askPiece(alt, "No pawn can go there.");
         return;
       }
@@ -3036,7 +3041,7 @@
     askCandidate();
   }
 
-  /*================ 7. SPEECH OUT (gates the mic) =================*/
+  /*================== SPEECH OUT (gates the mic) ==================*/
 
   var SPOKEN_FILE = { a: "alpha", b: "bravo", c: "charlie", d: "delta",
     e: "echo", f: "foxtrot", g: "golf", h: "hotel" };
@@ -3357,7 +3362,7 @@
     return words;
   }
 
-  /*========================== 8. CHIMES ===========================*/
+  /*============================ CHIMES ============================*/
 
   // REMOVED in v68, deliberately and after real testing: do
   // not bring chimes back without new evidence. Ten chimes
@@ -3372,10 +3377,10 @@
   // ("ok.", the rejection sentence, the yes/no question)
   // and the renderer, BEEPS table, element cache, beep()
   // and warmChimes() were deleted. The keep-alive silent
-  // WAV in section 10 is unrelated and stays: it holds the
+  // WAV in keepalive.js is unrelated and stays: it holds the
   // iOS audio session, it is not a chime.
 
-  /*================= 9. MIC / SPEECH RECOGNITION ==================*/
+  /*=================== MIC / SPEECH RECOGNITION ===================*/
 
   var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   var recognition = null, listening = false, running = false;
@@ -3488,7 +3493,7 @@
 
   function resumeMicSoon() { scheduleRestart(400); }
 
-  /*======================== 10. KEEP-ALIVE ========================*/
+  /*========================== KEEP-ALIVE ==========================*/
 
   var keepAlive = null;
   // A WebAudio oscillator does not hold the iOS audio
@@ -3563,11 +3568,12 @@
     try { if (keepAlive) keepAlive.pause(); } catch (e) {}
   }
 
-  /*============ 11W. LICHESS BOARD API (website) ==================\
+  /*====================== LICHESS BOARD API =======================\
    *
-   *  The website's section 11. Built at w20 from the v134
-   *  userscript's section 11 with exactly three transplants,
-   *  all salvaged from the w19 site and proven in game 17:
+   *  The page's Lichess layer. Built at w20 from the v134
+   *  userscript's board-API section with exactly three
+   *  transplants, all salvaged from the w19 site and proven
+   *  in game 17:
    *    - the token block is PKCE sign-in (no pasted tokens;
    *      the token lives in THIS origin's localStorage, which
    *      is ours alone - the userscript's GM-storage reasoning
@@ -3587,7 +3593,7 @@
    *  that way when v134 landed (the read-back race fix and
    *  its pollOnce twin arrived by re-copy, untouched).
    *
-   *  VERSION is reassigned here, not in section 1 (shared,
+   *  VERSION is reassigned here, not in settings.js (shared,
    *  and byte-frozen until the next joint bump): the w-series
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
@@ -4464,9 +4470,9 @@ function initBoard() {
   bakePieces();
   renderMiniBoard();
 }
-  /*================== 12W. UI (website) ===========================\
+  /*============================== UI ==============================\
    *
-   *  The website's section 12: the v133 userscript's button row,
+   *  The page's furniture: the v133 userscript's button row,
    *  settings panel and floating log panel VERBATIM except for
    *  three web deltas marked "WEB:" below, plus the page
    *  furniture appended at the bottom (account, seek,
@@ -4483,7 +4489,7 @@ function initBoard() {
    *
    *  THE WEB DELTAS, and why each exists:
    *  1. The log panel has no "token" button: sign-in is PKCE
-   *     (section 11W) and Sign out lives on the page.
+   *     (lichess.js) and Sign out lives on the page.
    *  2. The round button no longer owns the connection - the
    *     w19 site decided this and game 17 proved it: SIGN-IN
    *     OWNS THE CONNECTION, THE BUTTON OWNS THE VOICE. A game
@@ -4865,7 +4871,7 @@ function initBoard() {
   // WHAT IT MUST STILL DO is say that it is not one button
   // among five: it is the one control that MUST be pressed
   // before anything speaks or listens (iOS gives no
-  // microphone without a real tap - section 9). So the
+  // microphone without a real tap - mic.js). So the
   // distinction moves from SIZE to LANGUAGE THE PAGE
   // ALREADY SPEAKS: off, it wears the same blue as "Sign in
   // with Lichess", the page's other must-press; on, it
@@ -4935,7 +4941,7 @@ function initBoard() {
     paintVoiceButton();
   }
 
-  // colorWord (section 4) is the SPOKEN form and stays lower
+  // colorWord (parsing.js) is the SPOKEN form and stays lower
   // case - a voice does not read capitals. This is the same
   // word for the eye, where a colour is a proper name on a
   // score sheet.
@@ -4995,7 +5001,7 @@ function initBoard() {
   // report. It also carries THE ONE THING A NEW PLAYER CANNOT
   // GUESS: iOS will not open a microphone without a real tap,
   // so the round button must be pressed once per session - a
-  // rule of the platform, not a choice here (see section 9).
+  // rule of the platform, not a choice here (see mic.js).
   function renderStatus() {
     if (!api.gameId || api.gameId === "PRACTICE") {
       if (dryRun) uiStatus("Practice mode.");
@@ -5405,7 +5411,7 @@ function initBoard() {
       d.addEventListener("toggle", savePanels);
     });
   }
-  /*======= 13. EMBEDDED CHESS RULES / LEGAL MOVE GENERATOR ========*/
+  /*========= EMBEDDED CHESS RULES / LEGAL MOVE GENERATOR ==========*/
 
   /* FROZEN. Verified by perft: startpos depth 4 = 197281,
    * Kiwipete depth 3 = 97862. Re-run both after ANY edit here.
@@ -5763,7 +5769,7 @@ function initBoard() {
     };
   }
 
-  /*======================== 14. CLOCK MODE ========================*/
+  /*========================== CLOCK MODE ==========================*/
 
   // A full-screen, pure black overlay showing only the two
   // clocks, SIDE BY SIDE (v97): yours on the side set by
@@ -5781,7 +5787,7 @@ function initBoard() {
   // Each side's last move sat under its clock from v73 to
   // v92 and is now off by default: the moves are spoken
   // here, so the rows were repeating the ear. See
-  // CFG.clockShowMoves in section 1, which restores them.
+  // CFG.clockShowMoves in settings.js, which restores them.
   //
   // In: the "clock" button, and ONLY the button (v98).
   // Out: tap anywhere on it.
@@ -6092,7 +6098,7 @@ function initBoard() {
     else enterClockMode();
   }
 
-  /*==================== 15W. BOOT (website) =======================\
+  /*============================= BOOT =============================\
    *
    *  The userscript watched lichess.org for a game page.
    *  There is no page to watch: boot is (1) finish a PKCE
@@ -6101,7 +6107,7 @@ function initBoard() {
    *
    *  THE REPAINT INTERVAL IS A DIRTY CHECK, and that is a
    *  w20 decision worth keeping: the v133 game handlers in
-   *  section 11W are carried VERBATIM and know nothing about
+   *  lichess.js are carried VERBATIM and know nothing about
    *  a board or a page, so instead of threading repaint
    *  calls through ported code (the churn that would undo
    *  the sharing), the tick compares a cheap fingerprint of

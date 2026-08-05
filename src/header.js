@@ -1,11 +1,15 @@
-/*  audioplay-web — the website build of Lichess Audioplay
+/*  audioplay — eyes-free voice chess on Lichess
  *
- *  THIS FILE IS GENERATED. Do not edit dist/ output by hand:
- *  the source lives in src/, one file per section, and
- *  "node build.js" reassembles this page.
- *  The same src/ sections build the userscript byte-for-byte
- *  ("node build.js"), which is the whole point: ONE voice
- *  pipeline, TWO one-file deploys.
+ *  THE PAGE YOU ARE READING IS GENERATED. The source lives
+ *  in src/, one file per job, joined in the order given by
+ *  manifest.txt; "node build.js" reassembles this page and
+ *  writes the root index.html that GitHub Pages serves.
+ *  Never edit the generated file - the next build erases it.
+ *
+ *  The files were numbered 00..15 once - a habit from the
+ *  userscript era, when this was one long scroll with
+ *  numbered sections in it. Order is the manifest's job; a
+ *  filename's job is to say what the file is FOR.
  */
 (function () {
   "use strict";
@@ -16,7 +20,7 @@
    *  Aug 5 2026). The website is the project now; the
    *  userscript stays installed as a working fallback and
    *  its sources stay in the tree, unmaintained. What this
-   *  changes day to day: the numbered section files serve
+   *  changes day to day: the pipeline files in src/ serve
    *  ONLY the website and may evolve freely; the w-series
    *  is the only version line; the harness guards the
    *  frozen v137 ARTIFACT (userscript-frozen.sha256), not
@@ -38,18 +42,18 @@
    *  WHERE THE CODE COMES FROM. w20 is a REBUILD. The first
    *  site (w1-w19) was ported from userscript v104 and then
    *  fell behind while the userscript ran on to v134. Rather
-   *  than merge, w20 cuts the v134 userscript into shared
-   *  section files (src/01-10, 13, 14 — settings, log,
-   *  vocabulary, parsing, matching, dialogue, speech, chimes,
-   *  mic, keep-alive, rules, clock mode) and wraps this
-   *  page's own shell around them: 11 (PKCE sign-in and
-   *  the account event stream), 12 (the page), 15
-   *  (boot). The w19 site survives as reference/ — its PKCE
+   *  than merge, w20 cuts the v134 userscript into one file
+   *  per job — settings, log, vocabulary, parsing, matching,
+   *  dialogue, speech-out, chimes, mic, keepalive, rules,
+   *  clock — and wraps this page's own shell around them:
+   *  lichess.js (PKCE sign-in and the account event
+   *  stream), ui.js (the page), boot.js. The w19 site
+   *  survives as reference/ — its PKCE
    *  flow, page furniture and remembered-panels code were
    *  salvaged into the web files, each block keeping its
    *  w-history. Its modes.js was NOT carried: silent mode
    *  was deleted from canon at v109, and clock mode now
-   *  ships as the userscript's own section 14.
+   *  ships as its own file, clock.js.
    *
    *  THE HEADER OF RECORD for the shared pipeline is in
    *  us-header.js (the userscript's front door): hard
@@ -74,7 +78,7 @@
    *  VERSIONS. The website counts w1, w2, ... so no number
    *  ever collides with the userscript's v-series in a log
    *  dump. Bump for any behavioural change, revert freely.
-   *  VERSION itself is assigned in 11-lichess.
+   *  VERSION itself is assigned in lichess.js.
    *
    *  THE HISTORY IS IN HISTORY.md at the repo root - w1 to
    *  w39 and everything after it. It lived here until it

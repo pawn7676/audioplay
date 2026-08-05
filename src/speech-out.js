@@ -1,4 +1,4 @@
-  /*================ 7. SPEECH OUT (gates the mic) =================*/
+  /*================== SPEECH OUT (gates the mic) ==================*/
 
   var SPOKEN_FILE = { a: "alpha", b: "bravo", c: "charlie", d: "delta",
     e: "echo", f: "foxtrot", g: "golf", h: "hotel" };

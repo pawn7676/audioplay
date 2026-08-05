@@ -35,7 +35,7 @@ jobs:
         run: node test_harness.js
 
       # Move generation against known counts. CLAUDE.md only
-      # asks for this when 13-rules.js changes; it takes
+      # asks for this when rules.js changes; it takes
       # seconds, so it always runs rather than resting on a
       # condition being written correctly.
       - name: perft

@@ -1,29 +1,35 @@
-# Audioplay — the build manifest. There is only one target
-# now: the website. "node build.js" inlines these files, in
-# this order, into the template at its AUDIOPLAY_JS line and
-# writes dist/index.html - the ONE file that gets uploaded.
+# Audioplay — the build manifest. "node build.js" joins these
+# files, in this order, into the template at its AUDIOPLAY_JS
+# line and writes the ROOT index.html - the page Pages serves.
 #
-# One file per section, no shadows. The userscript's own
-# sources (its header and its versions of 11, 12, 15) live in
-# frozen-userscript/ with the canon v137 artifact; nothing in
-# src/ builds them any more, and the numbered files here are
-# free to change for the website's sake.
+# THE ORDER IS THE MANIFEST'S JOB, not the filenames'. The
+# files were once numbered 00..15, from the era when this was
+# a userscript organised into scrolled-past sections; the
+# numbers said nothing the line below them did not, and a
+# project meant to last should not carry a previous era's
+# filing system forever. Names say what a file is FOR, and
+# this list says what order it loads in.
+#
+# Only one ordering fact is load-bearing: header.js opens the
+# closure and closure-footer.js closes it, so they are first
+# and last. Everything between them is function declarations,
+# which hoist across the whole concatenated script.
 @template index.html
-00-header.js
-01-settings.js
-02-log.js
-03-vocabulary.js
-04-parsing.js
-05-matching.js
-06-dialogue.js
-07-speech-out.js
-08-chimes.js
-09-mic.js
-10-keepalive.js
-11-lichess.js
+header.js
+settings.js
+log.js
+vocabulary.js
+parsing.js
+matching.js
+dialogue.js
+speech-out.js
+chimes.js
+mic.js
+keepalive.js
+lichess.js
 board.js
-12-ui.js
-13-rules.js
-14-clock.js
-15-boot.js
+ui.js
+rules.js
+clock.js
+boot.js
 closure-footer.js
