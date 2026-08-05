@@ -572,6 +572,15 @@
    *         heading above it already says VOICE, so
    *         repeating the word was the label doing the
    *         panel's job.
+   *    w31  Start goes first by MOVING THE NODE, not by
+   *         reversing the row. row-reverse (w27) looked
+   *         right on the iPad and broke on an iPhone in
+   *         portrait: a reversed row wraps in reverse too,
+   *         so Start fell to the bottom line. The lesson
+   *         is the one the whole website keeps relearning
+   *         - a layout trick that happens to look right at
+   *         ONE width is not a layout. Now the DOM order
+   *         is the reading order at every width.
    *================================================================*/
 
   /*========================= 1. SETTINGS ==========================*/
@@ -3616,7 +3625,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w30";
+  VERSION = "w31";
 
   var RULES = makeRules();
 
@@ -5138,11 +5147,31 @@ function initBoard() {
       wrapEl.style.cssText =
         "display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
       restyleVoiceButton();
+      // BUTTON FIRST BY MOVING THE NODE, NOT BY REVERSING
+      // THE ROW (w31). w27-w30 flipped the row with
+      // row-reverse, which is fine on one line and wrong
+      // the moment it wraps: reverse fills lines in reverse
+      // too, so on an iPhone in portrait the first line
+      // came out "Clock Log Practice" and Start fell to the
+      // LAST line - the opposite of the point. Moving the
+      // node makes the DOM order the reading order, so
+      // wrapping does the obvious thing at any width.
+      // buildUI is still untouched; this is the same kind
+      // of after-the-fact move as re-parenting the row.
+      // The order is stated outright rather than inherited
+      // from buildUI's append sequence: Start first, then
+      // Settings, and Practice LAST - it is the one chip
+      // that quietly stops moves reaching Lichess, so it
+      // sits furthest from the button pressed every game.
+      // appendChild moves a node that already has a parent,
+      // so re-appending in order IS the reorder.
       var chipRow = wrapEl.firstChild;
-      if (chipRow && chipRow.style) {
-        chipRow.style.flexDirection = "row-reverse";
-        chipRow.style.justifyContent = "flex-end";
+      if (chipRow && chipRow.appendChild) {
+        [bigBtn, setChip, clkChip, logChip, testChip]
+          .forEach(function (b) { if (b) chipRow.appendChild(b); });
         chipRow.style.flexWrap = "wrap";
+        chipRow.style.gap = "8px";
+        chipRow.style.rowGap = "8px";
       }
       host.appendChild(wrapEl);
       if (setChip && setPanel) {
