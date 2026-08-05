@@ -1,0 +1,103 @@
+INSTRUCTIONS
+
+Draft copy for the Instructions panel. The panel itself is
+collapsible and opens on a first visit; the intro below is
+always visible once it is open, and each numbered section is
+its own collapsed sub-section.
+
+INTRO (ALWAYS VISIBLE)
+
+Play chess on Lichess by speaking. Your opponent's moves are spoken aloud, so you can play at a real board, or across the room, without looking at a screen.
+
+Three steps: sign in below, tap Start, then say your moves — "e4", "knight f3", "castle kingside". Everything else is detail, in the sections below.
+
+1. SIGNING IN
+
+Signing in happens on lichess.org, so this site never sees your password. Lichess will ask you to allow this site to do 3 things on your behalf: read challenges, send and accept challenges, and play games. You can revoke this site's access any time under Preferences → Security on Lichess, or by signing out here.
+
+Sign in once and the page waits for a game — one started here, in the Lichess app, or by a friend's challenge.
+
+2. STARTING
+
+Tap Start once. iOS will not open a microphone without a real tap, so this is required every visit; the page will ask for microphone permission the first time.
+
+Start controls the voice only. Signing in is what connects you to Lichess, so a game keeps running even with the voice off.
+
+The button says where it is:
+
+- Start — before you tap.
+- Listening — the microphone is live.
+- On — the voice is running, with the microphone paused for a moment while it speaks.
+
+3. SAYING A MOVE
+
+Say it the way you would say it to a person:
+
+- "e4" or "echo four" — letters can be plain or NATO.
+- "knight f3", "bishop takes e5", "queen d5"
+- "castle" on its own, or "castle kingside" / "castle queenside"
+- "c1 equals bishop" to promote — any piece, not just a queen.
+- "knight b d7" when two of the same piece can reach a square.
+
+Saying "push" before a pawn move — "push c4" — is worth the habit: it names the piece, which skips a question.
+
+Saying "check" or "checkmate" at the end is fine, and simply ignored.
+
+4. OTHER THINGS YOU CAN SAY
+
+- "repeat" — say the last move again.
+- "clock" — speak both clocks.
+- "whose turn" — whose move it is.
+- "what is on f3" — the piece on a square.
+- "where are my knights" — every square a piece stands on.
+- "resign", or "offer a draw" — each asks yes or no first.
+- "memo …" — anything after the word "memo" is written to the log, for reporting a problem later.
+- "flip clock" — swap which side of the clock screen is yours.
+
+5. WHEN IT ISN'T SURE
+
+It asks, and the answer is always one word.
+
+"Did you mean e4? Yes or no."
+Say yes or no. Saying no walks through the other pieces that could go there, and naming a piece — "knight" — jumps straight to it.
+
+"I heard bishop bravo. Say the rank."
+Say "four". It heard half a square and wants the other half.
+
+"Cancel"
+Drops any question, so you can start the move over.
+
+"That's not a legal move. Say again."
+It understood you, but the move is not legal in this position.
+
+6. THE BUTTONS
+
+- Start — microphone and speech on or off.
+- Settings — the switches described below.
+- Clock — a black screen showing just the two clocks, with the side to move drawn heavier. It keeps the screen awake. Tap it again to come back.
+- Log — everything heard and done, newest last. Copy puts it on the clipboard, which is the useful thing to send if something goes wrong.
+- Practice — understands moves and answers with a random legal reply, sending nothing to Lichess. Good for trying phrasings.
+
+7. SETTINGS
+
+All modes
+
+- Confirm my move — off by default. On, every move is read back for a yes before it is sent. Slower, but nothing reaches Lichess unheard.
+- Guard pawn pushes — on by default. A bare square like "e4" means a pawn push, but it is also what a dropped piece name sounds like. When a piece could legally reach that square too, it asks first. Naming the piece — "push e4", "pawn e4" — skips the question.
+
+Voice mode
+
+- Speak my move — your own move read back once Lichess accepts it. Your opponent's move is always spoken.
+
+Clock mode
+
+- Speak my move — the same choice while the clock screen is up, kept separate because the move row can do the confirming there.
+- Speak opponent's move — off if you would rather read it than hear it.
+- Show moves — the move row on the clock screen. Turning it off makes the clock digits larger.
+- Speak messages and Show messages — where everything that is not a move goes: questions, errors, game over. One of the two always stays on, so a question can never go unanswered in silence.
+
+8. A BETTER VOICE
+
+The page speaks with your system voice. On an iPhone or iPad a much better one is free: Settings → Accessibility → Spoken Content → Voices → English, then pick a Premium or Enhanced voice (Ava is a good one) and let it download.
+
+Re-download it after an iOS update if the sound gets worse.
