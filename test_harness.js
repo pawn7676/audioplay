@@ -594,6 +594,19 @@ const sleep = ms =>
         /lee chess/.test(startSaid) && !/lichess/.test(startSaid));
   vm.runInContext("running = false; renderButton();", sandbox);
   const tmpl = fs.readFileSync("src/index.html", "utf8");
+  // w56: the page must declare standards mode, and a doctype
+  // anywhere but the FIRST line does nothing at all - so the
+  // position is the assertion, not just the presence.
+  //
+  // Asked of the template rather than the built file on
+  // purpose: CI runs this harness BEFORE build.js (the build
+  // is the last step of checks.yml) and the root index.html is
+  // gitignored, so reading the built page here passes locally
+  // and fails on every clean checkout. build.js maps the
+  // template line by line and replaces only the AUDIOPLAY_JS
+  // line, so line one of the template IS line one of the page.
+  check("the template opens with a doctype, on line one",
+        /^<!doctype html>/i.test(tmpl.split("\n")[0].trim()));
   check("page button CSS is scoped to .panel",
         !/\n  button \{/.test(tmpl) && /\.panel button \{/.test(tmpl));
   check("the Voice panel hosts the buttons",

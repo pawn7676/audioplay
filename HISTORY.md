@@ -1265,3 +1265,37 @@ partialAsk's "both halves came from the user" is not literally true since w49
 - a rival reading may raise the question - but the question is the safeguard,
 because nothing plays until the user has answered.
 
+
+### w56
+
+THE DOCTYPE, WHICH THIS PAGE HAS NEVER HAD. One line, and without it every
+browser has parsed the page in QUIRKS MODE - the compatibility mode for pages
+written before the standards existed - since w1. It works, which is exactly
+why nobody noticed: quirks mode is not broken, it is DIFFERENT, and the
+differences are almost all about size.
+
+That is the whole risk here, and it is worth stating plainly rather than
+burying: percentage heights resolve differently in standards mode, and line
+height and font inheritance behave properly. Everything on this page was
+tuned BY EYE ON THE DEVICE while the page was in quirks mode - the clock
+digits, the panel heights, CLOCK_BARE_MAX_VH and the rest of the vh budgets
+in settings.js. So of every change in this review, this is the one that can
+move what the owner actually sees.
+
+It is its own version and its own commit for that reason. If anything reads
+wrong at arm's length, revert THIS and nothing else, and everything from w50
+to w55 stays. And do not retune the sizes in the same change: measure on the
+device first, then decide whether anything needs moving at all. A number
+adjusted to compensate for a mode that has already been fixed is a number
+nobody will be able to explain later.
+
+THE TEST ASKS THE TEMPLATE, NOT THE BUILT PAGE, and the reason is worth
+recording because the first version of it was wrong. Reading the built
+index.html passes locally and fails on every clean checkout: checks.yml runs
+the harness BEFORE build.js, and the root index.html is gitignored, so there
+is nothing there to read. build.js maps the template line by line and
+replaces only the AUDIOPLAY_JS line, so line one of the template is line one
+of the page. The position is asserted, not just the presence - a doctype
+anywhere but first does nothing at all, which is a thing that would otherwise
+look fixed and not be.
+

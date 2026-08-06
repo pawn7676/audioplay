@@ -1,3 +1,24 @@
+<!doctype html>
+<!-- ONE LINE, AND THE PAGE HAS NEVER HAD IT (w56). Without a
+     doctype every browser parses this in QUIRKS MODE - a
+     compatibility mode for pages written before the standards
+     existed - and it has been doing so since w1. The page
+     works, which is why nobody noticed.
+
+     What changes in standards mode is mostly sizing: percentage
+     heights resolve differently, and line-height and font
+     inheritance into tables behave properly. Everything on
+     screen here was tuned BY EYE ON THE DEVICE while the page
+     was in quirks mode, so this is the one change in the whole
+     review that could shift how big things look - the clock
+     digits, the panels, the vh budgets in settings.js.
+
+     It is its own commit for exactly that reason: if anything
+     reads wrong at arm's length, revert this and nothing else.
+     Do NOT retune the sizes in the same change - measure
+     first, on the device, and only then decide whether
+     anything actually needs moving. -->
+
 <!-- Layout and STATIC style only. The project's front door
      is header.js in src/ - read it first, and it is the only
      one: the constraints, platform findings and closed cases
