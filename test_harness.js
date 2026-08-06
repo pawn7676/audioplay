@@ -62,7 +62,24 @@ function element(id) {
       contains(n) { return !!this._on[n]; }
     },
     options: [],
-    addEventListener(name, fn) { this["on_" + name] = fn; },
+    // EVERY LISTENER, NOT THE LAST ONE. The first stub kept
+    // this["on_" + name] = fn, so a second addEventListener on
+    // the same element silently threw the first away. The real
+    // page registers twice on the settings button - buildUI
+    // anchors it one way, buildWebUI re-anchors it for this
+    // page - and under the old stub only the second ever ran,
+    // so the pair could not be tested at all and the w24 check
+    // fell back to grepping ui.js. on_<name>() still works: it
+    // is now the dispatcher rather than the one handler.
+    _listeners: {},
+    addEventListener(name, fn) {
+      var list = this._listeners[name] || (this._listeners[name] = []);
+      list.push(fn);
+      var el = this;
+      this["on_" + name] = function (ev) {
+        list.slice().forEach(function (f) { f.call(el, ev); });
+      };
+    },
     // real parent/child, so a test can ask which element
     // actually got styled instead of grepping the source
     children: [],
@@ -85,7 +102,12 @@ function element(id) {
     get firstChild() { return this.children[0] || null; },
     remove() {},
     getContext() { return new Proxy({}, { get: () => () => {} }); },
-    getBoundingClientRect() { return { width: 100, height: 100, top: 500 }; },
+    // a full rect: the settings anchoring reads .bottom and
+    // .left, and a missing field silently anchors to NaN
+    getBoundingClientRect() {
+      return { width: 100, height: 100, top: 500, bottom: 600,
+               left: 40, right: 140 };
+    },
     play() { return Promise.resolve(); }, pause() {}, load() {},
     scrollTop: 0, scrollHeight: 0
   };
@@ -363,26 +385,51 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // ---- w14: game17 findings, carried into v133 ----
   // the dead mic: tapping the round button while speech
   // is in flight must not leave the mic off forever
+  // DRIVE THE REAL startListening, NOT A COPY OF IT. This test
+  // used to replace startListening with a harness-written
+  // function that reimplemented the very guards it then
+  // asserted - so mic.js could lose the `speaking` check
+  // entirely and this would still pass. That is the w27/w28
+  // failure exactly, reached through a stub instead of a grep.
+  // The real function bails at its first line because the
+  // sandbox has no SpeechRecognition; Rec is a global, so
+  // handing it a counting constructor lets the true guards run.
   vm.runInContext(`
-    __micStarts = 0;
-    var __realStart = startListening;
-    startListening = function () {
-      if (!running || listening || speaking) return;
-      __micStarts++; listening = true;
+    __recBuilt = 0; __recStarted = 0;
+    Rec = function () {
+      __recBuilt++;
+      this.start = function () { __recStarted++; };
+      this.abort = function () {};
+      this.stop = function () {};
     };
     running = true; listening = false; speaking = true;
     startListening();          // blocked, as during an announcement
   `, sandbox);
   check("mic refuses to start during speech",
-        vm.runInContext("__micStarts", sandbox) === 0);
-  vm.runInContext(`
-    speaking = false;
-    if (running && !listening) startListening();
-  `, sandbox);
+        vm.runInContext("__recBuilt", sandbox) === 0);
+  // v105: a silent refusal is how the game17 dead mic hid
+  check("and says so in the log",
+        /speech in flight/.test(
+          vm.runInContext("LOG.slice(-3).join(' ')", sandbox)));
+  vm.runInContext("speaking = false; startListening();", sandbox);
   check("mic starts once speech ends",
-        vm.runInContext("__micStarts", sandbox) === 1);
-  vm.runInContext("startListening = __realStart; listening = false;",
+        vm.runInContext("__recBuilt", sandbox) === 1 &&
+        vm.runInContext("__recStarted", sandbox) === 1);
+  check("and the loop is marked live",
+        vm.runInContext("listening", sandbox) === true);
+  vm.runInContext("startListening();", sandbox);
+  check("a second start while listening is refused",
+        vm.runInContext("__recBuilt", sandbox) === 1);
+  vm.runInContext("running = false; listening = false; startListening();",
                   sandbox);
+  check("and it will not start with the voice loop off",
+        vm.runInContext("__recBuilt", sandbox) === 1);
+  // put the sandbox back to no-recogniser, which is what every
+  // other test in this file has run under
+  vm.runInContext(`
+    clearTimeout(restartTimer);
+    recognition = null; listening = false; Rec = null;
+  `, sandbox);
 
   // ---- v134: the read-back race (game24) ----
   // whichever of the stream and the 200 arrives first
@@ -647,13 +694,35 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         /Practice/.test(rowOrder[rowOrder.length - 1]));
 
   // ---- w24: the settings panel anchors to its button ----
-  const srcUi = fs.readFileSync("src/ui.js", "utf8");
-  check("settings panel anchored on both axes",
-        srcUi.includes('setPanel.style.left') &&
-        srcUi.includes('setPanel.style.top') &&
-        srcUi.includes('setPanel.style.right =\n') ===
-          srcUi.includes('setPanel.style.right =\n') /* keep simple */ &&
-        /style\.right\s*=\s*"auto"/.test(srcUi));
+  // ASK THE BUILT PANEL. This grepped ui.js for four strings
+  // until now, and one of the four had rotted into
+  // `srcUi.includes(x) === srcUi.includes(x)` - a clause that
+  // is true whatever the page does. The grep could not do
+  // better: anchoring is the work of TWO click listeners (one
+  // from buildUI, one from buildWebUI), and reading the file
+  // says nothing about what happens when they both run. Open
+  // the panel the way a tap does and read where it landed.
+  const anchored = vm.runInContext(`
+    (function () {
+      setPanel.style.display = "none";     // start from closed
+      settingsBtn.on_click();              // both real handlers
+      var s = setPanel.style;
+      var out = { display: s.display, top: s.top, left: s.left,
+                  right: s.right, bottom: s.bottom };
+      setPanel.style.display = "none";     // leave it as found
+      return out;
+    })()
+  `, sandbox);
+  // display proves buildUI's listener ran (it owns the toggle);
+  // the released right/bottom prove buildWebUI's ran after it
+  check("a tap opens the settings panel (" + anchored.display + ")",
+        anchored.display === "block");
+  check("settings panel anchored on both axes (top " + anchored.top +
+        ", left " + anchored.left + ")",
+        /^\d+px$/.test(anchored.top) && /^\d+px$/.test(anchored.left));
+  check("and it lets go of the corner it was pinned to " +
+        "(right " + anchored.right + ", bottom " + anchored.bottom + ")",
+        anchored.right === "auto" && anchored.bottom === "auto");
 
   // ---- w33: time controls are presets ----
   // w34: the row is clean at load. Checked FIRST, before any
@@ -787,6 +856,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // sends nothing. (The repaint tick rewrites the status line
   // twice a second, so this reads it immediately, with no
   // await in between.)
+  // the real startSeek is put back at the end of this block.
+  // These tests are about the BUTTON's wiring, so counting the
+  // calls is the right stub - but it was never restored, and a
+  // stub that outlives its test silently disarms every later
+  // one that touches the same name (the token-leak test at the
+  // foot of this file was driving this counter, not the seek).
+  vm.runInContext("__realSeek = startSeek;", sandbox);
   const seekWith = (picked) => vm.runInContext(`
     (function () {
       pickedTime = ${picked};
@@ -813,7 +889,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     })()
   `, sandbox);
   check("a picked control actually seeks", good === 1);
-  vm.runInContext("pickTime(null);", sandbox);
+  vm.runInContext("pickTime(null); startSeek = __realSeek;", sandbox);
 
   // ---- w22: the instructions panel ----
   const tm = fs.readFileSync("src/index.html", "utf8");
@@ -1466,6 +1542,140 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await onBoard("4k3/8/8/1n6/8/1P6/8/4K3 w - - 0 1", "b4",
                 /bravo 4|nothing|say again|which/i,
                 'a bare "b4" never becomes the capture on b5');
+
+  // ---- HARD CONSTRAINT 4: NEVER EXPOSE OR LOG A TOKEN ----
+  // header.js lists four constraints. This is the only one
+  // whose consequence is measured in bans rather than bugs, and
+  // until now it was the only one with no test at all - the
+  // rule was a sentence in a comment and a habit in the author.
+  // The log panel is MADE to be copied out and pasted into a
+  // conversation, so anything that reaches LOG is published on
+  // purpose; a token there is not a slip, it is a disclosure.
+  //
+  // A sentinel token goes in, every path that carries one is
+  // driven, and the sentinel must appear in exactly one place:
+  // the Authorization header. The fetch stub rejects with the
+  // URL in the message, the way the harness's own stub does, so
+  // a token that ever reached a query string would come back
+  // through the error log and be caught here too.
+  const TK = "lip_SENTINEL_never_log_me";
+  const installed = vm.runInContext(`
+    (function () {
+      __sent = [];
+      __realFetch = fetch;
+      fetch = function (url, opts) {
+        __sent.push({ url: String(url),
+                      headers: JSON.stringify((opts && opts.headers) || {}),
+                      body: String((opts && opts.body) || "") });
+        return Promise.reject(new Error("no network in harness: " + url));
+      };
+      saveToken(${JSON.stringify(TK)});
+      LOG.length = 0; __spoken.length = 0;
+      return storedToken();
+    })()
+  `, sandbox);
+  check("a sentinel token is installed", installed === TK);
+
+  vm.runInContext(`
+    api.gameId = "TESTGAME"; api.over = false;
+    dryRun = false; running = true; seekAbort = null;
+    // these reject, and several of them have no catch of their
+    // own - postMove and postAction lean on their callers for
+    // that. Swallowing here is the harness saying so out loud,
+    // not tidying it away.
+    var swallow = function (p) {
+      if (p && typeof p.catch === "function") p.catch(function () {});
+    };
+    swallow(fetchMyId());
+    swallow(postMove("e2e4"));
+    swallow(postAction("resign"));
+    swallow(startStream());
+    swallow(watchEvents());
+    swallow(pollOnce());
+    // seek and challenge build their Authorization header by
+    // hand instead of calling authHeaders(), which makes them
+    // the two most worth watching. Both refuse while a game is
+    // on, so the game has to be put down first.
+    api.gameId = null; api.over = false; seekAbort = null;
+    swallow(startSeek(5, 3, false));
+    seekAbort = null;
+    swallow(sendChallenge("maia1", 5, 3, false, "random"));
+  `, sandbox);
+  await sleep(120);
+
+  const leak = vm.runInContext(`
+    (function () {
+      var tk = ${JSON.stringify(TK)};
+      var has = function (s) { return String(s).indexOf(tk) >= 0; };
+      var line = document.getElementById("lichessLine");
+      return {
+        calls: __sent.length,
+        authed: __sent.filter(function (s) { return has(s.headers); }).length,
+        inUrl: __sent.some(function (s) { return has(s.url); }),
+        inBody: __sent.some(function (s) { return has(s.body); }),
+        inLog: has(LOG.join(" ")),
+        inSpeech: has(__spoken.join(" ")),
+        inStatus: has(line ? line.textContent : "")
+      };
+    })()
+  `, sandbox);
+  // if nothing authenticated, the rest would pass for the wrong
+  // reason - the same vacuous-pass shape rule 9 exists for
+  check("every token path was actually driven (" + leak.calls +
+        " requests, " + leak.authed + " authenticated)",
+        leak.calls >= 8 && leak.authed >= 8);
+  check("the token never reaches a URL", leak.inUrl === false);
+  check("the token never reaches a request body", leak.inBody === false);
+  check("the token never reaches the log", leak.inLog === false);
+  check("the token is never spoken", leak.inSpeech === false);
+  check("the token never reaches the status line", leak.inStatus === false);
+
+  // THE EXCHANGE ITSELF, where a fresh token arrives in a
+  // response body and is the one thing in the reply that must
+  // not be repeated back.
+  vm.runInContext(`
+    clearToken(); LOG.length = 0; __spoken.length = 0;
+    location.search = "?code=testcode";
+    // PKCE: the verifier stored at sign-in is what the exchange
+    // is refused without
+    localStorage.setItem(VERIFIER_KEY, "test-verifier");
+    fetch = function (url, opts) {
+      __sent.push({ url: String(url), headers: "",
+                    body: String((opts && opts.body) || "") });
+      return Promise.resolve({
+        ok: true, status: 200,
+        json: function () {
+          return Promise.resolve({ access_token: ${JSON.stringify(TK)} });
+        },
+        text: function () { return Promise.resolve(""); }
+      });
+    };
+    finishSignIn();
+  `, sandbox);
+  await sleep(120);
+  const after = vm.runInContext(`
+    (function () {
+      var tk = ${JSON.stringify(TK)};
+      var line = document.getElementById("lichessLine");
+      return { kept: storedToken() === tk,
+               inLog: LOG.join(" ").indexOf(tk) >= 0,
+               inSpeech: __spoken.join(" ").indexOf(tk) >= 0,
+               inStatus: String(line ? line.textContent : "").indexOf(tk) >= 0,
+               said: LOG.join(" ") };
+    })()
+  `, sandbox);
+  check("the exchange really did bank the token", after.kept === true);
+  check("and said nothing about it in the log", after.inLog === false);
+  check("nor spoke it", after.inSpeech === false);
+  check("nor put it on screen", after.inStatus === false);
+  // it must still SAY it got one - silence is not an answer
+  check("but it does record that a token arrived",
+        /token/i.test(after.said));
+
+  vm.runInContext(`
+    clearToken(); location.search = ""; fetch = __realFetch;
+    api.gameId = null; running = false;
+  `, sandbox);
 
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
