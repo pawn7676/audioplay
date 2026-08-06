@@ -594,3 +594,36 @@ gone. "Texts bravo" survived at 17:27:38 only because a rival transcript
 got it right; "Text Delta" at 17:31:04 lost the move outright. Exact-only,
 v114 style - three of these are ordinary English words and the fuzzy
 matcher must never reach for them.
+
+### w45
+
+TWO MORE SENTENCES THAT WERE NOT TRUE, both from game w44-1, both found
+by reading a log the owner thought was clean. w44 said "I heard" has to be
+true. These are the same rule one step further out: a REFUSAL has to be
+true as well, and it has to blame the right half of the sentence.
+
+At 17:49:08 "golf takes night" was answered "No capture from the golf
+file." There was no knight to take - but gxh6 and gxf6 were both sitting
+there legal. The victim was named, filtered on, and then left out of the
+sentence explaining the failure. The refusal now names it: the part that
+ruled everything out is the part the owner most needs said back, which is
+exactly what w44 concluded about the lead.
+
+At 17:50:11 "pawn" was offered as an answer to "say queen takes delta 6,
+charlie takes delta 6, or echo takes delta 6" and was told "no pawn can
+take there" - while TWO of the three options were pawn captures. The
+refusal came from a v92 line that read "a named PAWN is never a fit: the
+question exists because no pawn can", which was true of the only question
+askPiece asked when it was written. w43 gave askPiece a second job -
+asking WHICH piece captures, where pawns are routine and are offered by
+their file, because that is how a pawn capture is spoken. The old comment
+went on being obeyed after the thing it described had changed underneath
+it. A named pawn now narrows to the pawn moves on offer like any other
+piece; a piece that genuinely cannot still hears so.
+
+The rule this earned: when a function grows a second caller, its refusals
+inherit the first caller's assumptions and nobody notices, because the
+sentence still reads plausibly. w43 added the caller and did not re-read
+what the answer path believed about the question. Both bugs were still
+just sitting in the log; the owner read it as working, and it was working
+- it was only LYING, which is harder to see and worth more.

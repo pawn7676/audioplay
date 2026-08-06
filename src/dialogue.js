@@ -306,12 +306,31 @@
 
   // ...and can that piece actually go there. Null covers
   // both "not an answer" and "wrong piece"; the caller
-  // separates them with pieceAskOpen. A named PAWN is
-  // never a fit: the question exists because no pawn can.
+  // separates them with pieceAskOpen.
+  //
+  // A NAMED PAWN USED TO BE REFUSED OUTRIGHT, on the grounds
+  // that "the question exists because no pawn can" - which was
+  // true of the only question that existed when that was
+  // written (v92's "no pawn can go there. say queen, king or
+  // bishop"). w43 gave askPiece a second job: asking WHICH
+  // piece captures, where the options routinely include pawns,
+  // offered by their file because that is how a pawn capture is
+  // spoken. Game w44-1 at 17:50:11 answered such a question
+  // with "pawn" - two of the three options were pawn captures -
+  // and was told "no pawn can take there", which was both false
+  // and a dead end.
+  //
+  // So a named pawn narrows to the pawn moves on offer, the
+  // same way naming any other piece does. One pawn move left
+  // plays it; several walk the ordinary yes/no, which names
+  // each capture in full - "did you mean charlie takes delta
+  // 6?" - so the files still reach the ear.
   function pieceAskAnswer(req) {
     if (!pieceAskOpen(req)) return null;
     var ms;
-    if (req.piece && req.piece !== "p") {
+    if (req.piece === "p") {
+      ms = pieceAsk.moves.filter(function (m) { return m.piece === "p"; });
+    } else if (req.piece) {
       ms = pieceAsk.moves.filter(function (m) {
         return m.piece === req.piece;
       });
@@ -866,9 +885,18 @@
           // "no capture from the charlie file" is a lie the
           // moment cxb5 is sitting there legal and it was the
           // DELTA file that had nothing on it.
+          // NAME THE VICTIM TOO (w45). Game w44-1 at 17:49:08
+          // said "golf takes night" with no knight to take and
+          // was told "No capture from the golf file" - while
+          // gxh6 and gxf6 sat there legal. It was the KNIGHT
+          // that was missing, not the capture, and the sentence
+          // blamed the wrong half. Same fault as w44's lead:
+          // the part that ruled everything out is the part the
+          // owner most needs said back.
           var whither = req.toFile
                 ? " onto the " + SPOKEN_FILE[req.toFile] + " file"
                 : req.toRank ? " onto rank " + req.toRank : "";
+          if (req.victim) whither += " of a " + PIECE_NAME[req.victim];
           speak((origin.length === 2
                    ? "Nothing on " + spokenSquare(origin) + " can take" + whither
                    : /[a-h]/.test(origin)

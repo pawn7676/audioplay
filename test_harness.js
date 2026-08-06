@@ -1206,6 +1206,54 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check('no "I heard" claimed anything unsaid' +
         (worst ? " (" + worst + ")" : ""), lies === 0);
 
+  // ---- w45: two false sentences from game w44-1 ----
+  const W44_GAME = ["e2e4","c7c6","d2d4","h7h6","c2c4","g7g6","f2f4","h8h7",
+                    "g2g4","h7h8","h2h4","g6g5","h4g5","f7f6"];
+
+  // 17:49:08. "golf takes night" - no knight to take, but gxh6
+  // and gxf6 both sit there legal, so "No capture from the golf
+  // file" blamed the wrong half of the sentence.
+  await setGame(W44_GAME);
+  say("golf takes night");
+  await sleep(80);
+  const noKnight = heard().join(" | ");
+  check("a missing VICTIM is named, not blamed on the file (" +
+        noKnight + ")", /knight/i.test(noKnight));
+  check("and it does not claim there is no capture from the file",
+        !/^No capture from the golf file\. Say again\./i.test(noKnight));
+  // the file really is empty of captures -> the old sentence, correctly
+  await onBoard("4k3/8/8/8/8/8/6P1/4K3 w - - 0 1", "golf takes",
+                /no capture from the golf file/i,
+                "an empty file still says so plainly");
+
+  // 17:50:11. "takes delta" offered Qxd6, cxd6 and exd6; answering
+  // "pawn" was refused with "no pawn can take there" while two of
+  // the three options were pawn captures.
+  await setGame(W44_GAME.concat(["e4e5","c6c5","d4c5","d7d6"]));
+  say("takes delta");
+  await sleep(80);
+  const askedD = heard().join(" | ");
+  check("the question offers the queen and both pawns (" + askedD + ")",
+        /queen takes delta 6/i.test(askedD) &&
+        /charlie takes delta 6/i.test(askedD) &&
+        /echo takes delta 6/i.test(askedD));
+  say("pawn");
+  await sleep(80);
+  const saidPawn = heard().join(" | ");
+  check('"pawn" is no longer refused as impossible (' + saidPawn + ")",
+        !/no pawn can take there/i.test(saidPawn));
+  check('"pawn" narrows to the pawn captures and offers one',
+        /(charlie|echo) takes delta 6/i.test(saidPawn) &&
+        !/queen takes delta 6/i.test(saidPawn));
+  // a named piece that genuinely cannot is still told so
+  await setGame(W44_GAME.concat(["e4e5","c6c5","d4c5","d7d6"]));
+  say("takes delta");
+  await sleep(80); heard();
+  say("bishop");
+  await sleep(80);
+  check("a piece that truly cannot take there is still refused",
+        /no bishop can take there/i.test(heard().join(" | ")));
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();
