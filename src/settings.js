@@ -1,14 +1,26 @@
   /*=========================== SETTINGS ===========================*/
 
-  var VERSION = "v137";
+  // DECLARED HERE, ASSIGNED IN lichess.js. It said "v137" for
+  // as long as this file was shared with the userscript, and
+  // was only ever right at runtime because lichess.js loads
+  // later in the manifest and overwrites it - so reordering
+  // the manifest would have shipped logs claiming a version
+  // this project stopped using in August (w54). The w-series
+  // is the only version line now; the value lives in one
+  // place, next to the comment explaining the series.
+  var VERSION = "";
 
-  // LEAVE TOKEN EMPTY. The token is asked for once and kept
-  // by the Userscripts app, so a new version of the script
-  // does not need it pasted in again. Tap "token" in the
-  // log panel to replace or clear it.
+  // LEAVE TOKEN EMPTY. PKCE sign-in gets a token and
+  // localStorage on this origin keeps it, so nobody types one
+  // and nothing needs pasting in again.
   //
   // Anything put here is used instead, which is handy for
   // testing but means the token lives in the file.
+  //
+  // (Through w53 this said "tap 'token' in the log panel to
+  // replace or clear it" - the userscript's way in, and a
+  // button this page deliberately does not have. Sign out is
+  // how you clear it here.)
   var TOKEN = "";
   var TOKEN_KEY = "audioplay_lichess_token";
 

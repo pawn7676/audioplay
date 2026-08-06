@@ -8,9 +8,16 @@
 
   /* Minimal self-contained chess RULES (0x88 board). No dependencies.
    * This knows which moves are LEGAL and what they are CALLED. It
-   * does not evaluate, score, search, or recommend anything. Exposes:
-   * Position(startFen?) with .applyUci, .legalMoves, .san, .turn,
-   * .isGameOver, .inCheck */
+   * does not evaluate, score, search, or recommend anything.
+   *
+   * Position(startFen?) with .legalMoves, .applyUci, .findUci,
+   * .sanOf, .uciOf, .apply, .clone, .load, .inCheck, .turn.
+   * (This advertised ".san", which has never been the name -
+   * it is sanOf - and ".isGameOver", which exists but has no
+   * caller anywhere: dialogue.js asks !legalMoves().length
+   * directly. A doc comment naming methods that are not there
+   * is worse than no doc comment, because it is checked by
+   * nobody and believed by everybody. w54.) */
   function makeRules() {
     "use strict";
 
@@ -155,7 +162,6 @@
      * {from,to,piece,color,captured,promotion,flags} */
     Position.prototype.pseudoMoves = function () {
       var out = [], b = this.board, us = this.turn, them = us === "w" ? "b" : "w";
-      var self = this;
 
       function add(from, to, extra) {
         var m = {

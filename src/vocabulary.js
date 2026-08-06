@@ -12,9 +12,15 @@
    * Grouped, the first cannot happen and the second throws at
    * load. Both were routes to a quiet wrong move.
    *
-   * expand() must stay INSIDE this file: the parser test slices
-   * this file from the 3. VOCABULARY header to 6. DIALOGUE, and
-   * anything above the header is not in the slice. */
+   * expand() must stay INSIDE this file, because property_check.js
+   * loads a SLICE of the program - rules, vocabulary, parsing and
+   * matching, the four files that turn words into moves - and
+   * anything expand() needed from outside that set would not be
+   * there. (Through w53 this said the slice was taken "from the
+   * 3. VOCABULARY header to 6. DIALOGUE": that was true when the
+   * files were numbered sections of one scroll, and the numbers
+   * went away with the userscript. The rule it was justifying
+   * still holds; the mechanism it described stopped existing.) */
   function expand(groups) {
     var out = {};
     Object.keys(groups).forEach(function (val) {
@@ -235,10 +241,10 @@
   // in fuzzyToken, in parsing.js.
   var FUZZY_NEVER = wordSet(
     "lord load word ward cord form good goods gone going cold " +
-    "hold told sold bold fold food wood hood mood door does " +
+    "hold told sold bold fold food wood hood mood door " +
     "done some same come time like make made more most that " +
-    "this than them they then what when were well will with " +
-    "here hear near year your yeah have give live love over " +
-    "only just must back been best nice mine name note wait " +
+    "this than them they what when were well will with " +
+    "here hear near year your yeah give live love over " +
+    "only just must back been best nice mine name wait " +
     "want damn hell crap oops");
 

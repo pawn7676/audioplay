@@ -21,6 +21,31 @@
   // In: the "clock" button, and ONLY the button (v98).
   // Out: tap anywhere on it.
   //
+  // THIS FILE PAINTS FROM CODE, AND THAT IS THE EXCEPTION,
+  // NOT THE RULE (w54). Rule 6 says the stylesheet owns what a
+  // state looks like and the code only says which state is
+  // current - and everywhere else it now does, including the
+  // two page buttons that were breaking it. Here the whole
+  // overlay is built from cssText and its colours are set on
+  // the elements: red under a minute, dim for the side not to
+  // move. It is left that way ON PURPOSE and the reason is
+  // worth stating, because an undocumented exception is
+  // indistinguishable from an oversight - which is how this
+  // one got reported in the first place.
+  //
+  //   - the overlay is a SECOND RENDERER. It shares no markup
+  //     with the page, sits outside .panel, and is created and
+  //     destroyed whole, so there is no stylesheet cascade
+  //     here to be the single source of anything.
+  //   - it is the screen the owner READS at a glance across a
+  //     room, and the sizes and colours in it were tuned on
+  //     the device by eye. Moving them into the stylesheet
+  //     cannot be verified by the harness and would need a
+  //     real game to confirm - a bad trade for tidiness.
+  //
+  // If this overlay is ever rebuilt, move it to classes then.
+  // Do not do it as a drive-by.
+  //
   // A screen wake lock is held while the overlay is up, so
   // the iPad does not sleep into the lock screen mid-game.
   // iOS silently drops the lock whenever the app is

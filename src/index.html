@@ -28,7 +28,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<!-- maximum-scale/user-scalable dropped at w54: iOS has ignored them
+     since iOS 10 (see the w25 note in ui.js), so they never did the
+     job they were added for here, and on every other platform they
+     take away pinch-zoom from someone who may need it. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Audioplay</title>
 <style>
   :root {
@@ -72,6 +76,18 @@
   .panel button:focus, .panel button:focus-visible { outline: none; box-shadow: none; }
   .panel button:disabled { opacity: .35; }
   .panel button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  /* THE "ON" GREEN, for the two controls that mean "this is
+     running": the voice button while voice is on, and the
+     account button while signed in (w54). Both used to be
+     painted from JS with #3a5a2a and #91bddf written out by
+     hand - the same two values --button-on and --accent
+     already hold, duplicated where no stylesheet could see
+     them drift. Same green as .tc.picked and #timeCustom.picked
+     on purpose: it means the same thing in all four places. */
+  .panel button.on {
+    background: var(--button-on); color: #e6efe0;
+    border-color: var(--button-on);
+  }
   /* THE VOICE ROW MATCHES THE PAGE (w32). The shared UI
      builds these buttons with its own inline sizing, which
      is right where it lives (floating over lichess.org) and
@@ -116,7 +132,6 @@
   .panel > details > summary::-webkit-details-marker { color: var(--dim); font-size: 1.15em; }
   .panel > details:not([open]) > summary { margin-bottom: 0; }
   .stats { font-family: Menlo, "SF Mono", monospace; font-size: .8rem; line-height: 1.5; white-space: pre-wrap; }
-  .stats .ok { color: var(--ok); } .stats .bad { color: var(--bad); }
   #mini {
     display: block; width: 100%; max-width: 360px; aspect-ratio: 1;
     border: 1px solid var(--border); border-radius: 4px;
@@ -129,17 +144,10 @@
                font-family: Menlo, "SF Mono", monospace; }
   #clockLine .mine { color: var(--brass); }
   #clockLine .low { color: var(--bad); }
-  input.numin { width: 4.5em; padding: 4px; font: inherit; }
   input.whoin { width: 9em; padding: 4px; font: inherit; }
   select { font: inherit; padding: 4px; }
-  #logBody {
-    margin: 8px 0 0; max-height: 40vh; overflow: auto; color: #9fb0a0;
-    font-size: 11px; line-height: 1.35; white-space: pre-wrap; word-break: break-word;
-    font-family: ui-monospace, Menlo, monospace; -webkit-overflow-scrolling: touch;
-  }
   .row.opt { font-size: .85rem; color: var(--text); gap: 6px; }
   .row.opt label { display: flex; align-items: center; gap: 6px; }
-  #modeRow button { flex: 1 1 0; }
 </style>
 </head>
 <body>
@@ -247,7 +255,7 @@
   <p class="hint">Sign in once and the page waits for a
   game — one started here, in the Lichess app, or by a
   friend's challenge. Nothing else to set up.</p>
-  <p class="hint">One tap on the round button starts the
+  <p class="hint">One tap on the Start button starts the
   microphone and the speech — iOS requires the tap. Then
   walk to your board: say moves like "echo four", "knight
   takes delta five", "castle kingside". "repeat" re-speaks

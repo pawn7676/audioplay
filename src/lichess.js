@@ -14,21 +14,28 @@
    *      this page's seek/challenge, the Lichess app, or a
    *      friend's challenge
    *    - seek and challenge, from BoardEye via w1
-   *  Everything between the transplants - syncMoves (with
-   *  v134's stream-side readBackMine call), offers, clocks,
-   *  results, gameFull/gameState, the stream and the polling
-   *  fallback - is the userscript's VERBATIM. When the
-   *  userscript moves, re-copy those parts; only the
-   *  transplants are ours. This file was regenerated exactly
-   *  that way when v134 landed (the read-back race fix and
-   *  its pollOnce twin arrived by re-copy, untouched).
+   *  Everything between the transplants - syncMoves, offers,
+   *  clocks, results, gameFull/gameState, the stream and the
+   *  polling fallback - CAME FROM the v134 userscript
+   *  verbatim, and that is now history rather than a rule.
    *
-   *  VERSION is reassigned here, not in settings.js (shared,
-   *  and byte-frozen until the next joint bump): the w-series
-   *  continues so no log dump ever collides with a v-number.
+   *  IT USED TO SAY "when the userscript moves, re-copy those
+   *  parts". The userscript froze at v137 and will not move
+   *  again, so there is nothing to re-copy from and no reason
+   *  to keep these parts copy-shaped (w54). w50 and w52 both
+   *  edited this region on their own merits - the AbortError
+   *  filter, the reconnect ladder, the whole poll repair - and
+   *  the old instruction would have argued against every one
+   *  of them. Read the provenance above for WHY something
+   *  looks the way it does; do not treat it as a constraint.
+   *
+   *  VERSION is assigned here rather than where it is
+   *  declared: the w-series is the only version line, and
+   *  keeping the number next to the note explaining the series
+   *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w53";
+  VERSION = "w54";
 
   var RULES = makeRules();
 
@@ -41,8 +48,7 @@
     moves: [],            // uci list already applied
     lastSan: "", lastSanW: "", lastSanB: "",
     wtime: null, btime: null,
-    over: false,
-    mode: "none"          // "stream" | "poll"
+    over: false
   };
 
   var LICHESS_BASE = "https://lichess.org";
@@ -504,7 +510,6 @@
 
   function startStream() {
     if (!api.gameId || dryRun || api.gameId === "PRACTICE") return;
-    api.mode = "stream";
     log("NET", "opening stream for " + api.gameId);
     try { if (streamAbort) streamAbort.abort(); } catch (e) {}
     streamAbort = (typeof AbortController !== "undefined") ? new AbortController() : null;
@@ -636,7 +641,6 @@
   var pollSeen = false;      // has this game ever appeared in the list?
 
   function startPolling() {
-    api.mode = "poll";
     log("NET", "falling back to polling /api/account/playing");
     clearInterval(pollTimer);
     pollSeen = false;
@@ -1022,8 +1026,14 @@
     });
   }
 
-  // Everything that holds a connection, stopped in one
-  // place: sign-out and the voice-off path both use it.
+  // Everything that holds a connection, stopped in one place.
+  // ONLY signOut CALLS THIS, and that is deliberate: voice off
+  // deliberately tears down no network (web delta 2 in ui.js -
+  // sign-in owns the connection, the button owns the voice),
+  // and w50 leaned on that when it stopped gating the
+  // reconnect on the mic. The comment here used to claim the
+  // voice-off path used it too, which would have made those
+  // two decisions contradict each other; it never did (w54).
   function stopEverything() {
     try { if (eventAbort) eventAbort.abort(); } catch (e) {}
     try { if (streamAbort) streamAbort.abort(); } catch (e) {}

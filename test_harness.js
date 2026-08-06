@@ -368,7 +368,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     renderStatus();
   `, sandbox);
   check("game start replaces the challenge message (" + status() + ")",
-        /Tap the round button/.test(status()));
+        /Tap the Start button/.test(status()));
   vm.runInContext('running = true; renderStatus();', sandbox);
   check("voice on: plain playing state (" + status() + ")",
         status() === "Playing.");
@@ -595,22 +595,36 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     (function () {
       return { text: bigBtn.textContent,
                bg: bigBtn.style.background,
-               css: bigBtn.style.cssText || "" };
+               primary: bigBtn.classList.contains("primary"),
+               on: bigBtn.classList.contains("on") };
     })()
   `, sandbox);
+  // THE STATE IS A CLASS, THE COLOUR IS THE STYLESHEET'S (w54).
+  // These asserted the inline background, which is the thing
+  // rule 6 says code must not be setting - so the test was
+  // pinning the very habit that caused w21, w24 and w36. What
+  // must hold is that the code says which state is current and
+  // that the stylesheet gives that state its colour: both
+  // halves are checked, on the built button and in the real
+  // template (tmpl is read further up).
   vm.runInContext("running = false; renderButton();", sandbox);
   const offBtn = btnState();
   check("off: says what to do (" + offBtn.text + ")",
         /^\u25B6 Start$/.test(offBtn.text));
-  check("off: wears the page's primary blue",
-        offBtn.bg.toLowerCase() === "#91bddf");
+  check("off: marked as the page's primary control",
+        offBtn.primary === true && offBtn.on === false);
   vm.runInContext("running = true; listening = true; renderButton();",
                   sandbox);
   const onBtn = btnState();
   check("on: says it is listening (" + onBtn.text + ")",
         /^\u25CF Listening$/.test(onBtn.text));
-  check("on: wears the same green as a lit button",
-        onBtn.bg.toLowerCase() === "#3a5a2a");
+  check("on: marked as lit, not primary",
+        onBtn.on === true && onBtn.primary === false);
+  check("neither state paints a colour inline",
+        !offBtn.bg && !onBtn.bg);
+  check("and the stylesheet is what gives those two states colour",
+        /\.panel button\.primary[^}]*var\(--accent\)/.test(tmpl) &&
+        /\.panel button\.on\b[^}]*var\(--button-on\)/.test(tmpl));
   vm.runInContext("listening = false; renderButton();", sandbox);
   check("running but mic paused reads as on, not off",
         /^\u25CB On$/.test(btnState().text));
@@ -1542,6 +1556,18 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await onBoard("4k3/8/8/1n6/8/1P6/8/4K3 w - - 0 1", "b4",
                 /bravo 4|nothing|say again|which/i,
                 'a bare "b4" never becomes the capture on b5');
+
+  // ---- w54: the version is a w-number, at RUNTIME ----
+  // settings.js declared VERSION = "v137" and lichess.js
+  // reassigned it, so the value was only ever right because
+  // one file happens to load after the other. Reordering the
+  // manifest would have shipped logs claiming a version this
+  // project stopped using - and a pasted log naming the wrong
+  // build is worse than one naming none. Asked of the loaded
+  // program, not of either file.
+  const ver = vm.runInContext("VERSION", sandbox);
+  check("VERSION is a w-number at runtime (" + ver + ")",
+        /^w\d+$/.test(ver));
 
   // ============== w53: THE SAME ANSWER, FASTER =============
   // Every change in w53 is meant to be invisible. The risk is

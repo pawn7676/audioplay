@@ -249,8 +249,18 @@
 
   // Only for the FIRST announcement after a tap. Waits
   // until the recogniser is actually running, so its grab
-  // of the audio route cannot cut the words in half, then
-  // leaves a further gap for the route to settle.
+  // of the audio route cannot cut the words in half, and
+  // then lets the SILENT PRIMER below be what settles the
+  // route - the real utterance goes out on the next tick
+  // after the primer has ended.
+  //
+  // (This said "leaves a further gap for the route to settle"
+  // until w54, and there is no gap: the setTimeout that
+  // follows the primer has no delay. The primer IS the
+  // settling, which is the whole point of it - a comment
+  // describing a second mechanism that does not exist would
+  // send anyone debugging a clipped first word looking for a
+  // timing bug instead of at the primer.)
   // iOS loses the FIRST thing spoken after the audio route
   // comes up. Not clipped, lost outright. Something has to
   // be spoken before the route is really live, so this

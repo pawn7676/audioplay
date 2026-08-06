@@ -1,4 +1,53 @@
-  /*=========================== DIALOGUE ===========================*/
+  /*=========================== DIALOGUE ===========================\
+   *
+   *  WHAT THIS FILE IS. Everything between "some words arrived"
+   *  and "a move was sent, or a question was asked". matching.js
+   *  decides which moves a sentence COULD mean; this decides
+   *  what to do about it - play it, ask about it, repair it, or
+   *  refuse it - and it is the file that owes the user a
+   *  sentence on every path out.
+   *
+   *  It had no header at all until w54, which is the only file
+   *  of this size that did. The reasoning was all here, but as
+   *  fifty local comments with no map over them, so the shape
+   *  of the thing had to be reconstructed by reading it end to
+   *  end. This is the map.
+   *
+   *  THE FOUR QUESTIONS IT CAN HAVE OPEN, and they are the
+   *  file's real state:
+   *    pending     - a walk through candidate moves, yes/no
+   *    confirmAction - a yes/no on resign, draw, takeback
+   *    pieceAsk    - "no pawn can go there, say queen or rook"
+   *    partialAsk  - half a move heard, "say the rank"
+   *  The last two carry the ply they were asked at, so they
+   *  expire when the position moves on. None of them may
+   *  outlive their GAME - see clearDialogue, and w50, which is
+   *  what happens when they do.
+   *
+   *  THE ORDER OF handleTranscripts IS LOAD-BEARING, and every
+   *  step of it was paid for: memo first (a memo naming a move
+   *  must never be played), then an open question's answer,
+   *  then commands, then moves, then the repair chain. Moving
+   *  any of these changes the grammar.
+   *
+   *  SILENCE IS NOT AN ANSWER (constraint 5, header.js). Every
+   *  path out of here speaks, including the refusals, the
+   *  busy path and the failures. Two deliberate exceptions are
+   *  documented where they live: stray talk on the opponent's
+   *  clock, and a filler-only utterance.
+   *
+   *  THE REPAIR CHAIN is an ordered list of named repairs, each
+   *  stating its own constraint, tried in order until one can
+   *  ask something answerable. A repair may be fired by a RIVAL
+   *  transcription, but then it may only ask, never play (w49).
+   *
+   *  This file has grown three jobs - the dialogue proper,
+   *  practice mode, and the repair chain - and the review that
+   *  produced w50 to w54 recommends splitting the last two out.
+   *  That is deliberately NOT done yet: it is pure motion, and
+   *  pure motion belongs on its own, after the behaviour has
+   *  settled.
+   *================================================================*/
 
   // practice mode: nothing is ever sent to Lichess
   var dryRun = false;
@@ -138,7 +187,6 @@
     api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
     api.wtime = 600000;
     api.btime = 600000;
-    api.mode = "practice";
     log("DRY", "practice mode ON - nothing will be sent to Lichess");
     speakWhenAudioSettled("Practice mode. You are white.");
   }
@@ -363,7 +411,7 @@
       var s = Math.max(0, Math.floor(ms / 1000));
       var m = Math.floor(s / 60);
       s = s % 60;
-      if (!m) return s + " seconds";
+      if (!m) return s + (s === 1 ? " second" : " seconds");
       if (!s) return m + (m === 1 ? " minute" : " minutes");
       return m + " " + (s < 10 ? "oh " + s : s);
     }
@@ -1141,7 +1189,7 @@
     // "castles" was answered "that's not a legal move", and
     // one naming a currently legal move would have been
     // PLAYED. Any reading may carry the memo word, see
-    // memoTranscript in parsing.js. A pending yes/no
+    // memoTranscript in vocabulary.js. A pending yes/no
     // question survives a memo untouched.
     var memoText = memoTranscript(transcripts);
     if (memoText) {

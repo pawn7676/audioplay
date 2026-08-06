@@ -2,7 +2,7 @@
 
   var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   var recognition = null, listening = false, running = false;
-  var restartTimer = null, micFails = 0, micCycles = 0, noSpeech = 0;
+  var restartTimer = null, micFails = 0, micCycles = 0;
   var micBlockedLogged = false;
 
   function startListening() {
@@ -63,8 +63,11 @@
        * never transcribe our own voice. "no-speech" is just silence.
        * Neither is worth a log line, and together they drowned out
        * the real events. */
-      if (ev.error === "no-speech") noSpeech++;
-      else if (ev.error !== "aborted") log("MIC", "error " + ev.error);
+      /* "no-speech" was counted into a variable nothing ever
+       * read (w54); silence is not an event worth a number. */
+      if (ev.error !== "no-speech" && ev.error !== "aborted") {
+        log("MIC", "error " + ev.error);
+      }
       if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
         running = false;
         speak("Microphone blocked.");

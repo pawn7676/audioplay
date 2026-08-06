@@ -1085,3 +1085,96 @@ they are unchanged across all four positions - which is also why w50's
 perft work had to come first. A speed change to a move generator with no
 promotion coverage would have been a gamble.
 
+
+### w54
+
+WHERE THE LOOK IS DECIDED, WHAT THE COMMENTS CLAIM, AND WHAT NOBODY WAS
+USING. Three review phases in one pass, because none of them changes what the
+program does and separating them would have cost more merges than it saved.
+
+RULE 6 WAS BEING BROKEN BY THE TWO CONTROLS THAT MATTER MOST. The stylesheet
+owns what a state LOOKS like and the code owns which state IS current - the
+rule w21, w24 and w36 each paid for - and paintVoiceButton was writing
+#91bddf and #3a5a2a into the element by hand, the same two values --accent
+and --button-on already hold. renderAccount was worse: it set the signed-in
+green inline AND toggled a class on the same button, so which idiom decided
+the look depended on which branch ran last. Both are classes now, sharing
+one .panel button.on rule with the picked time controls, because "this is
+running" means the same thing in all four places. The inline properties are
+CLEARED rather than overwritten, which is the move adoptPageButtonLook was
+already making next door and for the same reason.
+
+The comment above it claimed the exception: "only what a stylesheet cannot
+know is set from here - the state colour". The stylesheet knew it perfectly
+well. A comment that names an exception keeps the exception alive long after
+it has stopped being one, which is the general form of most of this entry.
+
+clock.js STILL PAINTS FROM CODE AND NOW SAYS SO. It was reported as the same
+fault and it is not: the overlay is a second renderer, built whole from
+cssText, sharing no markup with the page and no cascade to be the source of
+anything - and it is the screen the owner READS across a room, tuned by eye
+on the device. Moving it to classes cannot be verified by the harness. It is
+left alone, with the reason written in its header, because an undocumented
+exception is indistinguishable from an oversight - which is exactly how it
+came to be reported.
+
+THE COMMENTS THAT HAD STOPPED BEING TRUE. settings.js declared VERSION =
+"v137" and lichess.js reassigned it, so the value was right only because one
+file loads after the other: reordering the manifest would have shipped logs
+naming a version this project stopped using, and a pasted log naming the
+wrong build is worse than one naming none. It is declared empty and set in
+one place now, and the harness asserts at RUNTIME that VERSION is a
+w-number. lichess.js told every reader "when the userscript moves, re-copy
+those parts" - the userscript froze at v137 and will not move, and that
+instruction would have argued against every fix in w50 and w52. settings.js
+described a "token" button in the log panel that this page deliberately does
+not have. vocabulary.js justified a real rule with a slicing mechanism that
+stopped existing when the numbered filenames did. dialogue.js pointed at the
+wrong file for memoTranscript. stopEverything claimed the voice-off path
+called it, which would have contradicted web delta 2 and the w50 reconnect
+work; only signOut ever called it. speakWhenAudioSettled promised "a further
+gap for the route to settle" and the setTimeout after the primer has no
+delay - the primer IS the settling, and the comment would have sent anyone
+debugging a clipped first word hunting a timing bug. rules.js advertised
+".san", which has never been the name, and ".isGameOver", which has no
+caller. And the page told the user to "tap the round button", which has been
+a pill labelled Start since w29.
+
+dialogue.js GOT A HEADER. It is the only file of its size that had none: the
+reasoning was all there, as fifty local comments with no map over them, so
+the shape had to be reconstructed by reading it end to end. The header names
+the four dialogue states, says the order of handleTranscripts is
+load-bearing, and records that the file has grown three jobs and that
+splitting it is deliberately NOT done yet - pure motion belongs on its own,
+after the behaviour has settled.
+
+AND WHAT NOBODY WAS USING. api.mode was assigned in three places and read in
+none; the log lines already say "opening stream" and "falling back to
+polling", which is the same fact somewhere better. A noSpeech counter was
+incremented and never read. rules.js had a `var self` its function stopped
+needing. The template carried four selectors matching nothing - #logBody
+(the live log body has no id), #modeRow, input.numin, and .stats .ok/.bad -
+while input.whoin, #clockLine .mine and .low, which look equally suspicious,
+are all live and stayed. The log panel reserved a 110px strip along the
+bottom for a floating button row that moved into the page at w21, so the
+blank strip was costing the log a tenth of the screen. Four FUZZY_NEVER
+entries - does, then, have, note - are consumed as FILLER or PIECES before
+the fuzzy matcher can ever see them, and "note" being listed as never-guess
+while ALSO being a live knight spelling reads as a contradiction in a table
+whose whole job is to be read. A cross-check over all the word maps found
+those four and no others, and no collisions between the maps at all.
+
+TWO SMALLER THINGS. build.js joins byte-for-byte, so a source file whose
+last line is a // comment without a trailing newline would have swallowed
+the next file's first line into that comment - silently, with a page that
+still builds. It now ends every part's last line. And the viewport dropped
+maximum-scale/user-scalable: iOS has ignored them since iOS 10 (the w25
+note), so they never did the job they were added for, and everywhere else
+they take pinch-zoom away from someone who may need it.
+
+WHAT IS DELIBERATELY LEFT. pieceAskNamed's `return "that"` is unreachable
+given the gate above it and stays: removing a defensive default so a
+dead-code audit comes out clean would leave the function returning undefined
+in the case nobody predicted. That is the trade this whole entry is about,
+pointing the other way, and it is worth having both directions on record.
+

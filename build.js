@@ -42,7 +42,17 @@ let out = "";
 for (const n of names) {
   const p = path.join("src", n);
   if (!fs.existsSync(p)) { console.error("MISSING: " + p); process.exit(1); }
-  out += fs.readFileSync(p, "utf8");
+  let part = fs.readFileSync(p, "utf8");
+  // A FILE MUST END ITS OWN LAST LINE (w54). The join is
+  // byte-for-byte, so a source whose final line is a //
+  // comment with no trailing newline would swallow the first
+  // line of the next file into that comment - silently, with a
+  // page that still builds and a program missing a line
+  // nobody deleted. Every editor writes the newline; the one
+  // that does not is exactly the case worth surviving. This
+  // adds nothing when the file already ends properly.
+  if (part.length && !part.endsWith("\n")) part += "\n";
+  out += part;
 }
 if (out.includes("</scr" + "ipt>")) {
   console.error("refusing: the script contains </scr" + "ipt>, " +
