@@ -800,3 +800,88 @@ for the origin repair and the bar every widening since has had to clear.
 Two test positions in this entry were wrong before the code was: a queen on
 d1 cannot reach c6, which is worth remembering the next time a FEN is
 written by eye rather than by asking the move generator.
+
+### w50
+
+THE STATES THAT OUTLIVED THEIR GAME. A review of the whole tree, file by
+file, and this is the first of what it found: a family of faults that all
+have the same shape. Something is set while a game is running - a question,
+an arm, a connection, a mode - and nothing puts it down when that game
+ends. Every one of them was invisible to the harness because the harness
+had never played two games in a row.
+
+THE WORST OF THEM COULD RESIGN THE WRONG GAME. There are four dialogue
+states and there was no single place that cleared them. The two ply-guarded
+ones expire by themselves while a game runs, which is what the ply is for -
+but joinGame resets api.moves to empty, so a question asked at ply 0 of one
+game is still "current" at ply 0 of the next. The two yes/no states never
+expired at all. So: ask "resign", hear "Resign the game? Yes or no.", get
+mated or flagged before answering, let the next game auto-join off the event
+stream, and the first "yes" of the new game resigns it. clearDialogue is one
+function called from every place a game begins or ends, which is the answer
+to a list of things to remember - the previous answer was to remember them,
+in three of the five places.
+
+PRACTICE LEFT THE FRONT DOOR OPEN. dryStart closed the game stream and the
+timers and stopped there, leaving the ACCOUNT event stream open and any
+outstanding seek live. Both of those exist precisely to start a game without
+being asked, and dryRun then gagged the result: the join happened, the real
+position replaced the practice one, every announcement was suppressed
+because practice was still on. A real game, a running clock, and silence,
+while the board in front of you says something else - the exact case the
+keep-alive tombstone is about, reached from the other side. Practice is a
+mode where nothing is sent to Lichess, so nothing may arrive from it either.
+The one judgement call in this entry sits next to it: if a gameStart does
+arrive during practice - an event already in flight, an account reconnect -
+practice LOSES and says so. A live clock outranks a practice game, and being
+told is the whole point.
+
+AND THE RECONNECT LOOP THAT TALKED OVER ITSELF. watchEvents has filtered
+AbortError since it was written; startStream's catch never did. startStream
+aborts the previous stream on its way in, that abort rejected the old reader,
+the rejection reached the catch, and scheduleReconnect opened another stream
+two seconds later - which aborted the one just opened. Each turn re-delivered
+gameFull, so the page said "reconnected. you are white. white to move." every
+two seconds for as long as the game lasted. One line, and the line already
+existed twenty lines away.
+
+THE SAME FUNCTION WAS GATED ON THE MICROPHONE, which is a different thing
+from being connected. Voice off (or a mic that gave up after eight failures),
+then a stream that drops for any ordinary reason: nothing reschedules it, and
+turning voice back on only restarted the mic. Mic alive, stream dead, the
+opponent's moves never announced again. Listening and being connected are
+not the same state and must not share a flag.
+
+THE REST, EACH SMALL AND EACH ITS OWN WAY OF SAYING NOTHING OR SAYING THE
+WRONG THING. A confirmed yes/no spoke "resigning." the instant the request
+left, and postAction has no catch, so a failed send was an unhandled
+rejection and the user was told a game-ending action had happened when it had
+not - acceptMove has said "Could not reach Lichess." on that same failure
+since the v-series, so the yes/no path was the only one that lied. postMove
+had no timeout, and its caller sets busy = true, so a fetch that hung left
+EVERY later move dropped in silence with no way out but the button. The busy
+refusal itself was silent, which reads as not-heard and invites saying it
+again. An incoming draw offer overwrote whatever question was already open
+without a word, so a "yes" meaning resign accepted a draw; a withdrawn offer
+left its question standing, so a "yes" was spent on an offer that no longer
+existed and was told it worked. syncMoves detected a takeback by list LENGTH
+only, so a takeback and its replacement arriving in one event left the local
+position quietly describing a game that was no longer on the board - and with
+no uci applied, the illegal-uci resync never fired either. The resync path
+threw the sans away, leaving the clock overlay's move rows stale and an arm
+pointing into a position that no longer existed. questionOpen in clock.js
+listed three dialogue states and partialAsk was added at v117, so "say the
+rank" and "say the target" - the two questions that ask for the least - were
+the two whose message expired off the strip while they waited. And castling
+returned before the check suffix, so O-O+ was announced as a bare "castles
+kingside": the one move that could give check without saying so, and the
+opponent's castling is exactly the move being listened to rather than seen.
+
+WHAT THIS ENTRY IS REALLY ABOUT, and the rule worth keeping: none of these
+were hard, and none were found by the tests. They were found by reading two
+files side by side and asking what happens when the game changes underneath
+them. The harness now plays a second game - joins one, ends one, starts a
+real one during practice - because that transition is where all of this
+lived. Ten of the fixes were mutation-tested: the fix was reverted, the test
+was confirmed to fail, the fix was put back.
+

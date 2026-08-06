@@ -294,10 +294,22 @@
     return (SPOKEN_FILE[square[0]] || square[0]) + " " + square[1];
   }
 
+  // the check/mate suffix, which every shape below reaches at
+  // the end and castling used to return past. "O-O+" was
+  // announced as a bare "castles kingside" - the one move that
+  // could give check without saying so, and the opponent's
+  // castling is exactly the move being listened to rather than
+  // watched.
+  function checkWord(san) {
+    if (san.slice(-1) === "#") return ", checkmate";
+    if (san.slice(-1) === "+") return ", check";
+    return "";
+  }
+
   function sanToSpeech(san) {
     if (!san) return "";
-    if (san.indexOf("O-O-O") === 0) return "castles queenside";
-    if (san.indexOf("O-O") === 0) return "castles kingside";
+    if (san.indexOf("O-O-O") === 0) return "castles queenside" + checkWord(san);
+    if (san.indexOf("O-O") === 0) return "castles kingside" + checkWord(san);
     var text = san.replace(/[+#]$/, "").replace(/=([QRBN])/, "");
     var promoted = /=([QRBN])/.exec(san);
     var words = "";
@@ -314,8 +326,7 @@
     if (takes) words += "takes ";
     words += spokenSquare(target);
     if (promoted) words += ", promotes to " + SPOKEN_PIECE[promoted[1]];
-    if (san.slice(-1) === "#") words += ", checkmate";
-    else if (san.slice(-1) === "+") words += ", check";
+    words += checkWord(san);
     return words;
   }
 

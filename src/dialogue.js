@@ -74,6 +74,36 @@
   var repairMayPlay = true;
   var busy = false;
 
+  /* NO QUESTION OUTLIVES THE GAME IT WAS ASKED IN (w50).
+   *
+   * There are four dialogue states and, until now, no single
+   * place that put them down. The two ply-guarded ones expire
+   * by themselves WHILE a game runs - that is what the ply is
+   * for - but joinGame resets api.moves to empty, so a question
+   * asked at ply 0 of one game is still "current" at ply 0 of
+   * the next. The two yes/no states had no expiry at all.
+   *
+   * The bad case is not hypothetical and it is not small: ask
+   * "resign", get "Resign the game? Yes or no.", have the
+   * opponent mate you or flag you before you answer, let the
+   * next game auto-join off the event stream - and the first
+   * "yes" of the new game resigns it. Nothing in the old code
+   * stood between those two events.
+   *
+   * Called from everywhere a game begins or ends: joinGame,
+   * the game-over branch, practice on and off, voice off. The
+   * armed read-back goes with them, since it refers to a move
+   * posted in a game that is no longer the current one.
+   */
+  function clearDialogue() {
+    pending = null;
+    confirmAction = null;
+    pieceAsk = null;
+    partialAsk = null;
+    armedUci = null;
+    repairMayPlay = true;
+  }
+
   /* ---- Practice Mode ---- 
    * Runs the whole pipeline locally: mic, NATO parsing, ambiguity
    * dialogue, speech, log. No token is used and nothing is
@@ -81,9 +111,25 @@
    * the list of legal moves. */
 
   function dryStart() {
+    // EVERYTHING THAT COULD DELIVER A REAL GAME IS PUT DOWN
+    // FIRST (w50). This used to close the game stream and the
+    // timers and stop there, leaving the ACCOUNT event stream
+    // open and any outstanding seek live. Both of those exist
+    // precisely to start a game without being asked, and
+    // dryRun then gagged the result: the join happened, the
+    // real position replaced the practice one, and every
+    // announcement was suppressed because practice mode was
+    // still on. A real game with a running clock, in silence,
+    // while the board in front of you says something else.
+    // Practice is a mode where nothing is sent to Lichess, so
+    // nothing may arrive from it either.
     try { if (streamAbort) streamAbort.abort(); } catch (e) {}
+    try { if (eventAbort) eventAbort.abort(); } catch (e) {}
+    clearTimeout(eventTimer);
+    cancelSeek();
     clearTimeout(reconnectTimer);
     clearInterval(pollTimer);
+    clearDialogue();
     api.gameId = "PRACTICE";
     api.myColor = "w";
     api.pos = new RULES.Position();
@@ -98,7 +144,12 @@
   }
 
   function dryOpponentReply() {
-    if (!dryRun || api.over) return;
+    // it is scheduled 1.6s ahead, so it can land after
+    // practice has ended - including after a real game took
+    // the board. dryRun alone was the guard; the game id is
+    // added because this function APPLIES A MOVE, and the one
+    // thing it must never apply it to is a real position.
+    if (!dryRun || api.over || api.gameId !== "PRACTICE") return;
     var legal = api.pos.legalMoves();
     if (!legal.length) {
       api.over = true;
@@ -170,7 +221,19 @@
   }
 
   function acceptMove(c) {
-    if (busy) { log("DLG", "ignored, busy"); return; }
+    if (busy) {
+      // SILENCE IS NOT AN ANSWER, not even for "I am still
+      // working on the last one" (w50). This logged and
+      // returned, so a move dictated while the previous post
+      // was still in flight produced nothing at all - and
+      // nothing is the same sound as not heard, which is an
+      // invitation to say it again and to keep saying it. It
+      // is a short window normally; it was an unbounded one
+      // until postMove grew a timeout.
+      log("DLG", "ignored, busy");
+      speak("still sending the last move.");
+      return;
+    }
     busy = true;
     pending = null;
     var uci = api.pos.uciOf(c.m);
@@ -234,6 +297,19 @@
       armedUci = null;
       log("ERR", "post: " + e.message);
       speak("Could not reach Lichess.");
+    });
+  }
+
+  /* Send a confirmed yes/no action and report what actually
+   * happened (w50). In practice mode there is nothing to send
+   * and nothing to fail, so it just says the line. */
+  function confirmedAction(path, saidWhenSent) {
+    if (dryRun) { speak(saidWhenSent); return; }
+    postAction(path).then(function () {
+      speak(saidWhenSent);
+    }).catch(function (e) {
+      log("ERR", "action " + path + ": " + e.message);
+      speak("could not reach lee chess. that did not go through.");
     });
   }
 
@@ -1047,14 +1123,26 @@
 
     if (confirmAction) {
       var spec = CONFIRMS[confirmAction];
+      // THE ANSWER WAITS FOR THE POST (w50). These spoke
+      // "resigning." and "draw accepted." the instant the
+      // request left, and postAction has no catch of its own,
+      // so a failed send was an unhandled rejection and the
+      // user was told a game-ending action had happened when
+      // it had not. acceptMove has said "Could not reach
+      // Lichess." on the same shape of failure since the
+      // v-series; there is no reason the yes/no path should
+      // be the one that lies. The wording is unchanged when
+      // it works.
       if (cmd === "yes") {
         confirmAction = null;
-        postAction(spec.yes); speak(spec.yesSay); return;
+        confirmedAction(spec.yes, spec.yesSay);
+        return;
       }
       if (cmd === "no" || cmd === "cancel") {
         confirmAction = null;
-        if (spec.no) postAction(spec.no);
-        speak(spec.noSay); return;
+        if (spec.no) confirmedAction(spec.no, spec.noSay);
+        else speak(spec.noSay);      /* nothing to send: local */
+        return;
       }
       speak("Say yes or no.");
       return;

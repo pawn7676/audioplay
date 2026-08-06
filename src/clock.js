@@ -192,11 +192,19 @@
     }
   }
 
-  // Is anything waiting on an answer? The three dialogue
+  // Is anything waiting on an answer? The FOUR dialogue
   // states, read live. This is the whole of the sticky
   // rule: no message is classified, the board state is.
+  //
+  // partialAsk was added to dialogue.js at v117 and never
+  // added here, so "say the rank" and "say the target" - the
+  // two questions that ask for the least and are easiest to
+  // lose track of - were the two whose message expired off the
+  // strip while they were still waiting to be answered. A list
+  // of states is only right until the next state is added;
+  // this one is now the same list dialogue.js keeps.
   function questionOpen() {
-    return !!(pending || confirmAction || pieceAsk);
+    return !!(pending || confirmAction || pieceAsk || partialAsk);
   }
 
   // SPOKEN TEXT IS WRITTEN FOR THE EAR (v134): lower case

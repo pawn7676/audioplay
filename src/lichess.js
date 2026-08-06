@@ -28,7 +28,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w49";
+  VERSION = "w50";
 
   var RULES = makeRules();
 
@@ -224,14 +224,38 @@
     });
   }
 
+  /* A POST THAT NEVER SETTLES MUST STILL SETTLE (w50). The
+   * caller sets busy = true and clears it in this promise's
+   * handlers, so a fetch that hangs - a dead cell, a captive
+   * wifi portal, the radio asleep - leaves busy stuck true
+   * forever, and from then on EVERY accepted move is dropped
+   * with nothing said. That is a mode the user cannot see, and
+   * the only way out is the button. Twelve seconds is long
+   * enough that a slow-but-alive request still wins the race,
+   * and short enough to be inside the time a person waits
+   * before assuming they were not heard. */
+  var MOVE_POST_TIMEOUT_MS = 12000;
+
   function postMove(uci) {
     var url = "https://lichess.org/api/board/game/" + api.gameId + "/move/" + uci;
     log("PST", "move " + uci);
-    return fetch(url, { method: "POST", headers: authHeaders() })
+    var timer = null;
+    var live = fetch(url, { method: "POST", headers: authHeaders() })
       .then(function (r) {
         return r.json().catch(function () { return { ok: r.ok }; })
           .then(function (j) { return { status: r.status, body: j }; });
       });
+    var timeout = new Promise(function (_, reject) {
+      timer = setTimeout(function () {
+        reject(new Error("no reply from Lichess in " +
+                         (MOVE_POST_TIMEOUT_MS / 1000) + " seconds"));
+      }, MOVE_POST_TIMEOUT_MS);
+    });
+    // whichever wins, the timer is done with - otherwise every
+    // move leaves one armed for the full timeout behind it
+    function done(v) { clearTimeout(timer); return v; }
+    return Promise.race([live, timeout])
+      .then(done, function (e) { done(); throw e; });
   }
 
   function postAction(action) {
@@ -247,10 +271,29 @@
    * tail */
   function syncMoves(uciString, announce) {
     var list = (uciString || "").trim() ? uciString.trim().split(/\s+/) : [];
-    if (list.length < api.moves.length) {
+    /* A TAKEBACK IS NOT ALWAYS SHORTER (w50). This asked only
+     * whether the list had got shorter, which misses the case
+     * where a takeback and its replacement move arrive in one
+     * event, or where a takeback lands while a reconnect is in
+     * flight: same length, different tail. The loop then began
+     * at api.moves.length, applied nothing, and left the local
+     * position quietly describing a game that is no longer on
+     * the board - with no illegal uci to trip the resync
+     * below, because no uci was ever applied. What we hold has
+     * to be a PREFIX of what the server sent; anything else is
+     * a rebuild. The list is a few hundred entries at most and
+     * this runs once per event. */
+    var diverged = list.length < api.moves.length;
+    for (var k = 0; !diverged && k < api.moves.length; k++) {
+      if (list[k] !== api.moves[k]) diverged = true;
+    }
+    if (diverged) {
       /* takeback or new game: rebuild from scratch, silently */
+      log("MOV", "move list diverged - rebuilding");
       api.pos = new RULES.Position();
       api.moves = [];
+      api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+      armedUci = null;      /* it named a move in the old list */
       announce = false;
     }
     for (var i = api.moves.length; i < list.length; i++) {
@@ -259,8 +302,20 @@
         log("ERR", "illegal uci from stream: " + list[i] + " (resyncing)");
         api.pos = new RULES.Position();
         api.moves = [];
+        /* REPLAY, KEEPING WHAT THE REPLAY SAYS (w50). The old
+         * version threw the sans away, so after a resync the
+         * clock overlay's move rows kept showing whatever was
+         * last announced before it - and the arm survived,
+         * pointing at a move in a position that no longer
+         * exists, ready to read back against the wrong one. */
+        api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+        armedUci = null;
         for (var j = 0; j < list.length; j++) {
-          if (!api.pos.applyUci(list[j])) { log("ERR", "resync failed at " + list[j]); break; }
+          var rr = api.pos.applyUci(list[j]);
+          if (!rr) { log("ERR", "resync failed at " + list[j]); break; }
+          api.lastSan = rr.san;
+          if (rr.move.color === "w") api.lastSanW = rr.san;
+          else api.lastSanB = rr.san;
         }
         api.moves = list.slice();
         return;
@@ -290,21 +345,69 @@
    * looking at the screen, so it has to be spoken and answerable. */
   var offerState = { draw: false, takeback: false };
 
+  /* AN OFFER MAY NOT QUIETLY INHERIT SOMEBODY ELSE'S "YES"
+   * (w50). This set confirmAction unconditionally, so an offer
+   * arriving while a question was already open replaced it
+   * without a word - ask "resign", hear "Resign the game? Yes
+   * or no.", have the opponent offer a draw in the gap, say
+   * "yes" meaning resign, and accept a draw instead. Both are
+   * game-ending and they are not the same game-ending.
+   *
+   * The offer still has to be heard: it is invisible from
+   * across the room and it expires. So it takes the slot and
+   * SAYS it is doing so, naming what it displaced. The user
+   * hears one sentence instead of two and answers the question
+   * they were actually asked last.
+   *
+   * And an offer that goes away takes its question with it.
+   * Nothing cleared confirmAction when the opponent withdrew,
+   * so a "yes" arriving later posted an acceptance for an
+   * offer that no longer existed and was told it had worked.
+   */
   function checkOffers(s) {
     if (!api.myColor) return;
     var oppDraw = api.myColor === "w" ? !!s.bdraw : !!s.wdraw;
     var oppTake = api.myColor === "w" ? !!s.btakeback : !!s.wtakeback;
+    var them = colorWord(api.myColor === "w" ? "b" : "w");
+
+    function displaced() {
+      // only a question the user is mid-way through needs
+      // naming; an earlier offer being replaced by a later one
+      // is the same kind of thing and needs no apology.
+      if (confirmAction === "resign") return "that cancels the resign question. ";
+      if (confirmAction === "offerdraw") return "that cancels your draw offer question. ";
+      if (pending) return "that cancels the move question. ";
+      return "";
+    }
+
     if (oppDraw && !offerState.draw && !api.over) {
+      var wasD = displaced();
+      pending = null;
       confirmAction = "drawoffer";
-      log("API", "opponent offers a draw");
-      speak(colorWord(api.myColor === "w" ? "b" : "w") +
-            " offers a draw. Say yes to accept, no to decline.");
+      log("API", "opponent offers a draw" + (wasD ? " (displacing a question)" : ""));
+      speak(them + " offers a draw. " + wasD +
+            "Say yes to accept, no to decline.");
     }
     if (oppTake && !offerState.takeback && !api.over) {
+      var wasT = displaced();
+      pending = null;
       confirmAction = "takebackoffer";
-      log("API", "opponent asks for a takeback");
-      speak(colorWord(api.myColor === "w" ? "b" : "w") +
-            " asks to take back a move. Say yes to accept, no to decline.");
+      log("API", "opponent asks for a takeback" +
+          (wasT ? " (displacing a question)" : ""));
+      speak(them + " asks to take back a move. " + wasT +
+            "Say yes to accept, no to decline.");
+    }
+    // WITHDRAWN: the question goes with the offer, and says so,
+    // because the user may be holding a "yes" ready for it.
+    if (!oppDraw && offerState.draw && confirmAction === "drawoffer") {
+      confirmAction = null;
+      log("API", "draw offer withdrawn");
+      speak(them + " withdrew the draw offer.");
+    }
+    if (!oppTake && offerState.takeback && confirmAction === "takebackoffer") {
+      confirmAction = null;
+      log("API", "takeback request withdrawn");
+      speak(them + " withdrew the takeback request.");
     }
     offerState.draw = oppDraw;
     offerState.takeback = oppTake;
@@ -384,6 +487,11 @@
       if (!api.over) {
         api.over = true;
         log("API", "game over: " + s.status + " " + (s.winner || ""));
+        // every open question dies with the game (w50). A
+        // "yes" held over from a finished game had nothing
+        // good to do: post to a game Lichess has closed and
+        // hear "draw accepted." for a draw that was not.
+        clearDialogue();
         speak(resultSpoken(s));
       }
       return;
@@ -432,6 +540,18 @@
         return pump();
       })
       .catch(function (e) {
+        // AN ABORT IS OUR OWN DOING, NOT A DROPPED STREAM
+        // (w50). watchEvents has filtered this since it was
+        // written; this catch never did, and the omission
+        // built a loop that fed itself. startStream aborts the
+        // previous stream on its way in, that abort rejects
+        // the old reader, the rejection landed HERE, and
+        // scheduleReconnect opened another stream two seconds
+        // later - which aborted the one just opened. Every
+        // turn of it re-delivered gameFull, so the page said
+        // "reconnected. you are white. white to move." every
+        // two seconds, for as long as the game lasted.
+        if (String(e.name) === "AbortError") return;
         log("ERR", "stream: " + e.message);
         if (String(e.message).indexOf("no streaming body") >= 0) startPolling();
         else scheduleReconnect();
@@ -440,7 +560,19 @@
 
   var reconnectTimer = null;
   function scheduleReconnect() {
-    if (api.over || !running || dryRun) return;
+    // NOT GATED ON THE MIC (w50). This used to return unless
+    // `running` - the voice loop's flag - was true, which tied
+    // the game connection to the microphone. Turn voice off
+    // (or let the mic give up after eight failures), have the
+    // stream drop for any ordinary network reason, turn voice
+    // back on: the mic restarts, nothing restarts the stream,
+    // and the opponent's moves are never announced again.
+    // Listening and being connected are different things. The
+    // stream is cheap, every speaking path gates on its own
+    // state, and being connected while silent costs nothing -
+    // whereas being disconnected while listening is the
+    // failure the keep-alive exists to prevent.
+    if (api.over || dryRun || !api.gameId || api.gameId === "PRACTICE") return;
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(startStream, 2000);
   }
@@ -560,6 +692,23 @@
     if (ev.type === "gameStart" && ev.game && ev.game.id) {
       log("EVT", "gameStart " + ev.game.id);
       cancelSeek();
+      // A REAL GAME OUTRANKS PRACTICE, AND SAYS SO (w50).
+      // dryStart now closes this stream and cancels any seek,
+      // so reaching here in practice means an event that was
+      // already in flight, or an account reconnect after
+      // practice began. Rare - and the old behaviour was to
+      // join anyway with dryRun still true, which suppressed
+      // every announcement the join would have made. A live
+      // clock and no voice is the worst state this program
+      // has, so practice loses, out loud. The mic is left as
+      // it was: the user was speaking moves a moment ago and
+      // is about to need to again.
+      if (dryRun) {
+        log("DRY", "real game " + ev.game.id + " started - leaving practice");
+        dryRun = false;
+        speak("a real game has started. leaving practice.");
+        renderButton();
+      }
       joinGame(ev.game.id);
     } else if (ev.type === "gameFinish") {
       log("EVT", "gameFinish");
@@ -592,6 +741,12 @@
     api.moves = [];
     api.over = false;
     offerState = { draw: false, takeback: false };
+    // and the questions from whatever game came before this
+    // one. api.moves going empty makes every ply guard read
+    // "current" again, so the two ply-guarded asks would
+    // survive into the new game rather than expire; the two
+    // yes/no states never expired at all. See clearDialogue.
+    clearDialogue();
     (api.myId ? Promise.resolve(api.myId) : fetchMyId())
       .then(startStream)
       .catch(function (e) {

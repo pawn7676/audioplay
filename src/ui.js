@@ -75,7 +75,7 @@
       setTimeout(loadVoices, 300);
       if (dryRun) {
         dryRun = false; running = false;
-        pauseMic(); pending = null; confirmAction = null;
+        pauseMic(); clearDialogue();
         log("DRY", "practice mode OFF");
         // WEB (delta 3): dryStart took over the api state;
         // hand it back and pick up a live game if one exists
@@ -84,10 +84,13 @@
         uiGameChanged();
         rejoinCurrent();
       } else {
-        try { if (streamAbort) streamAbort.abort(); } catch (e) {}
-        clearInterval(pollTimer); clearTimeout(reconnectTimer);
+        // dryRun goes up FIRST so nothing in flight can
+        // reconnect behind us, then dryStart owns the whole
+        // teardown - game stream, account stream, seek, timers
+        // and the open questions. It used to be split between
+        // here and there, which is how the account stream came
+        // to be closed by neither (w50).
         dryRun = true; running = true;
-        pending = null; confirmAction = null;
         startKeepAlive();
         startListening();
         dryStart();
@@ -359,11 +362,23 @@
         // correctly everywhere it is READ.
         if (!storedToken()) speak("sign in with lee chess first.");
         else if (!api.gameId) speak("voice on. waiting for a game.");
+        // AND PICK THE GAME BACK UP (w50). Voice off leaves the
+        // stream alone by design, but the stream can still die
+        // on its own while voice is off - and scheduleReconnect
+        // used to refuse to act unless voice was on, so nothing
+        // was left to notice. Turning voice back on is the one
+        // moment we know the user expects to be connected, so
+        // it is the right place to make sure we are. startStream
+        // is a no-op in practice and on no game, and aborts its
+        // own predecessor, so calling it here cannot double up.
+        else if (api.gameId && api.gameId !== "PRACTICE" && !api.over) {
+          startStream();
+        }
       } else {
         dryRun = false;
         pauseMic();
         stopKeepAlive();
-        pending = null; confirmAction = null;
+        clearDialogue();
         // WEB (delta 2): no stream/poll teardown here.
         // nothing spoken, as with practice mode off: the
         // button's own state is the signal, and the user

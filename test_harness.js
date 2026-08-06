@@ -1543,6 +1543,272 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 /bravo 4|nothing|say again|which/i,
                 'a bare "b4" never becomes the capture on b5');
 
+  // ================== w50: THE LIFECYCLE ==================
+  // Every check below is a state that used to outlive the game
+  // it belonged to, or a path that used to end in silence.
+
+  // ---- castling is a move like any other when it checks ----
+  check("castling that gives check says so",
+        vm.runInContext('sanToSpeech("O-O+")', sandbox) ===
+          "castles kingside, check");
+  check("and castling that mates says that",
+        vm.runInContext('sanToSpeech("O-O-O#")', sandbox) ===
+          "castles queenside, checkmate");
+  check("plain castling is unchanged",
+        vm.runInContext('sanToSpeech("O-O")', sandbox) === "castles kingside");
+
+  // ---- the clock strip knows every question, not three ----
+  const qStates = vm.runInContext(`
+    (function () {
+      var out = {};
+      clearDialogue(); out.none = questionOpen();
+      clearDialogue(); pending = { cands: [], idx: 0 };  out.pending = questionOpen();
+      clearDialogue(); confirmAction = "resign";         out.confirm = questionOpen();
+      clearDialogue(); pieceAsk = { ply: 0, moves: [] }; out.piece = questionOpen();
+      clearDialogue(); partialAsk = { ply: 0 };          out.partial = questionOpen();
+      clearDialogue();
+      return out;
+    })()
+  `, sandbox);
+  check("nothing open reads as no question", qStates.none === false);
+  check("the strip sees all FOUR dialogue states",
+        qStates.pending && qStates.confirm && qStates.piece && qStates.partial);
+
+  // ---- a question does not survive into the next game ----
+  const survived = vm.runInContext(`
+    (function () {
+      dryRun = false;
+      api.gameId = "OLDGAME"; api.over = false;
+      confirmAction = "resign"; pending = { cands: [], idx: 0 };
+      pieceAsk = { ply: 0, moves: [] }; partialAsk = { ply: 0 };
+      armedUci = "e2e4";
+      joinGame("NEWGAME");
+      return { confirm: confirmAction, piece: pieceAsk, partial: partialAsk,
+               pending: pending, armed: armedUci };
+    })()
+  `, sandbox);
+  check("a new game clears every open question",
+        !survived.confirm && !survived.piece && !survived.partial &&
+        !survived.pending && !survived.armed);
+
+  const afterOver = vm.runInContext(`
+    (function () {
+      api.gameId = "G"; api.over = false; api.myColor = "w";
+      api.pos = new RULES.Position(); api.moves = [];
+      confirmAction = "drawoffer"; pending = { cands: [], idx: 0 };
+      handleGameState({ moves: "", status: "mate", winner: "black" }, false);
+      return { confirm: confirmAction, pending: pending, over: api.over };
+    })()
+  `, sandbox);
+  check("game over clears the open question too",
+        afterOver.over === true && !afterOver.confirm && !afterOver.pending);
+
+  // ---- an offer may take the slot, but must say it did ----
+  heard();
+  const stomp = vm.runInContext(`
+    (function () {
+      api.myColor = "w"; api.over = false;
+      offerState = { draw: false, takeback: false };
+      confirmAction = "resign";
+      checkOffers({ bdraw: true });
+      return confirmAction;
+    })()
+  `, sandbox);
+  await sleep(40);
+  const stompSaid = heard().join(" | ");
+  check("an incoming offer takes the yes/no slot (" + stomp + ")",
+        stomp === "drawoffer");
+  check("and names the question it cancelled (" + stompSaid + ")",
+        /cancels the resign question/i.test(stompSaid));
+
+  heard();
+  const withdrew = vm.runInContext(`
+    (function () {
+      api.myColor = "w"; api.over = false;
+      offerState = { draw: true, takeback: false };
+      confirmAction = "drawoffer";
+      checkOffers({ bdraw: false });
+      return confirmAction;
+    })()
+  `, sandbox);
+  await sleep(40);
+  check("a withdrawn offer takes its question with it", withdrew === null);
+  check("and says so, since a yes was being held ready",
+        /withdrew the draw offer/i.test(heard().join(" | ")));
+
+  // ---- a confirmed action reports what really happened ----
+  vm.runInContext("__realPostAction = postAction;", sandbox);
+  heard();
+  vm.runInContext(`
+    dryRun = false; api.gameId = "G"; api.over = false;
+    api.pos = new RULES.Position(); api.myColor = "w"; api.moves = [];
+    __release = null;
+    postAction = function () {
+      return new Promise(function (res) { __release = res; });
+    };
+    confirmAction = "resign";
+  `, sandbox);
+  say("yes");
+  await sleep(60);
+  check("nothing is claimed while the action is still in flight",
+        !/resigning/i.test(heard().join(" | ")));
+  vm.runInContext("__release();", sandbox);
+  await sleep(60);
+  check("and it is claimed once the post lands",
+        /resigning/i.test(heard().join(" | ")));
+
+  heard();
+  vm.runInContext(`
+    postAction = function () { return Promise.reject(new Error("no network")); };
+    confirmAction = "resign";
+  `, sandbox);
+  say("yes");
+  await sleep(80);
+  const failSaid = heard().join(" | ");
+  check("an action that failed says it failed (" + failSaid + ")",
+        /did not go through/i.test(failSaid) && !/^resigning/i.test(failSaid));
+  vm.runInContext("postAction = __realPostAction;", sandbox);
+
+  // ---- the move list is a prefix, or it is a rebuild ----
+  const sync = vm.runInContext(`
+    (function () {
+      api.pos = new RULES.Position(); api.moves = []; api.myColor = "w";
+      api.over = false; armedUci = null;
+      syncMoves("e2e4 e7e5", false);
+      // SAME LENGTH, different tail: a takeback and its
+      // replacement arriving in one event
+      syncMoves("e2e4 c7c5", false);
+      return { moves: api.moves.join(" "), last: api.lastSan,
+               turn: api.pos.turn };
+    })()
+  `, sandbox);
+  check("a same-length different tail rebuilds (" + sync.moves + ")",
+        sync.moves === "e2e4 c7c5");
+  check("and the position really is the new one (last " + sync.last + ")",
+        sync.last === "c5" && sync.turn === "w");
+
+  const resync = vm.runInContext(`
+    (function () {
+      api.pos = new RULES.Position(); api.moves = []; api.myColor = "w";
+      api.over = false; armedUci = "STALEARM";
+      api.lastSan = "STALE"; api.lastSanW = "STALE"; api.lastSanB = "STALE";
+      syncMoves("e2e4 e7e5 a1a8", false);      // a1a8 is not legal
+      return { last: api.lastSan, w: api.lastSanW, b: api.lastSanB,
+               armed: armedUci };
+    })()
+  `, sandbox);
+  check("a resync refreshes the move rows (" + resync.w + "/" + resync.b + ")",
+        resync.last !== "STALE" && resync.w !== "STALE" &&
+        resync.b !== "STALE");
+  check("and drops an arm that named the old position", !resync.armed);
+
+  // ---- being connected is not the same as listening ----
+  const recon = vm.runInContext(`
+    (function () {
+      var real = startStream, out = {};
+      startStream = function () {};
+      api.gameId = "G1"; api.over = false; dryRun = false;
+      running = false;                       // voice OFF
+      reconnectTimer = null; scheduleReconnect();
+      out.voiceOff = reconnectTimer !== null;
+      clearTimeout(reconnectTimer);
+      dryRun = true;
+      reconnectTimer = null; scheduleReconnect();
+      out.practice = reconnectTimer !== null;
+      clearTimeout(reconnectTimer);
+      dryRun = false; api.over = true;
+      reconnectTimer = null; scheduleReconnect();
+      out.gameOver = reconnectTimer !== null;
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null; api.over = false;
+      startStream = real;
+      return out;
+    })()
+  `, sandbox);
+  check("a dropped stream reconnects even with voice off",
+        recon.voiceOff === true);
+  check("but not in practice", recon.practice === false);
+  check("and not after the game is over", recon.gameOver === false);
+
+  // ---- practice puts down everything that could deliver a game ----
+  const teardown = vm.runInContext(`
+    (function () {
+      __evAborted = 0; __seekCancelled = 0;
+      eventAbort = { abort: function () { __evAborted++; } };
+      var realCancel = cancelSeek;
+      cancelSeek = function () { __seekCancelled++; };
+      confirmAction = "resign"; pending = { cands: [], idx: 0 };
+      dryRun = true;
+      dryStart();
+      cancelSeek = realCancel;
+      return { ev: __evAborted, seek: __seekCancelled,
+               confirm: confirmAction, pending: pending };
+    })()
+  `, sandbox);
+  await sleep(40); heard();
+  check("practice closes the account event stream", teardown.ev === 1);
+  check("practice cancels any outstanding seek", teardown.seek === 1);
+  check("and clears the questions with it",
+        !teardown.confirm && !teardown.pending);
+
+  // ---- a real game beats practice, out loud ----
+  heard();
+  const takeover = vm.runInContext(`
+    (function () {
+      dryRun = true; api.gameId = "PRACTICE"; api.over = false;
+      var realJoin = joinGame;
+      __joined = null;
+      joinGame = function (id) { __joined = id; };
+      handleAccountEvent({ type: "gameStart", game: { id: "REAL1" } });
+      joinGame = realJoin;
+      return { joined: __joined, dry: dryRun };
+    })()
+  `, sandbox);
+  await sleep(40);
+  check("a real game starting in practice is joined", takeover.joined === "REAL1");
+  check("and practice is left, not kept silently", takeover.dry === false);
+  check("and the user is told (" + "spoken" + ")",
+        /real game has started/i.test(heard().join(" | ")));
+
+  const dryGuard = vm.runInContext(`
+    (function () {
+      dryRun = true; api.gameId = "REALGAME"; api.over = false;
+      api.pos = new RULES.Position(); api.moves = [];
+      dryOpponentReply();          // scheduled before practice ended
+      return api.moves.length;
+    })()
+  `, sandbox);
+  check("the practice opponent never moves in a real game", dryGuard === 0);
+
+  // ---- a post that never answers must still answer ----
+  heard();
+  vm.runInContext(`
+    __realFetch2 = fetch;
+    MOVE_POST_TIMEOUT_MS = 60;       // the test's patience, not the user's
+    dryRun = false; api.gameId = "G"; api.over = false; busy = false;
+    api.pos = new RULES.Position(); api.myColor = "w"; api.moves = [];
+    fetch = function () { return new Promise(function () {}); };   // hangs
+    acceptMove({ m: api.pos.legalMoves()[0], san: "e4" });
+  `, sandbox);
+  await sleep(250);
+  const stalled = heard().join(" | ");
+  check("a post that never answers stops blocking the next move",
+        vm.runInContext("busy", sandbox) === false);
+  check("and says so rather than going quiet (" + stalled + ")",
+        /could not reach/i.test(stalled));
+
+  // and the busy refusal itself is audible
+  heard();
+  vm.runInContext(`
+    fetch = __realFetch2; MOVE_POST_TIMEOUT_MS = 12000;
+    busy = true;
+    acceptMove({ m: api.pos.legalMoves()[0], san: "e4" });
+  `, sandbox);
+  await sleep(40);
+  check("a move dictated while busy is answered, not swallowed",
+        /still sending/i.test(heard().join(" | ")));
+  vm.runInContext("busy = false; dryRun = true;", sandbox);
+
   // ---- HARD CONSTRAINT 4: NEVER EXPOSE OR LOG A TOKEN ----
   // header.js lists four constraints. This is the only one
   // whose consequence is measured in bans rather than bugs, and
