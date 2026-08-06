@@ -22,10 +22,21 @@ code they were learned in.
 ## Commands
 
 ```
-node test_harness.js   # must be all-pass before any commit
-node perft_check.js    # only when src/rules.js changes
-node build.js          # writes index.html locally, to LOOK at
+node test_harness.js    # must be all-pass before any commit
+node property_check.js  # the invariants, on generated utterances
+node perft_check.js     # only when src/rules.js changes
+node build.js           # writes index.html locally, to LOOK at
 ```
+
+`property_check.js` is the other half of the harness, and it
+guards what the harness structurally cannot. A hand-written test
+only ever checks the cases its author imagined, and the author is
+the person who wrote the bug. This generates instead: random
+games for positions, the whole spoken grammar for sentences, and
+rules that must hold whatever was said — a bare square is a pawn
+push, a take word means a capture, a spoken file is the mover's
+file. Seeded, so a failure reproduces. Raise the position count
+when the grammar grows.
 
 `build.js` is pure concatenation: it joins the files named in
 `manifest.txt`, in order, and inlines them into
@@ -107,7 +118,7 @@ lessons are baked in:
   never by returning to it — which is exactly where it
   broke (w37).
 
-`.github/workflows/checks.yml` runs all three commands on
+`.github/workflows/checks.yml` runs all four commands on
 every pull request and every push to `main`. Running them
 locally is still the rule — CI is the backstop, not the
 first line — but it means an edit made in GitHub's web UI,

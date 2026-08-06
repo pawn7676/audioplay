@@ -1,0 +1,367 @@
+/* property_check.js — the invariants, on utterances nobody chose.
+ *
+ *   node property_check.js [positions]
+ *
+ * WHY THIS EXISTS. The harness proves that particular sentences
+ * do particular things, on boards a person picked. That is
+ * exactly the wrong shape for the risk this program actually
+ * carries: the failure that matters is not "the sentence I
+ * thought of does the wrong thing", it is "some sentence I never
+ * thought of quietly becomes a legal move". A hand-written test
+ * can only ever check the cases its author already imagined, and
+ * the author is the same person who wrote the bug.
+ *
+ * So this generates the utterances instead. Random games supply
+ * the positions; the whole spoken grammar supplies the sentences;
+ * every combination is checked against rules that must hold no
+ * matter what was said. When one breaks it prints the position,
+ * the utterance and the move that got through.
+ *
+ * THIS IS THE TEST THAT EXISTED AND WAS LOST. us-header records a
+ * 320k-utterance run confirming that no bare square can produce a
+ * piece move or a capture - the game6 invariant, the one that
+ * matters most, since game6 was a capture played unasked that
+ * lost a game. Only a spot check survived into this repo (see
+ * test_harness.js). w40 to w44 then widened the capture grammar
+ * four times in one day, each validated against positions chosen
+ * by hand, every argument resting on "uniqueness is counted over
+ * every legal move landing there". That claim deserves a machine.
+ *
+ * THE SLICE, NOT THE PAGE. It loads vocabulary, parsing and
+ * matching only - the three files that turn words into moves -
+ * with rules.js underneath and log/api/CFG stubbed. No DOM, no
+ * boot, no speech. That keeps it fast enough to run hundreds of
+ * thousands of utterances on every push, and it is the slice
+ * those files' own headers already say they are testable as.
+ * The dialogue-level invariants (silence is never an answer, "I
+ * heard" never claims what was not said) need the whole page and
+ * live in test_harness.js beside it.
+ *
+ * NO Math.random ANYWHERE. A property test that cannot be re-run
+ * on the same input is a rumour, not a result: the failure has to
+ * survive long enough to be read, fixed and re-checked. The
+ * generator is a seeded LCG, so the seed printed at the top
+ * reproduces the run exactly.
+ */
+"use strict";
+const fs = require("fs");
+const vm = require("vm");
+
+const POSITIONS = parseInt(process.argv[2] || "150", 10);
+const SEED = 20260806;
+
+/* ---- the slice, loaded as one script ------------------------ */
+const sandbox = vm.createContext({ console });
+const slice = ["rules.js", "vocabulary.js", "parsing.js", "matching.js"]
+  .map(f => fs.readFileSync("src/" + f, "utf8")).join("");
+vm.runInContext(
+  slice +
+  // stubs for the three globals the slice touches outside the
+  // word-to-move path: log is noise here, api and CFG are only
+  // reached by bareGuardCands and the spoken query answers.
+  "\n var RULES = makeRules();" +
+  "\n function log() {}" +
+  "\n function speak() {}" +
+  "\n var api = { pos: null, myColor: 'w', moves: [], over: false };" +
+  "\n var CFG = { guardPawnPushes: true, confirmMyMove: false };",
+  sandbox, { filename: "slice(vocabulary,parsing,matching)" });
+
+/* ---- deterministic generator -------------------------------- */
+let seed = SEED;
+function rnd(n) {                       // 0 <= rnd(n) < n
+  seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+  return seed % n;
+}
+
+const FILES = "abcdefgh".split("");
+const SPOKEN_FILE = { a: "alpha", b: "bravo", c: "charlie", d: "delta",
+                      e: "echo", f: "foxtrot", g: "golf", h: "hotel" };
+const SPOKEN_RANK = { 1: "one", 2: "two", 3: "three", 4: "four",
+                      5: "five", 6: "six", 7: "seven", 8: "eight" };
+const PIECE_WORD = { p: "pawn", n: "knight", b: "bishop",
+                     r: "rook", q: "queen", k: "king" };
+
+/* Positions come from RANDOM GAMES, not from a list. A list of
+ * FENs is a list of situations someone thought of, which is the
+ * thing this file exists to avoid. Every game runs a random
+ * number of plies, so openings, middlegames and thin endgames
+ * all turn up in proportion to how often they occur.
+ *
+ * Each sampled position keeps the move list that built it, and
+ * that - not a FEN - is what a failure prints. It is
+ * reproducible by hand, it is what test_harness.js already
+ * replays games with, and a FEN would need a serialiser
+ * rules.js does not have and must not grow for a test's sake.
+ */
+function samplePositions(n) {
+  vm.runInContext("var __positions = [];", sandbox);
+  const trails = [];
+  while (trails.length < n) {
+    const plies = rnd(70);
+    const ucis = [];
+    vm.runInContext("var __p = new RULES.Position();", sandbox);
+    for (let i = 0; i < plies; i++) {
+      const ms = vm.runInContext(
+        "__p.legalMoves().map(function (m) { return __p.uciOf(m); })", sandbox);
+      if (!ms.length) break;
+      const u = ms[rnd(ms.length)];
+      vm.runInContext("__p.applyUci(" + JSON.stringify(u) + ");", sandbox);
+      ucis.push(u);
+    }
+    const alive = vm.runInContext("__p.legalMoves().length", sandbox);
+    if (!alive) continue;               // mate or stalemate: nothing to say
+    vm.runInContext("__positions.push(__p);", sandbox);
+    trails.push(ucis);
+  }
+  return trails;
+}
+
+/* ---- the utterances ----------------------------------------- */
+/* TWO BATTERIES, and the second is the one that finds things.
+ *
+ * The BLIND battery walks the whole grammar across all 64
+ * squares and all 8 files regardless of the position. It is what
+ * catches a sentence that should mean nothing and means
+ * something.
+ *
+ * The DERIVED battery is built from the position's own legal
+ * moves: for each one, the sentences a person would actually say
+ * to ask for it. That matters because the blind battery is
+ * mostly noise - almost every square is unreachable, so almost
+ * every utterance returns nothing and proves nothing. The
+ * interesting cases are the DENSE ones: two pawns that can take
+ * the same square, a pawn and a piece that can, a file with more
+ * than one capture on it. Those are rare by accident and certain
+ * by construction.
+ *
+ * This was found the hard way. With the blind battery alone, a
+ * mutant that deleted the spoken from-file filter entirely
+ * SURVIVED 7,840 checks - not because the rule was unchecked,
+ * but because no generated utterance ever reached a board where
+ * it mattered. A property test whose generator never builds the
+ * hard case is a test that passes for the wrong reason, which is
+ * the same failure as w27/w28 wearing different clothes.
+ */
+const SAY_SQ = sq => SPOKEN_FILE[sq[0]] + " " + SPOKEN_RANK[sq[1]];
+
+function blindBattery() {
+  const u = [];
+  const squares = [];
+  FILES.forEach(f => { for (let r = 1; r <= 8; r++) squares.push(f + r); });
+  squares.forEach(sq => {
+    u.push({ t: SAY_SQ(sq), kind: "bare-square", sq: sq });
+    u.push({ t: "takes " + SAY_SQ(sq), kind: "takes-square", sq: sq });
+    u.push({ t: SAY_SQ(sq) + " takes", kind: "square-takes" });
+  });
+  FILES.forEach(f => {
+    u.push({ t: "takes " + SPOKEN_FILE[f], kind: "takes-file" });
+    u.push({ t: SPOKEN_FILE[f] + " takes", kind: "file-takes" });
+    FILES.forEach(g => {
+      u.push({ t: SPOKEN_FILE[f] + " takes " + SPOKEN_FILE[g],
+               kind: "file-takes-file" });
+    });
+  });
+  return u;
+}
+
+function derivedBattery(moves) {
+  const u = [], seen = {};
+  const add = (t, kind, extra) => {
+    const key = kind + "|" + t;
+    if (seen[key]) return;
+    seen[key] = 1;
+    u.push(Object.assign({ t: t, kind: kind }, extra || {}));
+  };
+  moves.forEach(m => {
+    const ff = m.from[0];
+    add(SAY_SQ(m.to), "bare-square", { sq: m.to });
+    add(PIECE_WORD[m.piece] + " " + SAY_SQ(m.to), "piece-square",
+        { piece: m.piece, sq: m.to });
+    add(m.from + " " + SAY_SQ(m.to), "from-to", { sq: m.to });
+    if (!m.captured) return;
+    add("takes " + SAY_SQ(m.to), "takes-square", { sq: m.to });
+    add(SPOKEN_FILE[ff] + " takes " + SAY_SQ(m.to), "file-takes-square",
+        { sq: m.to });
+    add(PIECE_WORD[m.piece] + " takes " + SAY_SQ(m.to), "piece-takes-square",
+        { piece: m.piece, sq: m.to });
+    add(SPOKEN_FILE[ff] + " takes " + SPOKEN_FILE[m.to[0]], "file-takes-file");
+    add(SPOKEN_FILE[ff] + " takes", "file-takes");
+    add(SAY_SQ(m.from) + " takes", "square-takes");
+    add("takes " + SPOKEN_FILE[m.to[0]], "takes-file");
+  });
+  return u;
+}
+
+/* ---- the invariants ----------------------------------------- */
+/* THE CHECKING RUNS INSIDE THE SANDBOX, one call per position
+ * rather than one per utterance. Crossing the vm boundary costs
+ * more than every rule below put together: the first draft did
+ * two crossings per utterance and managed 56k in 27 seconds,
+ * which is too slow to run on every push and therefore too slow
+ * to be run at all. Same rules, same failures, one crossing. */
+vm.runInContext(`
+  function __check(pos, batch) {
+    var bad = [];
+    // MEMOIZE legalMoves FOR THE BATCH. findMoves calls it on
+    // every utterance and it costs 0.17ms - 56k utterances spend
+    // 19 of their 26 seconds regenerating the same move list. The
+    // position cannot change while a batch runs (nothing here
+    // applies a move), so one generation serves all of them, and
+    // what findMoves computes is unchanged. Restored afterwards
+    // so no later caller ever sees the stub.
+    var realLegal = pos.legalMoves;
+    var moves = realLegal.call(pos);
+    pos.legalMoves = function () { return moves; };
+    var legal = {};
+    moves.forEach(function (m) { legal[pos.uciOf(m)] = 1; });
+    function note(rule, utt, detail) {
+      if (bad.length < 12) bad.push([rule, utt, detail]);
+    }
+    for (var i = 0; i < batch.length; i++) {
+      var u = batch[i], req, ms;
+      try {
+        req = parseTranscript(u.t);
+        ms = findMoves(pos, req);
+      } catch (e) {
+        note("THREW: " + e.message, u.t, "");
+        continue;
+      }
+      for (var j = 0; j < ms.length; j++) {
+        var m = ms[j];
+        var uci = pos.uciOf(m);
+        var from = RULES.sqName(m.from), to = RULES.sqName(m.to);
+
+        // 1. EVERYTHING OFFERED IS LEGAL. Cheap, and it catches
+        //    any move built rather than selected.
+        if (!legal[uci]) note("candidate is not a legal move", u.t, uci);
+
+        // 2. THE GAME6 INVARIANT. A bare square is a pawn PUSH:
+        //    never a piece, never a capture. This is the rule the
+        //    lost 320k-utterance run guarded, and the one every
+        //    capture widening from w40 on has had to stay clear
+        //    of. game6 was a capture played unasked, and it lost
+        //    the game.
+        if (u.kind === "bare-square" && (m.piece !== "p" || m.captured)) {
+          note("bare square produced a piece move or a capture", u.t,
+               uci + " (" + m.piece +
+               (m.captured ? " takes " + m.captured : " push") + ")");
+        }
+
+        // 3. NO TAKE WORD, NO PAWN CAPTURE - UNLESS BOTH SQUARES
+        //    WERE SPOKEN. "charlie five" means the pawn steps
+        //    there even when a pawn could also capture there; but
+        //    "bravo one charlie three" names the whole move and
+        //    is exempt by design (matching.js applies the strict
+        //    filters only when no from-square was given).
+        //
+        //    This property was first written WITHOUT the
+        //    exemption and immediately failed on clean source,
+        //    five times, on utterances like "e2 delta three". The
+        //    code was right and the rule was wrong. Worth leaving
+        //    in the comment: the first thing a property test
+        //    finds is usually the author's own misunderstanding
+        //    of the invariant.
+        if (!req.capture && req.squares.length < 2 &&
+            m.piece === "p" && m.captured) {
+          note("pawn capture from an utterance with no take word", u.t, uci);
+        }
+
+        // 4. A TAKE WORD MEANS A CAPTURE. Nothing that leaves the
+        //    board unchanged may answer "takes".
+        if (req.capture && !m.captured) {
+          note("take word produced a non-capture", u.t, uci);
+        }
+
+        // 5. A NAMED PIECE IS THE PIECE THAT MOVES.
+        if (req.piece && m.piece !== req.piece) {
+          note("named " + req.piece + " but moved " + m.piece, u.t, uci);
+        }
+
+        // 6. A SPOKEN FROM-FILE IS THE MOVER'S FILE, whenever no
+        //    whole from-square was given. Every capture widening
+        //    from w40 on leaned on this to argue it was safe.
+        if (req.fromFile && req.squares.length < 2 &&
+            from[0] !== req.fromFile) {
+          note("from-file " + req.fromFile + " but moved from " + from,
+               u.t, uci);
+        }
+
+        // 7b. A SPOKEN FROM-SQUARE IS THE MOVER'S SQUARE. Added
+        //    after a mutant that deleted this filter outright
+        //    SURVIVED the whole suite: properties 1 and 7 only
+        //    check that the DESTINATION is right and that the
+        //    move is legal, so "e2 delta three" answered with
+        //    some other piece's move to d3 passed every rule
+        //    there was. The fully-spelled form is the one that
+        //    skips the bare-square guard, so it is the last form
+        //    that should be allowed to move a piece nobody named.
+        if (req.squares.length >= 2 && from !== req.squares[0]) {
+          note("from-square " + req.squares[0] + " but moved from " + from,
+               u.t, uci);
+        }
+
+        // 7. A SPOKEN DESTINATION IS THE DESTINATION.
+        if (u.sq && req.squares.length === 1 && to !== u.sq) {
+          note("destination " + u.sq + " but moved to " + to, u.t, uci);
+        }
+      }
+
+      // 8. DETERMINISM. The same words on the same board must
+      //    mean the same thing twice - Safari sends the same
+      //    utterance more than once, and the second reading must
+      //    never differ from the first.
+      var again = findMoves(pos, parseTranscript(u.t))
+                    .map(function (m2) { return pos.uciOf(m2); }).join(",");
+      if (again !== ms.map(function (m2) { return pos.uciOf(m2); }).join(",")) {
+        note("same utterance, different answer on re-parse", u.t, again);
+      }
+    }
+    pos.legalMoves = realLegal;
+    return { bad: bad, n: batch.length };
+  }
+`, sandbox);
+
+
+const failures = [];
+let checked = 0;
+
+function note(rule, where, utt, detail) {
+  if (failures.length < 12) {
+    failures.push(rule + "\n    after:  " + where +
+                  "\n    said:  \"" + utt + "\"\n    got:   " + detail);
+  }
+}
+
+function run() {
+  const trails = samplePositions(POSITIONS);
+  const blind = blindBattery();
+  console.log("seed " + SEED + ", " + trails.length + " positions, " +
+              blind.length + " blind utterances each plus every " +
+              "sentence their own legal moves suggest");
+
+  trails.forEach((trail, pi) => {
+    vm.runInContext("var __pos = __positions[" + pi + "];", sandbox);
+    const where = trail.length ? trail.join(" ") : "(start position)";
+    const moves = vm.runInContext(`
+      __pos.legalMoves().map(function (m) {
+        return { piece: m.piece, captured: m.captured || null,
+                 from: RULES.sqName(m.from), to: RULES.sqName(m.to) };
+      })`, sandbox);
+    const batch = blind.concat(derivedBattery(moves));
+    sandbox.__batch = batch;
+    const res = vm.runInContext("__check(__pos, __batch)", sandbox);
+    checked += res.n;
+    res.bad.forEach(b => note(b[0], where, b[1], b[2]));
+  });
+
+  console.log(checked.toLocaleString() + " utterances checked");
+  if (failures.length) {
+    console.log("\nFAILED:\n");
+    failures.forEach(f => console.log("  " + f + "\n"));
+    if (failures.length >= 12) console.log("  (first 12 shown)");
+    process.exit(1);
+  }
+  console.log("all properties hold");
+}
+
+run();
