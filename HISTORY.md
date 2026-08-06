@@ -676,3 +676,47 @@ sentences that already said "I heard", so deleting that clause made the
 property stop looking. It asks the parser whether a reading existed, and
 requires one whenever it did. A rule that only inspects what already obeys
 it is not a rule.
+
+### w47
+
+THREE THINGS GAME w46-1 TURNED UP, in a log the owner called "not perfect
+but pretty darn good". He was right on both counts: everything asked for
+worked - the read-back renders squares, a missing victim is named, "pawn"
+answers a which-piece question, promotion, castling and "text" all landed -
+and three real faults sat underneath.
+
+PROMOTION VARIANTS NOW COLLAPSE EVERYWHERE, not only in findMoves. At
+19:19:24 answering "pawn" offered bxa4 and then bxa8 four times over -
+queen, rook, bishop, knight - so five questions stood between him and two
+moves he could name. findMoves has collapsed promotions since long before
+today; the six repair sites each built their own candidate list and not one
+of them did. They share a builder now.
+
+The trade is real and worth stating: underpromotion is no longer reachable
+by saying "no" four times. It is reachable the way the grammar has always
+offered it, by naming the piece, which he used fluently in the same game
+("bravo takes alpha eight equals queen"). Four questions on every
+promotion, to keep a path that duplicates a phrase that already works, is
+the wrong side of it.
+
+A BARE "Say again." WHEN SOMETHING PLAIN WAS HEARD. "Rook Delta" got it
+twice at 19:12:51, and "Text Delta" at 19:22:19. w46 said a refusal repeats
+the reading back unless there is no reading - and reqIsEmpty, which decided
+that, asks only about castle, squares and victim. A piece and a file
+counted as nothing heard at all. reqIsEmpty is left alone, because
+collectCandidates uses it to decide what is a move in the first place and
+widening it there would change which utterances become candidates; the
+refusal asks its own question instead.
+
+AND THE VERB. "Takes golf five" was refused with "No pawn can GO there".
+He had said takes. Small, and the third fault in three days of the same
+family: the sentence has to match the sentence it is answering.
+
+Two findings from the same log are NOT here, deliberately. A named victim
+that rules everything out still falls through to the generic refusal
+("queen takes pawn" when no queen can take a pawn), and a rival
+transcription that MIS-HEARS the first word - "Nate takes pawn" for "Night
+takes pawn" - is not demoted the way one that DROPS it is, so it offered
+three moves that were not knight moves. The owner spotted the second one
+himself, mid-game, and recorded it as a memo. Both are ranking work and
+want their own change.

@@ -1293,6 +1293,55 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("a piece that truly cannot take there is still refused",
         /no bishop can take there/i.test(heard().join(" | ")));
 
+  // ---- w47: three things game w46-1 turned up ----
+
+  // 19:19:24. Answering a question offered bxa4 and then bxa8
+  // FOUR TIMES - queen, rook, bishop, knight. findMoves has
+  // collapsed promotions for years; the six repair sites each
+  // built their own candidate list and none of them did. Here
+  // the four bxa8 variants are the ONLY captures from the
+  // b-file, so before the fix this asked, and after it plays.
+  await onBoard("r3k3/1P6/8/8/8/8/8/4K3 w - - 0 1", "bravo takes",
+                /bravo takes alpha 8, promotes to queen/i,
+                "promotion variants collapse to one candidate");
+  // and naming the piece still gets that piece
+  await onBoard("r3k3/1P6/8/8/8/8/8/4K3 w - - 0 1",
+                "bravo takes alpha eight equals rook",
+                /promotes to rook/i,
+                "an underpromotion said out loud is still honoured");
+
+  // 19:12:51 and 19:22:19. "Rook Delta" - a piece and a file,
+  // said plainly - got a bare "Say again." twice, because
+  // reqIsEmpty counts only castle, squares and victim, so this
+  // read as nothing heard at all.
+  await onBoard("4k3/8/8/8/8/8/8/R2QK3 w - - 0 1", "rook delta",
+                /I heard rook delta\. That is not a legal move/i,
+                '"rook delta" gets its reading back, not a bare refusal');
+  // an utterance with genuinely nothing in it still gets the
+  // bare sentence - there is no reading to repeat
+  await setBoard("4k3/8/8/8/8/8/8/R2QK3 w - - 0 1");
+  say("wobble");
+  await sleep(80);
+  const noise = heard().join(" | ");
+  check("noise with no move in it stays bare (" + noise + ")",
+        /say again/i.test(noise) && !/I heard/i.test(noise));
+
+  // 19:26:49. "takes golf five" was refused with "No pawn can
+  // GO there" - he had said takes. The verb has to match the
+  // sentence it answers.
+  await onBoard("4k3/8/8/6p1/8/5N2/8/4K1R1 w - - 0 1", "takes golf five",
+                /no pawn can take there/i,
+                "a capture is refused with the capture verb");
+  // the push wording needs an EMPTY target: with a piece
+  // standing on g5 the request takes the "that would be a
+  // capture" branch instead, which is a different sentence.
+  // The first draft of this test asserted the push wording on
+  // the capture board and failed for that reason - the
+  // position, not the code.
+  await onBoard("4k3/8/8/8/8/5N2/8/4K1R1 w - - 0 1", "golf five",
+                /no pawn can go there/i,
+                "and a push is still refused with the push verb");
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();
