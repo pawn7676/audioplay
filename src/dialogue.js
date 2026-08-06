@@ -405,6 +405,44 @@
    * counted over every legal move landing where they are looking.
    * Different decision, kept separate.
    */
+  /* MOVES BECOME CANDIDATES IN ONE PLACE, and the promotion
+   * variants collapse on the way.
+   *
+   * Game w46-1, 19:19:24: answering "pawn" to a half-square
+   * question offered bxa4 and then bxa8 FOUR TIMES over -
+   * queen, rook, bishop, knight - so five questions stood
+   * between the owner and two moves he could name. findMoves
+   * has collapsed promotions since long before today, but six
+   * repair sites each built their own candidate list and none
+   * of them did.
+   *
+   * THE TRADEOFF, and it is a real one: underpromotion is no
+   * longer reachable by saying "no" four times. It is reachable
+   * the way the grammar has always offered it, by naming the
+   * piece - "echo takes delta 8 equals rook" - which the owner
+   * already says fluently. Four questions to reach a rook, on
+   * every promotion, to keep a path that duplicates a phrase
+   * that already works, is the wrong side of that trade. If a
+   * game ever wants the old behaviour back this is the comment
+   * to argue with.
+   */
+  function candidatesOf(moves, req) {
+    var want = (req && req.trailingPiece && req.trailingPiece !== "p")
+             ? req.trailingPiece : "q";
+    var at = {}, kept = [];
+    moves.forEach(function (m) {
+      if (!m.promotion) { kept.push(m); return; }
+      var key = RULES.sqName(m.from) + RULES.sqName(m.to);
+      if (!(key in at)) { at[key] = kept.length; kept.push(m); return; }
+      // same pawn, same square, different piece: keep whichever
+      // was asked for, in the position the first one held
+      if (m.promotion === want) kept[at[key]] = m;
+    });
+    return kept.map(function (m) {
+      return { m: m, san: api.pos.sanOf(m) };
+    });
+  }
+
   function offer(cands, label) {
     var play = cands.length === 1 && !CFG.confirmMyMove;
     if (label) {
@@ -833,9 +871,7 @@
       }
       var answered = pieceAskAnswer(req);
       if (answered) {
-        var acs = answered.map(function (m) {
-          return { m: m, san: api.pos.sanOf(m) };
-        });
+        var acs = candidatesOf(answered, req);
         log("CND", "piece answer: " +
             acs.map(function (c) { return c.san; }).join(","));
         pieceAsk = null;
@@ -869,9 +905,7 @@
       var pAns = partialAnswer(req, transcripts);
       if (pAns) {
         if (pAns.length) {
-          var pcs = pAns.map(function (m) {
-            return { m: m, san: api.pos.sanOf(m) };
-          });
+          var pcs = candidatesOf(pAns, req);
           log("CND", "partial answer: " + pcs.map(function (c2) {
             return c2.san;
           }).join(","));
@@ -965,9 +999,7 @@
           refuse(req, what + whence + whither + ".");
           return;
         }
-        var ocands = ocaps.map(function (m) {
-          return { m: m, san: api.pos.sanOf(m) };
-        });
+        var ocands = candidatesOf(ocaps, req);
         offer(narrowBySaid(ocands, transcripts), "origin capture");
         return;
       }
@@ -1026,9 +1058,7 @@
           return true;
         });
         if (half.length) {
-          var narrowed = narrowBySaid(half.map(function (m) {
-            return { m: m, san: api.pos.sanOf(m) };
-          }), transcripts);
+          var narrowed = narrowBySaid(candidatesOf(half, req), transcripts);
           if (narrowed.length === 1) {
             // A UNIQUE FIT PLAYS AT ONCE (v119, was
             // mate-only in v118). Only one move fits
@@ -1127,9 +1157,7 @@
           refuse(req, "It has nothing to take.");
           return;
         }
-        var ncaps = narrowBySaid(pcaps.map(function (m) {
-          return { m: m, san: api.pos.sanOf(m) };
-        }), transcripts);
+        var ncaps = narrowBySaid(candidatesOf(pcaps, req), transcripts);
         if (ncaps.length === 1) {
           // named mover, unique capture: the v111 bar is
           // met, so it plays - see the half-square repair
@@ -1163,9 +1191,7 @@
                  api.pos.sanOf(m).slice(-1) === "#";
         });
         if (pmates.length) {
-          var nmates = pmates.map(function (m) {
-            return { m: m, san: api.pos.sanOf(m) };
-          });
+          var nmates = candidatesOf(pmates, req);
           // one mate plays at once - every candidate here
           // mates by construction, so the only uncertainty
           // is WHICH mate, and with one there is none; see
@@ -1212,6 +1238,24 @@
         // were not a move. "No move in that" would claim the
         // second. "Say again." claims neither, which is the
         // only true thing available.
+        // WAS THERE A READING TO GIVE BACK? reqIsEmpty asks
+        // only about castle, squares and victim, so "rook
+        // delta" - a piece and a file, said plainly - counted
+        // as nothing heard and got this bare sentence twice in
+        // game w46-1 (19:12:51), as did "text delta" at
+        // 19:22:19. w46's rule is that a refusal says the
+        // reading back unless there is no reading, and there
+        // plainly was one.
+        //
+        // reqIsEmpty is left alone: collectCandidates uses it
+        // to decide what counts as a move at all, and widening
+        // it there would change which utterances are
+        // candidates. This is a different question - "is there
+        // anything to repeat" - and it gets its own answer.
+        if (req.piece || req.fromFile || req.fromRank) {
+          refuse(req, "That is not a legal move.");
+          return;
+        }
         speak("Say again.");
         return;
       }
@@ -1300,7 +1344,12 @@
             " could");
         // askPiece leaves the question open: see pieceAsk
         // in the state block at the top of this file for why
-        askPiece(alt, "No pawn can go there.");
+        // "go there" is a PUSH. Game w46-1, 19:26:49: "takes
+        // golf five" was refused with "No pawn can go there",
+        // and he had said takes. The verb has to match the
+        // sentence it is answering.
+        askPiece(alt, req.capture ? "No pawn can take there."
+                                  : "No pawn can go there.");
         return;
       }
       refuse(req, "That is not a legal move.");
