@@ -48,6 +48,30 @@
     takebackoffer: { yes: "takeback/yes", yesSay: "takeback accepted.",
                      no: "takeback/no", noSay: "takeback declined." }
   };
+  /* A REPAIR MAY BE FIRED BY A RIVAL READING, BUT THEN IT MAY
+   * ONLY ASK (w49).
+   *
+   * Safari returns up to eight rival transcriptions.
+   * collectCandidates has read all of them since the v-series -
+   * scored by which alternative they came from, demoted a tier
+   * if they lost a word. The repair chain never saw past the
+   * first: handleTranscripts parsed transcripts[0] and every
+   * repair worked from that one request.
+   *
+   * Game w47-1, 20:09:06: six readings arrived and the SECOND
+   * was "Pond takes", which parses cleanly and would have
+   * played. The primary was "Plants". The move was lost.
+   *
+   * The rule for what a rival reading may do is v119's, applied
+   * one level out. There the line was that a request whose
+   * PIECE is inferred rather than heard still confirms. Here
+   * the whole REQUEST is inferred - it is not what the mic
+   * ranked first - so it may raise a question and may not
+   * play a move. That keeps this strictly additive: it can
+   * only ever turn "Say again." into something answerable,
+   * which is the same bar w40 set for the origin repair.
+   */
+  var repairMayPlay = true;
   var busy = false;
 
   /* ---- Practice Mode ---- 
@@ -444,7 +468,7 @@
   }
 
   function offer(cands, label) {
-    var play = cands.length === 1 && !CFG.confirmMyMove;
+    var play = cands.length === 1 && !CFG.confirmMyMove && repairMayPlay;
     if (label) {
       log("CND", label + ": " +
           cands.map(function (c) { return c.san; }).join(",") +
@@ -904,16 +928,28 @@
     // yes/no, several ask for the target, and none gets
     // the truth - the piece has nothing to take, so the
     // piece name itself was probably the misheard word.
-    if (req.piece && req.capture && !req.squares.length &&
-        !req.victim && !req.fromFile && !req.fromRank) {
-      // every capture that piece can make, and nothing else
-      // was heard to narrow it
+    // A NAMED VICTIM BELONGS HERE TOO (w49). The gate used to
+    // exclude it, so "queen takes pawn" with no queen-takes-
+    // pawn on the board fell past every repair and got the
+    // generic "That is not a legal move" - game w47-1 heard
+    // that three times (20:14:26, 20:14:36, 20:15:03). The
+    // VICTIM was what ruled the move out, and w45 settled that
+    // a refusal has to name the half that did. The same
+    // widening answers "takes knight" with no knight to take,
+    // mover named or not.
+    if (req.capture && !req.squares.length &&
+        !req.fromFile && !req.fromRank && (req.piece || req.victim)) {
+      // every capture matching what was named, and nothing
+      // else was heard to narrow it
       var cc = anyMove();
       cc.piece = req.piece;
+      cc.victim = req.victim;
       cc.mustCapture = true;
       var pcaps = movesFor(api.pos, cc);
       if (!pcaps.length) {
-        refuse(req, "It has nothing to take.");
+        refuse(req, req.victim
+                 ? "No " + PIECE_NAME[req.victim] + " for it to take."
+                 : "It has nothing to take.");
         return true;
       }
       var ncaps = narrowBySaid(candidatesOf(pcaps, req), transcripts);
@@ -1243,8 +1279,23 @@
       // their order - which is load-bearing, and which I had to
       // reason about carefully when the origin repair was added
       // - was their position in this function and nothing else.
-      for (var ri = 0; ri < REPAIRS.length; ri++) {
-        if (REPAIRS[ri](req, transcripts)) return;
+      // EVERY READING GETS A LOOK, primary first. A later one
+      // is only reached when every repair has declined every
+      // earlier one, so nothing that works today changes; and
+      // it may only ask, never play (see repairMayPlay).
+      for (var ti = 0; ti < transcripts.length; ti++) {
+        var rq = ti === 0 ? req : parseTranscript(transcripts[ti]);
+        if (ti > 0) {
+          // nothing in it at all is not a reading worth trying
+          if (reqIsEmpty(rq) && !rq.piece &&
+              !rq.fromFile && !rq.fromRank) continue;
+          log("PRS", "rival reading " + ti + ": " + describeReq(rq));
+        }
+        repairMayPlay = (ti === 0);
+        for (var ri = 0; ri < REPAIRS.length; ri++) {
+          if (REPAIRS[ri](rq, transcripts)) { repairMayPlay = true; return; }
+        }
+        repairMayPlay = true;
       }
 
       if (reqIsEmpty(req)) {

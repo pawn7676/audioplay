@@ -757,3 +757,46 @@ readings since the v-series; the repair chain has never seen past the
 first. A good reading sitting in slot 1 is invisible to it. That wants its
 own change and its own thinking about what a noisy alternative is allowed
 to trigger.
+
+### w49
+
+THE LAST THREE FROM GAME w47-1, and the list is empty.
+
+A NAMED VICTIM NARROWS THE REFUSAL. "Queen takes pawn" with no
+queen-takes-pawn on the board got the generic "That is not a legal move"
+three times in that game. The capture repair's gate excluded a named
+victim outright, so the request fell past every repair - and the VICTIM was
+the thing that ruled it out. w45 settled that a refusal names the half that
+did. The same widening answers "takes knight" with no knight to take,
+whether or not a mover was named.
+
+A MIS-HEARD FIRST WORD IS DEMOTED LIKE A DROPPED ONE. semanticKey passes a
+word it does not know straight through, so "Nate takes pawn" keyed as
+"nate x pp" while "Night takes pawn" keyed as "pn x pp" - not a suffix, so
+the clipping rule never fired and the knight-less reading ranked level with
+the real one. It contributed cxb7, Bxh6 and Qxd6 to a question about
+"night takes pawn", and the owner noticed mid-game and left a memo saying
+only Nxd6 was available. His second attempt is the proof: there Safari
+returned "It takes pawn", the word VANISHED rather than mutated, and the
+demotion worked perfectly. Dropping what is not vocabulary before comparing
+makes the two cases one case. An unrecognised word is not evidence.
+
+AND THE REPAIR CHAIN SEES EVERY READING. Safari returns up to eight rival
+transcriptions. collectCandidates has read all of them since the v-series,
+scored by which alternative they came from and demoted a tier for a lost
+word. The repair chain never saw past the first: handleTranscripts parsed
+transcripts[0] and every repair worked from that one request. At 20:09:06
+six readings arrived, the SECOND was "Pond takes" - which parses cleanly
+and would have played - and the move was lost to a primary of "Plants".
+
+What a rival reading is ALLOWED to do is the whole question, and the answer
+is v119's, one level out. There the line was that a request whose PIECE is
+inferred rather than heard still confirms. Here the whole REQUEST is
+inferred - it is not what the mic ranked first - so it may raise a question
+and may not play a move. That keeps the change strictly additive: it can
+only turn "Say again." into something answerable, which is the bar w40 set
+for the origin repair and the bar every widening since has had to clear.
+
+Two test positions in this entry were wrong before the code was: a queen on
+d1 cannot reach c6, which is worth remembering the next time a FEN is
+written by eye rather than by asking the move generator.
