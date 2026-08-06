@@ -885,3 +885,69 @@ real one during practice - because that transition is where all of this
 lived. Ten of the fixes were mutation-tested: the fix was reverted, the test
 was confirmed to fail, the fix was put back.
 
+
+### w51
+
+FOUR WAYS A SENTENCE COULD BE TAKEN FOR A DIFFERENT SENTENCE, from the same
+review as w50. Where w50 was about state outliving its game, this is about
+the grammar quietly disagreeing with itself. Every one is a wrong move or a
+lost move, and every fix is a gate of one or two lines.
+
+A SALVAGE MAY NOT CONTRADICT A HALF THAT WAS SPOKEN. readingsOf offers the
+literal reading first and salvages after it, and the rule that makes that
+safe is that a salvage can only turn nothing into something. The lone-square
+salvage broke it: it rebuilt the constraint and then overwrote the target end
+WHOLE, which is a rehearing only while the target is silent. "Echo five takes
+delta" says both ends out loud - origin e5, target the d-file - and
+constraintOf gets it exactly right; the salvage then threw the d away and
+went looking for anything that could capture ON e5. On a board with a white
+pawn on d4 and a black pawn on e5 that is dxe5: ONE candidate, so nothing
+asks, so it plays - with the mover and the target roughly swapped round from
+the words. Verified by reverting the gate: the harness plays "delta takes
+echo 5" for those words. This is the game6 shape, which is the most expensive
+class this program has, and it had been sitting in the salvage since w40.
+
+A MOVE IS NOT A QUESTION ABOUT A SQUARE. The square branch of classifyQuery
+had no content gate, and "which" and "what" are FILLER precisely because
+Safari sprays them into ordinary utterances. So "which knight takes delta
+five" - complete, legal, unambiguous - was answered "d5 has a white pawn" and
+the move was never looked for at all, because classifyQuery is consulted
+before moves. The turn branch directly above learned this at v65 and grew a
+content-word test; this branch is the same lesson one block down, five
+versions later. A capture word, a named piece or a second square all say the
+sentence is a move.
+
+AN ANSWER IS A WORD, NOT A SENTENCE. pieceAskOpen's own comment says the
+answer must be "a piece and nothing else" and the code excluded only squares
+and castling, so a capture word, a named victim and a trailing promotion
+piece all sailed through. With a push question open - "no pawn can go there,
+say queen, king or bishop" - an unrelated "queen takes rook" that finds no
+move of its own reached the answer path FIRST and was swallowed as the answer
+"queen", offering, or with confirm off playing, a queen move nobody said.
+
+THE DEDUPE KEY HAS TO FOLLOW THE PARSER, and twice it did not. semanticKey
+exists to reduce a reading to what it MEANS so two spellings of one sentence
+collapse; its header says "same rules as parsing". Bare "a" is an article
+unless a rank or a take word follows it - the parser's rule since the capture
+case was added - and semanticKey never had it, so "a bravo four" and "alpha
+bravo four" keyed identically while parsing differently. dedupeTranscripts
+keeps the first of a matching pair, so one of two genuinely different
+readings was binned before collectCandidates ever saw it, and which one
+survived came down to the order Safari happened to return them in. The glued
+double square was missing the same way: "e2e4" never collapsed with "e2 e4",
+and evidenceKey could not see it as a move at all.
+
+AND confirmMyMove WAS OFF FOR EVERY MOVE SAID OVER A QUESTION. The re-said
+branch played a unique move outright, ignoring the setting whose entire job
+is "ask me even when you are sure" - and it was off in exactly the situation
+where the user is already being misheard, which is the situation the setting
+is for. Worse, a re-said AMBIGUOUS move was discarded in favour of "Say yes
+or no." and a re-ask about the OLD list, so the new reading went in the bin
+while the stale question stood. Both now go where the main path sends them.
+
+THE RULE THIS EARNS, and it is the same one w48 wrote down: a rule proved in
+one place and left there is a rule that will be broken in the place next to
+it. The parser's "a" rule, the turn branch's content gate, and the main
+path's confirmMyMove were each correct where they were written and absent one
+function away. Five of the six fixes were mutation-tested.
+

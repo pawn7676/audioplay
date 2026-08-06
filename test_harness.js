@@ -1543,6 +1543,92 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 /bravo 4|nothing|say again|which/i,
                 'a bare "b4" never becomes the capture on b5');
 
+  // ================= w51: THE GRAMMAR GATES ================
+  // Four ways a sentence could be taken for a different
+  // sentence. Each is a wrong-move or a lost-move.
+
+  // A SALVAGE MAY NOT CONTRADICT A SPOKEN HALF. Origin e5 and
+  // target d-file are BOTH said; the only capture that fits is
+  // none, and the square-as-target reading used to answer dxe5
+  // - mover and target swapped - with one candidate, so nothing
+  // asked and it played.
+  await setBoard("4k3/8/8/4p3/3P4/8/8/4K3 w - - 0 1");
+  say("echo five takes delta");
+  await sleep(120);
+  const salvage = heard().join(" | ");
+  // dxe5 is the move the old salvage produced, and it played
+  // unasked. Nothing may offer or play it here.
+  check("a spoken target is not overwritten by the salvage (" +
+        salvage + ")", !/delta takes echo 5/i.test(salvage));
+  check("and the refusal names both halves that were said",
+        /echo 5/.test(salvage) && /delta file/i.test(salvage));
+  check("no move was played",
+        vm.runInContext("api.moves.length", sandbox) === 0);
+  // the salvage still works when the target end is SILENT
+  await onBoard("4k3/8/8/4p3/3P4/8/8/4K3 w - - 0 1", "echo five takes",
+                /delta takes echo 5|takes echo 5/i,
+                'the salvage still fires when only the square was said');
+
+  // A MOVE IS NOT A QUESTION ABOUT A SQUARE.
+  const qMove = vm.runInContext(
+    'JSON.stringify(classifyQuery("which knight takes delta five"))', sandbox);
+  check("a capture with a question word is not a square query (" +
+        qMove + ")", qMove === "null");
+  const qPiece = vm.runInContext(
+    'JSON.stringify(classifyQuery("what knight delta five"))', sandbox);
+  check("nor is a named piece with a square", qPiece === "null");
+  const qReal = vm.runInContext(
+    'JSON.stringify(classifyQuery("what is on delta five"))', sandbox);
+  check("but the real question still asks (" + qReal + ")",
+        /"kind":"square"/.test(qReal) && /"sq":"d5"/.test(qReal));
+
+  // A PIECE ANSWER IS A WORD, NOT A SENTENCE. With a push
+  // question open, an unrelated capture must not be eaten as
+  // the answer "queen".
+  await setBoard("4k3/8/8/8/8/8/4r3/3QK3 w - - 0 1");
+  const askShape = vm.runInContext(`
+    (function () {
+      pieceAsk = { ply: api.moves.length, capture: false, sq: "e2",
+                   moves: [] };
+      var out = {};
+      out.bareQueen  = pieceAskOpen(parseTranscript("queen"));
+      out.queenTakes = pieceAskOpen(parseTranscript("queen takes rook"));
+      out.takesRook  = pieceAskOpen(parseTranscript("takes rook"));
+      pieceAsk = null;
+      return out;
+    })()
+  `, sandbox);
+  check("a bare piece still answers the question", askShape.bareQueen === true);
+  check("a whole capture sentence does not", askShape.queenTakes === false);
+  check("nor does a named victim", askShape.takesRook === false);
+
+  // THE DEDUPE KEY FOLLOWS THE PARSER'S RULES, OR IT THROWS
+  // AWAY A READING THAT MEANT SOMETHING ELSE.
+  const keyA = vm.runInContext('semanticKey("a bravo four")', sandbox);
+  const keyAlpha = vm.runInContext('semanticKey("alpha bravo four")', sandbox);
+  check('bare "a" as an article keys apart from the a-file (' +
+        keyA + " vs " + keyAlpha + ")", keyA !== keyAlpha);
+  check('and "a takes" still keys as the a-file',
+        vm.runInContext('semanticKey("a takes bravo five")', sandbox) ===
+        vm.runInContext('semanticKey("alpha takes bravo five")', sandbox));
+  check("a glued double square splits like the parser's",
+        vm.runInContext('semanticKey("e2e4")', sandbox) ===
+        vm.runInContext('semanticKey("echo two echo four")', sandbox));
+
+  // A RE-SAID MOVE OBEYS confirmMyMove LIKE ANY OTHER.
+  await setBoard("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1");
+  vm.runInContext(`
+    CFG.confirmMyMove = true;
+    pending = { cands: [{ m: api.pos.legalMoves()[0], san: "Kd1" }], idx: 0 };
+  `, sandbox);
+  heard();
+  say("echo four");
+  await sleep(120);
+  const resaid = heard().join(" | ");
+  check("a move re-said over a question still asks when told to (" +
+        resaid + ")", /did you mean/i.test(resaid));
+  vm.runInContext("CFG.confirmMyMove = false; pending = null;", sandbox);
+
   // ================== w50: THE LIFECYCLE ==================
   // Every check below is a state that used to outlive the game
   // it belonged to, or a path that used to end in silence.

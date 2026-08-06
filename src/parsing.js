@@ -671,8 +671,24 @@
       return null;
     }
 
+    // "WHAT IS ON DELTA FIVE" - but not every sentence with a
+    // question word and a square in it (w51). This had no gate
+    // at all, and "which" and "what" are FILLER precisely
+    // because Safari sprays them into ordinary utterances. So
+    // "which knight takes delta five" - a complete, legal,
+    // unambiguous move - was answered "d5 has a white pawn" and
+    // the move was never looked for. classifyQuery is consulted
+    // BEFORE moves in handleTranscripts, so anything it claims
+    // is a question is lost as a move.
+    //
+    // The turn branch above learned this at v65 and grew its
+    // content-word test; this branch is the same lesson one
+    // block down. A capture word, a named piece or a second
+    // square all say the sentence is describing a MOVE, and a
+    // move is never a question about a square.
     if (has("what") || has("whats") || has("which") || has("occupies")) {
       var req = parseTranscript(raw);
+      if (req.capture || req.piece || req.squares.length > 1) return null;
       if (req.squares.length) return { kind: "square", sq: req.squares[0] };
     }
     return null;

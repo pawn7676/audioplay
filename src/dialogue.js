@@ -386,6 +386,19 @@
     if (!pieceAsk || !api.pos) return false;
     if (pieceAsk.ply !== api.moves.length) return false;
     if (req.squares.length || req.castle) return false;
+    // "A PIECE AND NOTHING ELSE" HAS TO MEAN IT (w51). The
+    // comment above said that and the code excluded only
+    // squares and castling, so a capture word, a named victim
+    // or a trailing piece all sailed through. With a push
+    // question open ("no pawn can go there. say queen, king or
+    // bishop.") an unrelated "queen takes rook" that finds no
+    // move of its own reached here FIRST - handleTranscripts
+    // tries the answer before the move - and was swallowed as
+    // the one-word answer "queen", offering, or with confirm
+    // off PLAYING, a quiet queen move nobody asked for. An
+    // answer is a word; this is a sentence.
+    if (req.capture && !pieceAsk.capture) return false;
+    if (req.victim || req.trailingPiece) return false;
     // a capture question can also be answered with a FILE,
     // because that is how it offers its pawn options
     // ("echo takes delta 5" -> "echo"). A bare file lands in
@@ -1189,12 +1202,33 @@
         askCandidate();
         return;
       }
+      // SAYING THE MOVE AGAIN REPLACES THE QUESTION, and does
+      // it by the same rules the move would get if no question
+      // were open (w51). This branch played a unique re-said
+      // move outright, ignoring confirmMyMove - so the one
+      // setting whose entire job is "ask me even when you are
+      // sure" was silently off for every move said over a
+      // question, which is exactly when the user is already
+      // being misheard. And a re-said AMBIGUOUS move was
+      // thrown away in favour of "Say yes or no.", re-asking
+      // about the OLD list while the new one went in the bin.
+      // Both now go where the main path sends them.
       var re = collectCandidates(api.pos, transcripts);
       if (re.length === 1) {
         var reGuard = bareGuardCands(re[0]);
         if (reGuard) { pending = { cands: reGuard, idx: 0 };
           askCandidate(); return; }
+        if (CFG.confirmMyMove) {
+          pending = { cands: re, idx: 0 };
+          askCandidate();
+          return;
+        }
         acceptMove(re[0]);
+        return;
+      }
+      if (re.length > 1) {
+        pending = { cands: re, idx: 0 };
+        askCandidate();
         return;
       }
       speak("Say yes or no.");
