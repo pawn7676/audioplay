@@ -191,32 +191,6 @@
   var DRAW_WORDS = wordSet("draw");
   var MEMO_WORDS = wordSet("memo memos");
 
-  function memoTranscript(transcripts) {
-    for (var i = 0; i < transcripts.length; i++) {
-      var toks = wordsOf(transcripts[i]);
-      if (toks.length > 1 && MEMO_WORDS[toks[0]]) return transcripts[i];
-    }
-    return null;
-  }
-
-  // "flip clock" (or "swap clocks", "switch the clock")
-  // swaps which side of the screen your clock is on. As
-  // strict as its neighbors: a flip word AND a clock word,
-  // and any other content word disqualifies. It cannot
-  // collide with bare "clock", which needs no other content
-  // word at all.
-  function classifyFlipClock(raw) {
-    var toks = wordsOf(raw);
-    var flip = 0, clk = 0, other = 0;
-    for (var i = 0; i < toks.length; i++) {
-      var t = toks[i];
-      if (FLIP_WORDS[t]) flip++;
-      else if (CLOCK_WORDS[t]) clk++;
-      else if (!FILLER[t]) other++;
-    }
-    return !!(flip && clk && !other);
-  }
-
   // Saying "check" or "mate" narrows things down: it is the
   // difference between dxe7 and Rxe7+. Without this the
   // wrong one gets offered first and needs a no, then a yes.

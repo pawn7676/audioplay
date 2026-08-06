@@ -593,6 +593,36 @@ const sleep = ms =>
   check("signed out, Start says it for the EAR (" + startSaid + ")",
         /lee chess/.test(startSaid) && !/lichess/.test(startSaid));
   vm.runInContext("running = false; renderButton();", sandbox);
+  // ---- w57: the manifest names every source, and only sources ----
+  // Splitting dialogue.js into practice.js and repairs.js made
+  // this concrete: a new file in src/ that nobody adds to the
+  // manifest is simply NOT IN THE PAGE, and everything still
+  // builds, still passes, and still runs - right up until
+  // something calls a function that was never shipped. The
+  // reverse is already caught (build.js exits on MISSING), so
+  // this is the direction with no guard.
+  const manifestNames = fs.readFileSync("manifest.txt", "utf8").split("\n")
+    .map(s => s.trim())
+    .filter(s => s && !s.startsWith("#"))
+    .map(s => s.replace(/^@template /, ""));
+  const srcFiles = fs.readdirSync("src")
+    .filter(f => /\.(js|html)$/.test(f));
+  const missingFromManifest = srcFiles.filter(f => manifestNames.indexOf(f) < 0);
+  const missingFromSrc = manifestNames.filter(f => srcFiles.indexOf(f) < 0);
+  check("every file in src/ is named in the manifest (" +
+        srcFiles.length + " files)" +
+        (missingFromManifest.length ? " MISSING: " + missingFromManifest : ""),
+        missingFromManifest.length === 0);
+  // The reverse can never actually reach this line - the
+  // harness loads the manifest's files at startup, so a name
+  // with no file kills it with ENOENT before any test runs,
+  // and build.js exits with MISSING besides. Asserted anyway,
+  // because a check that documents which direction is guarded
+  // by what is worth two lines.
+  check("and the manifest names nothing that is not there" +
+        (missingFromSrc.length ? " GHOST: " + missingFromSrc : ""),
+        missingFromSrc.length === 0);
+
   const tmpl = fs.readFileSync("src/index.html", "utf8");
   // w56: the page must declare standards mode, and a doctype
   // anywhere but the FIRST line does nothing at all - so the
