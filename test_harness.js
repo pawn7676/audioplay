@@ -419,6 +419,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check('"tags" counts as takes',
         vm.runInContext('!!TAKE_WORDS["tags"] && !!TAKE_WORDS["tag"]',
                         sandbox) === true);
+  // "text" for "takes", game w43-1 at 17:31:04, where it lost
+  // the move. Asked of the built vocabulary, then proved
+  // through the real pipeline further down.
+  check('"text" counts as takes (w44)',
+        vm.runInContext('!!TAKE_WORDS["text"] && !!TAKE_WORDS["texts"]',
+                        sandbox) === true);
 
   // ---- v136/w26: cancel closes a repair question ----
   // reproduce game w25-1 18:42:47: a bishop with half a
@@ -1032,7 +1038,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // asks which piece. In the log this cost rank, then yes/no,
   // then no, then yes. It is now one question and one word.
   check("it names the movers, since both land on c6",
-        /I heard takes charlie 6/i.test(takesC) &&
+        /I heard takes charlie\./i.test(takesC) &&
         /queen takes charlie 6/i.test(takesC) &&
         /rook takes charlie 6/i.test(takesC));
   check("the lead is never \"undefined\"", !/undefined/i.test(takesC));
@@ -1086,6 +1092,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("it asks WHICH PIECE, offering the knight and the pawn",
         /knight takes delta 5/i.test(takesD) &&
         /charlie takes delta 5/i.test(takesD));
+  // w44: THE LEAD MUST NOT CLAIM A RANK NOBODY SAID. "takes
+  // delta" was answered "I heard takes delta 5" - true move,
+  // false sentence. The deduced square belongs in the options,
+  // which name the whole move, never in the "I heard" clause.
+  const lead = takesD.split(/ say /i)[0];
+  check("the lead repeats only what was said (" + lead + ")",
+        /I heard takes delta\./i.test(lead) && !/[1-8]/.test(lead));
   say("night");
   await sleep(120);
   check("and the piece answers it in one word",
@@ -1117,6 +1130,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await onBoard("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1", "queen alpha",
                 /I heard queen alpha\. Say the rank/i,
                 "a named piece with half a square still asks the rank");
+
+  // and the whole utterance that was lost, driven for real:
+  // "text delta" must reach the same question "takes delta"
+  // does, not "Say again."
+  await onBoard("4k3/8/8/3n4/8/2Nb4/2P5/4K3 w - - 0 1", "text delta",
+                /say the rank/i,
+                '"text delta" is heard as a capture (w44)');
 
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);

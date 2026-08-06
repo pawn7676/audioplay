@@ -565,3 +565,32 @@ shape: it makes every helper wait 1.7 seconds and still races. These tests
 set their own position, so the random opponent has no part in them; it is
 now switched off for the whole block. A test that shares mutable state with
 a timer is not slow, it is wrong.
+
+### w44
+
+"I HEARD" HAS TO BE TRUE. Game w43-1: "takes delta" was answered "I heard
+takes delta 5." The 5 came off the board, not out of the owner's mouth. The
+move it went on to play was right, and the sentence was still a lie - and
+"I heard" is the one sentence in this program that is a claim about the
+USER rather than about the position. He is standing away from the screen
+with it as his only evidence of what landed; if it can quietly include
+things he did not say, it stops being evidence at all.
+
+w42 wrote that rule down, in askPartial, after "I heard undefined charlie".
+w43 then broke it in askPiece one commit later. Restating a rule in a
+comment is not keeping it: there is now one heardSoFar() that renders what
+was actually heard, and all four questions call it. Anything DEDUCED goes
+in the options that follow - askPiece names the whole move in each one, so
+"takes delta" now gets "I heard takes delta. say charlie takes delta 5, or
+queen takes delta 5." The square still reaches the ear; it arrives as
+something offered instead of something claimed.
+
+The test that would have caught it asserts the property rather than the
+wording: the lead contains no rank when no rank was spoken. The w43 test
+asserted the exact sentence, which is why it passed while being wrong.
+
+Also from the same log: "text" and "texts" are the take word with its k
+gone. "Texts bravo" survived at 17:27:38 only because a rival transcript
+got it right; "Text Delta" at 17:31:04 lost the move outright. Exact-only,
+v114 style - three of these are ordinary English words and the fuzzy
+matcher must never reach for them.

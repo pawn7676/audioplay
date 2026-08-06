@@ -381,29 +381,40 @@
   // said check or mate, so the answer inherits the
   // narrowing ("queen alpha checkmate" answered with "8"
   // still prefers the mating move).
+  // WHAT WAS ACTUALLY HEARD, IN THE WORDS IT WAS HEARD IN.
+  //
+  // "I heard ..." is a claim about the user, not about the
+  // board, and it has to be true or it is worse than saying
+  // nothing: the owner is standing away from the screen with
+  // this sentence as his only evidence of what landed. w42
+  // wrote that rule down here after "I heard undefined
+  // charlie" - and w43 then broke it in askPiece one commit
+  // later, telling game w43-1 "I heard takes delta 5" when
+  // what was said was "takes delta". The 5 was deduced from
+  // the board. Right move, false sentence, and the owner
+  // caught it immediately.
+  //
+  // So the rule gets one implementation instead of being
+  // restated in each place that needs it. Anything DEDUCED
+  // belongs in the options that follow, never in the lead -
+  // askPiece names the whole move in each option, so the
+  // square still reaches the ear, as something offered
+  // rather than something claimed.
+  function heardSoFar(req) {
+    var bits = [];
+    if (req.piece) bits.push(PIECE_NAME[req.piece]);
+    if (req.capture) bits.push("takes");
+    if (req.fromFile) bits.push(SPOKEN_FILE[req.fromFile] || req.fromFile);
+    if (req.fromRank) bits.push("rank " + req.fromRank);
+    return bits.join(" ") || "that";
+  }
+
   function askPartial(req, want, chk, mate) {
     partialAsk = { req: req, want: want, chk: !!chk, mate: !!mate,
                    ply: api.moves.length };
-    // THE LEAD IS WHAT WAS ACTUALLY HEARD (w42). Every branch
-    // used to open with PIECE_NAME[req.piece], which reads
-    // back "I heard undefined charlie" the moment a request
-    // with no piece in it reaches here - which the half-square
-    // repair now allows, on purpose. When no piece was named
-    // the take word is the only thing there is to say back,
-    // and saying it is the point: the user hears which half
-    // survived and answers the other one.
-    var lead = req.piece ? PIECE_NAME[req.piece] : "takes";
-    if (want === "target") {
-      speak("I heard " + lead + (req.piece ? " takes" : "") +
-            ". Say the target.");
-    } else if (want === "rank") {
-      speak("I heard " + lead + " " +
-            (SPOKEN_FILE[req.fromFile] || req.fromFile) +
-            ". Say the rank.");
-    } else {
-      speak("I heard " + lead + (req.piece ? " to rank " : " on rank ") +
-            req.fromRank + ". Say the file.");
-    }
+    speak("I heard " + heardSoFar(req) + ". Say the " +
+          (want === "target" ? "target"
+           : want === "rank" ? "rank" : "file") + ".");
   }
 
   // The moves completed by an answer to the open partial
@@ -988,7 +999,7 @@
               }).join(",") + " all land on " + onlySq +
                   ", asking which piece");
               askPiece(narrowed.map(function (c2) { return c2.m; }),
-                       "I heard takes " + spokenSquare(onlySq) + ".",
+                       "I heard " + heardSoFar(req) + ".",
                        onlySq);
               return;
             }
