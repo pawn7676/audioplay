@@ -98,8 +98,16 @@
     pontakes: [["piece", "p"], ["take"]]
   };
 
+  // "text" and "texts" are the take word with its k gone
+  // (w44, game w43-1): "Texts bravo" survived at 17:27:38
+  // only because a rival transcript got it right, and "Text
+  // Delta" at 17:31:04 lost the move outright - "- - - d -",
+  // no capture, "Say again." Exact-only like every other
+  // risky entry, v114 style: three of these are ordinary
+  // English words, and the fuzzy matcher must never reach
+  // for them. Nothing in this grammar says "text" otherwise.
   var TAKE_WORDS = wordSet("takes take taking tates tanks tags tag " +
-    "ticks tick captures capture capturing");
+    "ticks tick text texts captures capture capturing");
   var CASTLE_WORDS = wordSet("castle castles castling cassel cattle " +
     "castel hassle");
   // whose/whos/who/which joined in v65 so that "whose time
