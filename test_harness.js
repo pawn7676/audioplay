@@ -914,7 +914,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   // nothing to take: a TRUE sentence, not "not a legal move"
   await onBoard("k7/8/8/4P3/8/8/8/K7 w - - 0 1", "echo five takes",
-                /nothing on echo 5 can take/i);
+                /no capture from echo 5/i);
   await onBoard("k7/8/8/4P3/8/8/8/K7 w - - 0 1", "echo takes",
                 /no capture from the echo file/i);
 
@@ -1165,6 +1165,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     spokenForms.push(FILE_WORD[f] + " takes");
     spokenForms.push("queen " + FILE_WORD[f]);
     spokenForms.push(FILE_WORD[f] + " five takes");
+    spokenForms.push("queen " + FILE_WORD[f] + " four");
+    spokenForms.push(FILE_WORD[f] + " takes knight");
   });
   const boards = [
     ["1.c4 d5 2.Nc3 a6", null, W42_GAME],
@@ -1178,25 +1180,62 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       await sleep(60);
       const out = heard().join(" | ");
       if (!out) { silences++; worst = worst || ("silent on: " + utt); continue; }
+      // A REFUSAL MUST CARRY THE READING. Checking only the
+      // sentences that already say "I heard" leaves the way
+      // out wide open: delete the clause and the property
+      // stops looking. That mutant survived when this block
+      // was first written, which is the same blind spot the
+      // from-square property had this morning - a rule that
+      // only inspects what already obeys it.
+      //
+      // The one legitimate bare refusal is an utterance that
+      // parsed to NOTHING: there is no reading to give back,
+      // and we cannot tell a mishearing from words that were
+      // never a move. Ask the parser which case this is
+      // rather than guessing from the text.
+      if (/say again/i.test(out)) {
+        const empty = vm.runInContext(
+          "reqIsEmpty(parseTranscript(" + JSON.stringify(utt) + "))", sandbox);
+        if (!empty && !/I heard/i.test(out)) {
+          lies++;
+          worst = worst ||
+            ('said "' + utt + '" -> refused with no reading: "' + out + '"');
+        }
+      }
       const m = /I heard ([^.]*)\./i.exec(out);
       if (!m) continue;
       heardClaims++;
       const lead = m[1].toLowerCase();
-      // a rank may only appear in the lead if a rank was said
+      const bad = why => {
+        lies++;
+        worst = worst ||
+          ('said "' + utt + '" -> "I heard ' + m[1] + '" (' + why + ")");
+      };
+      // EXACTLY WHAT WAS SAID: nothing added, nothing dropped.
+      // w44 only checked the first half - that no rank appears
+      // unless one was spoken - and that let the other half
+      // through: heardSoFar rendered no squares at all, so
+      // "queen delta four" came back as "queen" and nobody
+      // noticed until the refusals started using it. A
+      // read-back that swallows half the sentence fails the
+      // same job as one that invents: the owner cannot tell a
+      // mishearing from a bad move either way.
       const saidRank = Object.keys(RANK_WORD)
         .some(r => utt.indexOf(RANK_WORD[r]) >= 0);
-      if (!saidRank && /[1-8]/.test(lead)) {
-        lies++;
-        worst = worst || ('said "' + utt + '" -> "I heard ' + m[1] + '"');
-      }
-      // and a file may only appear if that file was said
+      if (!saidRank && /[1-8]/.test(lead)) bad("rank nobody said");
+      if (saidRank && !/[1-8]/.test(lead)) bad("rank dropped");
       Object.keys(FILE_WORD).forEach(f => {
-        if (lead.indexOf(FILE_WORD[f]) >= 0 &&
-            utt.indexOf(FILE_WORD[f]) < 0) {
-          lies++;
-          worst = worst || ('said "' + utt + '" -> "I heard ' + m[1] + '"');
-        }
+        const said = utt.indexOf(FILE_WORD[f]) >= 0;
+        const heardIt = lead.indexOf(FILE_WORD[f]) >= 0;
+        if (heardIt && !said) bad(FILE_WORD[f] + " nobody said");
+        if (said && !heardIt) bad(FILE_WORD[f] + " dropped");
       });
+      // and the take word, which is what tells a capture from
+      // a push - the one word that changes what a sentence
+      // MEANS rather than which square it points at
+      if (/\btakes?\b/.test(utt) !== /\btakes?\b/.test(lead)) {
+        bad("take word " + (/takes?/.test(utt) ? "dropped" : "invented"));
+      }
     }
   }
   check("every utterance got an answer (" +
