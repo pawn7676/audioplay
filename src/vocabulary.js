@@ -74,8 +74,17 @@
     b: "bishop bishops bishoff bishup fish fisher fishop ship bish " +
        "vision visions bitch",
     n: "knight knights night nights nite note notes",
+    // "plant" and its family joined at w48 from game w47-1,
+    // where the owner spent four minutes failing to say the
+    // word: Safari returned pawn as Plants, Plant, Plantains,
+    // Fontes, Pontes and Po across six utterances, three of
+    // which lost a move outright. They are the reason "push"
+    // exists (v120) and the reason it is still the better
+    // word to say - but the log has them, so the table has
+    // them. Exact-only, like every entry here.
     p: "pawn pawns prawn pond palm porn ponte ponta pote potes " +
        "pons poon paun poan ponn pot pawnd born pon pollen " +
+       "plant plants plantain plantains fontes pontes po " +
        "paw paws pan push pushes pushed"
   });
 
@@ -107,7 +116,7 @@
   // English words, and the fuzzy matcher must never reach
   // for them. Nothing in this grammar says "text" otherwise.
   var TAKE_WORDS = wordSet("takes take taking tates tanks tags tag " +
-    "ticks tick text texts captures capture capturing");
+    "ticks tick text texts cakes cake captures capture capturing");
   var CASTLE_WORDS = wordSet("castle castles castling cassel cattle " +
     "castel hassle");
   // whose/whos/who/which joined in v65 so that "whose time
