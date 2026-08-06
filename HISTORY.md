@@ -951,3 +951,73 @@ it. The parser's "a" rule, the turn branch's content gate, and the main
 path's confirmMyMove were each correct where they were written and absent one
 function away. Five of the six fixes were mutation-tested.
 
+
+### w52
+
+THE POLL FALLBACK, WHICH HAD NEVER SEEN A REAL GAME. It exists for a browser
+that cannot hold a streaming body open. The tested device can, so nothing in
+it was ever reached by playing - and it showed: three faults, none subtle,
+all sitting in about forty lines. The review offered deleting it instead and
+the owner chose repair, on the header's own rule that the page is opened by
+whoever finds it, on whatever they own. A fallback that is wrong is worse
+than no fallback, because it is trusted in exactly the situation where
+nothing else is left.
+
+IT REPORTED THE WRONG PLAYER'S CLOCK. /api/account/playing sends
+`secondsLeft`, which is the ACCOUNT HOLDER'S remaining time, and this
+assigned it to api.wtime whatever colour we were. Playing black you were
+shown your opponent's clock as your own, and api.btime was never set at all,
+so the other side read "--" on the overlay and "unknown" when you asked.
+Half of that is unavoidable - the endpoint does not carry the opponent's
+clock - and half of it was a one-line mistake. What cannot be known is now
+left unset and speakClocks says "unknown", which it already knew how to do.
+
+IT NEVER NOTICED A GAME ENDING. The list is of ONGOING games, so a finished
+game simply leaves it - and the code said `if (!g) return;` and went round
+again, silently, every 1.5 seconds, forever. No result, no "game over", no
+end to the polling. The event stream cannot rescue it either: a browser with
+no streaming body fails watchEvents for precisely the reason it fell back to
+polling in the first place. So in the fallback mode the game ended and the
+page said NOTHING, which is the rule-5 failure in its purest form. The
+endpoint carries no status, so the sentence does not guess one: "game over.
+check lichess for the result."
+
+AND A DESYNC LOOPED. On a lastMove that would not apply, it reloaded the
+position from the fen and left api.moves untouched - so the next tick
+compared the same stale tail to the same lastMove, failed to apply it again
+because it was already inside the fen just loaded, and reloaded once more.
+Every 1.5 seconds until a new move arrived. The uci is pushed now so the
+comparison moves on.
+
+THE CASTLING RIGHTS IN THAT RELOAD ARE A FABRICATION and cannot be anything
+else: rights depend on history the endpoint does not send. KQkq is kept, and
+it is the permissive choice ON PURPOSE. Granting a castle that is no longer
+legal means the move is offered, said, and REFUSED BY LICHESS out loud -
+audible, and recoverable. The strict choice would silently refuse a castle
+that is perfectly legal, with nothing said to explain it, which is the worse
+failure for someone who cannot see the board state we are guessing at.
+
+TWO THINGS THAT ARE NOT ABOUT POLLING came with it, because they are the
+same shape: a retry that cannot work. Every reconnect path retried flat
+forever, so a network that is simply gone meant a request every two seconds
+for as long as the page stayed open, draining a battery nobody is watching;
+the ladder now doubles to a thirty-second ceiling, leaving the first few
+retries as quick as they ever were, which is the case that actually happens.
+And a REVOKED OR EXPIRED TOKEN was retried identically - an HTTP 401 every
+two seconds, forever, telling the user nothing, when the one thing they
+could actually do about it is the one thing nobody told them to do. It is
+said once now, and the retrying stops, because retrying cannot fix it.
+
+startSeek also assumed AbortController exists, which would throw on exactly
+the browsers this fallback is for, and reported it as "Seek failed" - the
+seek blamed for a missing browser feature. It is guarded like every other
+one here, and a seek that cannot be held open now says the true thing: it
+was sent, and the game will arrive on the event stream anyway.
+
+WHAT MAKES THIS ENTRY WORTH READING LATER: none of this was hard, and all of
+it survived the whole v-series and half the w-series, because the one device
+it would have shown up on cannot reach the code. Untested does not mean
+low-risk; it means the bugs are still there. The harness now drives this
+path directly with a stubbed endpoint - the first tests it has ever had -
+and five of the fixes were mutation-tested.
+

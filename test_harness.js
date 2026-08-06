@@ -1543,6 +1543,152 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 /bravo 4|nothing|say again|which/i,
                 'a bare "b4" never becomes the capture on b5');
 
+  // ============ w52: THE POLL FALLBACK, AT LAST ============
+  // This path had no test at all, which is most of why it had
+  // three faults. The device can stream, so none of it was ever
+  // reached by playing; it is driven directly here instead.
+  //
+  // A stub for /api/account/playing. `rows` is what the
+  // endpoint returns this tick.
+  function pollWith(rows) {
+    vm.runInContext(`
+      __pollRows = ${JSON.stringify(rows)};
+      fetch = function (url) {
+        if (String(url).indexOf("/api/account/playing") < 0) {
+          return Promise.reject(new Error("unexpected url " + url));
+        }
+        return Promise.resolve({
+          ok: true, status: 200,
+          json: function () {
+            return Promise.resolve({ nowPlaying: __pollRows });
+          }
+        });
+      };
+    `, sandbox);
+  }
+  vm.runInContext("__realFetch3 = fetch;", sandbox);
+
+  // PLAYING BLACK, secondsLeft IS OURS - not white's.
+  vm.runInContext(`
+    dryRun = false; running = true; api.over = false;
+    api.gameId = "PG"; api.myColor = "b";
+    api.pos = new RULES.Position(); api.moves = [];
+    api.wtime = null; api.btime = null;
+  `, sandbox);
+  pollWith([{ gameId: "PG", color: "black", fen: "", lastMove: "",
+              isMyTurn: true, secondsLeft: 90 }]);
+  vm.runInContext("pollSeen = false; pollOnce();", sandbox);
+  await sleep(80); heard();
+  const pollClocks = vm.runInContext(
+    "JSON.stringify({ w: api.wtime, b: api.btime })", sandbox);
+  check("playing black, our clock lands on black (" + pollClocks + ")",
+        vm.runInContext("api.btime", sandbox) === 90000);
+  // the endpoint does not carry the opponent's clock, so the
+  // honest answer is "unknown" - which speakClocks already says
+  check("and the clock it cannot know stays unset, not wrong",
+        vm.runInContext("api.wtime", sandbox) === null);
+
+  // THE GAME LEAVING THE LIST IS THE GAME ENDING, and it must
+  // be said and it must stop the polling.
+  heard();
+  vm.runInContext(`
+    api.over = false; pollSeen = true; api.gameId = "PG";
+    pollTimer = setInterval(function () {}, 100000);
+  `, sandbox);
+  pollWith([]);                       // the game is gone
+  vm.runInContext("pollOnce();", sandbox);
+  await sleep(80);
+  const ended = heard().join(" | ");
+  check("a game vanishing from the list is announced (" + ended + ")",
+        /game over/i.test(ended));
+  check("and the game is marked over",
+        vm.runInContext("api.over", sandbox) === true);
+  check("and the polling stops",
+        vm.runInContext("pollTimer === null", sandbox) === true);
+
+  // ...but not on the very first tick, before it has appeared
+  heard();
+  vm.runInContext("api.over = false; pollSeen = false;", sandbox);
+  vm.runInContext("pollOnce();", sandbox);
+  await sleep(80);
+  check("but a game not seen yet is not declared over",
+        vm.runInContext("api.over", sandbox) === false &&
+        !/game over/i.test(heard().join(" | ")));
+
+  // A DESYNC RELOADS ONCE, NOT EVERY TICK.
+  vm.runInContext(`
+    api.over = false; api.gameId = "PG"; api.myColor = "w";
+    api.pos = new RULES.Position(); api.moves = []; pollSeen = true;
+    armedUci = "STALEARM";
+  `, sandbox);
+  // a lastMove that cannot be applied to the start position
+  pollWith([{ gameId: "PG", color: "white",
+              fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR",
+              lastMove: "h7h6", isMyTurn: true, secondsLeft: 60 }]);
+  vm.runInContext("pollOnce();", sandbox);
+  await sleep(80);
+  const firstReload = vm.runInContext(
+    "LOG.filter(function (l) { return l.indexOf('reloading from fen') >= 0; }).length",
+    sandbox);
+  vm.runInContext("pollOnce();", sandbox);
+  await sleep(80);
+  const secondReload = vm.runInContext(
+    "LOG.filter(function (l) { return l.indexOf('reloading from fen') >= 0; }).length",
+    sandbox);
+  check("a desync reloads (" + firstReload + ")", firstReload === 1);
+  check("and does NOT reload again on the next tick (" + secondReload + ")",
+        secondReload === 1);
+  check("and the stale arm is dropped",
+        !vm.runInContext("armedUci", sandbox));
+
+  // A REFUSED TOKEN IS SAID ONCE AND STOPS THE RETRYING.
+  heard();
+  const authOut = vm.runInContext(`
+    (function () {
+      authGone = false; streamFails = 0; reconnectTimer = null;
+      api.gameId = "G"; api.over = false; dryRun = false;
+      var first = noteAuthFailure(new Error("stream HTTP 401"));
+      var second = noteAuthFailure(new Error("stream HTTP 401"));
+      scheduleReconnect();
+      var scheduled = reconnectTimer !== null;
+      clearTimeout(reconnectTimer); reconnectTimer = null;
+      authGone = false;
+      return { first: first, second: second, scheduled: scheduled };
+    })()
+  `, sandbox);
+  await sleep(40);
+  const authSaid = heard().join(" | ");
+  check("a refused token is recognised", authOut.first === true);
+  check("and said out loud, not just logged (" + authSaid + ")",
+        /signed you out|sign in again/i.test(authSaid));
+  check("and it does not keep retrying what cannot work",
+        authOut.scheduled === false);
+
+  // AND THE RECONNECT LADDER BACKS OFF.
+  const ladder = vm.runInContext(`
+    (function () {
+      var real = startStream, waits = [];
+      startStream = function () {};
+      var realSet = setTimeout;
+      authGone = false; streamFails = 0;
+      api.gameId = "G"; api.over = false; dryRun = false;
+      setTimeout = function (fn, ms) { waits.push(ms); return realSet(function(){}, 0); };
+      scheduleReconnect(); scheduleReconnect(); scheduleReconnect();
+      scheduleReconnect(); scheduleReconnect(); scheduleReconnect();
+      setTimeout = realSet;
+      startStream = real;
+      streamFails = 0; reconnectTimer = null;
+      return waits;
+    })()
+  `, sandbox);
+  check("the reconnect ladder doubles (" + ladder.join(",") + ")",
+        ladder[0] === 2000 && ladder[1] === 4000 && ladder[2] === 8000);
+  check("and is capped, not unbounded (" + ladder[5] + ")",
+        ladder[ladder.length - 1] === 30000);
+
+  vm.runInContext("fetch = __realFetch3; api.gameId = null; api.over = false;",
+                  sandbox);
+
   // ================= w51: THE GRAMMAR GATES ================
   // Four ways a sentence could be taken for a different
   // sentence. Each is a wrong-move or a lost-move.
