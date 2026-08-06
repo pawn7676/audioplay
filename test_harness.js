@@ -1444,6 +1444,29 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 /bravo takes charlie 6/i,
                 '"bravo takes" plays the b-pawn capture outright');
 
+  // BARE LETTERS, which the grammar header promises work as
+  // well as NATO words and which nothing tested until now.
+  // Two lines in parsing.js carry all of it - the glued
+  // "([a-h])([1-8])" square and the lone "[a-h]" file - and
+  // either could have been refactored away with every test
+  // still green. They are the owner's natural English, so
+  // they will be reached for under time whatever the
+  // practised habit is.
+  const LETTERS = "4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1";
+  await onBoard(LETTERS, "b takes", /bravo takes charlie 6/i,
+                'a bare letter names the mover: "b takes"');
+  await onBoard(LETTERS, "b takes c6", /bravo takes charlie 6/i,
+                'a glued letter-and-digit square: "b takes c6"');
+  await onBoard(LETTERS, "b takes charlie six", /bravo takes charlie 6/i,
+                'letters and NATO words mix freely in one move');
+  await onBoard("4k3/8/8/8/8/8/1P6/4K3 w - - 0 1", "b4",
+                /bravo 4/i, 'a bare "b4" is still a pawn push');
+  // and the game6 invariant holds for the short form too: a
+  // bare square spoken as letters is a push, never a capture
+  await onBoard("4k3/8/8/1n6/8/1P6/8/4K3 w - - 0 1", "b4",
+                /bravo 4|nothing|say again|which/i,
+                'a bare "b4" never becomes the capture on b5');
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();

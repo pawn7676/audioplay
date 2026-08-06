@@ -86,7 +86,21 @@
    *  SINGLE LETTERS work as well as NATO words and are
    *  sometimes clearer: "A four" is "alpha four", "B takes
    *  charlie five" is "bravo takes charlie five". Mix them
-   *  freely.
+   *  freely. A glued square works too - "B4", "c6" - since
+   *  Safari often returns the pair as one word.
+   *
+   *  But the grammar is not where a bare letter fails. It
+   *  fails in the TRANSCRIPTION, before this file sees it:
+   *  b, c, d, e and g are one vowel apart across a room, and
+   *  a letter that lands as an ordinary word lands as
+   *  nothing. "B four" comes back as "before" and leaves a
+   *  rank with no file; "F three" as "if three"; "H three"
+   *  as "each three". The move is not misread, it is halved,
+   *  and the question that follows is wider than it needed
+   *  to be. NATO words are long and share no neighbours,
+   *  which is the whole reason they exist. Say letters when
+   *  they are what comes out under time - they are honoured
+   *  - and reach for NATO when the move matters.
    *
    *  IF THE FIRST WORD KEEPS GETTING LOST, start with one
    *  that does not matter and let it absorb the loss:
