@@ -666,6 +666,53 @@
     return fits;
   }
 
+  /* ASK ABOUT THE HALF THAT ACTUALLY NARROWS.
+   *
+   *  w43 taught this to the half-square repair, after "takes
+   *  delta" was answered "say the rank" with Nxd5 and cxd5 on
+   *  the board - both landing on d5, so the rank had exactly
+   *  one possible answer and could not tell the moves apart.
+   *  It was written INSIDE that repair, and the capture repair
+   *  next door went on asking for the target unconditionally.
+   *
+   *  Game w47-1, 20:09:24: "pawn takes" with bxc6 and dxc6
+   *  available was answered "Say the target". Both take on c6.
+   *  The owner said so in a memo mid-game - "both of my pawns
+   *  are attacking one single knight on C6 so asking for the
+   *  target didn't make any sense" - and he is exactly right.
+   *  Same rule, same evidence, and only one repair had it.
+   *
+   *  It lives here now and both call it: count first, then ask
+   *  about whichever half still has more than one value.
+   */
+  function askWhichever(cands, req, transcripts, want) {
+    var dests = {}, movers = {};
+    cands.forEach(function (c2) {
+      dests[RULES.sqName(c2.m.to)] = 1;
+      movers[c2.m.piece === "p" ? RULES.sqName(c2.m.from)[0]
+                                : c2.m.piece] = 1;
+    });
+    var sans = cands.map(function (c2) { return c2.san; }).join(",");
+    if (Object.keys(dests).length === 1) {
+      var onlySq = Object.keys(dests)[0];
+      if (Object.keys(movers).length > 1) {
+        log("CND", sans + " all land on " + onlySq + ", asking which piece");
+        askPiece(cands.map(function (c2) { return c2.m; }),
+                 "I heard " + heardSoFar(req) + ".", onlySq);
+        return;
+      }
+      // one square AND one mover: they differ by something
+      // neither question can name, so walk them as yes/no.
+      log("CND", sans + " differ by neither half, asking");
+      pending = { cands: cands, idx: 0 };
+      askCandidate();
+      return;
+    }
+    log("CND", sans + " fit, asking for the " + want);
+    askPartial(req, want, transcripts.some(saysCheck),
+               transcripts.some(saysMate));
+  }
+
   function tryOriginCapture(req, transcripts) {
     // THE ORIGIN NAMED, THE VICTIM NOT (w40). "echo five
     // takes" and "echo takes" mean the pawn on e5, or the
@@ -840,58 +887,8 @@
           offer(narrowed, "half-square repair");
           return true;
         }
-        // ASK FOR THE HALF THAT ACTUALLY NARROWS (w43).
-        // Game w42-1, 16:51:44: "takes delta" with Nxd5 and
-        // cxd5 on the board was answered "I heard takes
-        // delta. Say the rank." - and the rank was never
-        // the missing half. BOTH fits land on d5. The
-        // question could not discriminate, so "three" and
-        // "four" fit nothing, "five" only got back to where
-        // it started, and the owner said "knight" in the
-        // middle of it and was ignored. Three wasted
-        // answers to a question with one possible answer.
-        //
-        // What was missing was the MOVER, and there is
-        // already a question for that: askPiece offers the
-        // pieces by name and the pawns by their file
-        // ("knight, or charlie"), and takes either as the
-        // answer. So count first, and ask about whichever
-        // half still has more than one value.
-        var dests = {}, movers = {};
-        narrowed.forEach(function (c2) {
-          dests[RULES.sqName(c2.m.to)] = 1;
-          movers[c2.m.piece === "p" ? RULES.sqName(c2.m.from)[0]
-                                    : c2.m.piece] = 1;
-        });
-        var nDest = Object.keys(dests).length;
-        if (nDest === 1) {
-          var onlySq = Object.keys(dests)[0];
-          if (Object.keys(movers).length > 1) {
-            log("CND", "half-square: " + narrowed.map(function (c2) {
-              return c2.san;
-            }).join(",") + " all land on " + onlySq +
-                ", asking which piece");
-            askPiece(narrowed.map(function (c2) { return c2.m; }),
-                     "I heard " + heardSoFar(req) + ".",
-                     onlySq);
-            return true;
-          }
-          // one square AND one mover, so the fits differ by
-          // something neither question can name - promotion
-          // choices are the case. Walk them as yes/no.
-          log("CND", "half-square: " + narrowed.map(function (c2) {
-            return c2.san;
-          }).join(",") + " differ only in promotion, asking");
-          pending = { cands: narrowed, idx: 0 };
-          askCandidate();
-          return true;
-        }
-        log("CND", "half-square: " + narrowed.map(function (c2) {
-          return c2.san;
-        }).join(",") + " fit, asking for the missing half");
-        askPartial(req, req.fromFile ? "rank" : "file",
-                   transcripts.some(saysCheck),
-                   transcripts.some(saysMate));
+        askWhichever(narrowed, req, transcripts,
+                     req.fromFile ? "rank" : "file");
         return true;
       }
     }
@@ -928,12 +925,7 @@
         offer(ncaps, "capture repair");
         return true;
       }
-      log("CND", "capture repair: " + ncaps.map(function (c2) {
-        return c2.san;
-      }).join(",") + " fit, asking for the target");
-      askPartial(req, "target",
-                 transcripts.some(saysCheck),
-                 transcripts.some(saysMate));
+      askWhichever(ncaps, req, transcripts, "target");
       return true;
     }
     return false;

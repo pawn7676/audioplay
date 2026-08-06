@@ -1342,6 +1342,39 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 /no pawn can go there/i,
                 "and a push is still refused with the push verb");
 
+  // ---- w48: the pawn word, and the question it was asked ----
+  // Game w47-1, 20:09:24. "pawn takes" with bxc6 and dxc6 both
+  // available was answered "Say the target" - and both take on
+  // c6. The owner filed a memo mid-game saying exactly that.
+  // w43 had already taught this to the half-square repair; the
+  // capture repair next door never got it.
+  await onBoard("4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1", "pawn takes",
+                /bravo takes charlie 6/i,
+                '"pawn takes" names the movers, both landing on c6');
+  const bothPawns = heard().join(" | ");
+  check("and it does NOT ask for a target both moves share",
+        !/say the target/i.test(bothPawns));
+  // when the targets really do differ, the target question is
+  // still the right one
+  await onBoard("4k3/8/2n1n3/3P4/8/8/8/4K3 w - - 0 1", "pawn takes",
+                /say the target/i,
+                "two different targets still ask for the target");
+
+  // 20:09:06. "Plants" was the primary and the move was lost.
+  // Every one of these is a real Safari rendering of "pawn"
+  // from that game, and three of them cost a move.
+  for (const word of ["plants", "plant", "plantains",
+                      "fontes", "pontes", "po"]) {
+    await onBoard("4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1", word + " takes",
+                  /bravo takes charlie 6/i,
+                  '"' + word + '" is heard as the pawn');
+    heard();
+  }
+  // "cakes" for takes, three times in the same log
+  await onBoard("4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1", "pawn cakes",
+                /bravo takes charlie 6/i,
+                '"cakes" is heard as takes');
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();

@@ -720,3 +720,40 @@ takes pawn" - is not demoted the way one that DROPS it is, so it offered
 three moves that were not knight moves. The owner spotted the second one
 himself, mid-game, and recorded it as a memo. Both are ranking work and
 want their own change.
+
+### w48
+
+THE PAWN WORD, AGAIN, AND THE QUESTION IT WAS ASKED. Game w47-1 was four
+minutes of the owner failing to say "pawn". Safari gave back Plants,
+Plant, Plantains, Fontes, Pontes and Po across six utterances, and three
+of them lost a move outright. v120 already fought this fight and won it by
+adding "push" - phonetically unlike every file, rank and piece word, one
+syllable, and still the better word to say. But the table only ever grows
+from real logs, and this log has these. "cakes" joins the take words on
+the same evidence, three times in one game.
+
+The harder half was the question. At 20:09:24 "pawn takes" with bxc6 and
+dxc6 both available was answered "Say the target" - and both of them take
+on c6. The owner filed a memo mid-game saying so: "both of my ponds are
+attacking one single night on C6 so asking for the target didn't make any
+sense." He is exactly right, and w43 had already established the rule -
+ask about whichever half still has more than one value - after the
+half-square repair asked for a rank that could not discriminate. It was
+written INSIDE that repair. The capture repair next door, doing the same
+job on the same shape of evidence, went on asking for the target
+unconditionally for five days.
+
+That is the third time this pattern has cost something in a week: w43's
+lead, w45's refusal, and now this. A rule proved in one place and left
+there is a rule that will be broken in the place next to it. askWhichever
+is shared now.
+
+WHAT IS NOT FIXED HERE, and it is the biggest thing the log showed. At
+20:09:06 Safari returned six readings and the SECOND was "Pond takes" -
+which parses cleanly and would have played. The move was lost anyway,
+because handleTranscripts parses only transcripts[0] and every repair
+works from that one request. collectCandidates has read all eight rival
+readings since the v-series; the repair chain has never seen past the
+first. A good reading sitting in slot 1 is invisible to it. That wants its
+own change and its own thinking about what a noisy alternative is allowed
+to trigger.
