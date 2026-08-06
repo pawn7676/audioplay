@@ -1,3 +1,29 @@
+/*  READ THIS FIRST: THIS FILE IS HISTORY, NOT AUTHORITY.
+ *
+ *  It is the FROZEN v137 userscript's front door. It was
+ *  binding reading for the website too, and by
+ *  then it was describing a project that no longer exists.
+ *  Its "section N" pointers name files that were renamed
+ *  away, and its testing note ("there is no stored test
+ *  suite ... do not ask the user to update tests") would
+ *  talk a reader straight out of the harness, the property
+ *  check and the perft that guard every push here.
+ *
+ *  Everything still binding moved into src/: the
+ *  constraints, the platform findings and the closed cases
+ *  into src/header.js, the spoken grammar into
+ *  src/parsing.js. What remains below is TRUE OF THE
+ *  ARTIFACT beside it and of nothing else - its setup
+ *  notes, its layout, and the v-series history, which is
+ *  the reason to come here at all.
+ *
+ *  READ IT FOR WHY SOMETHING HAPPENED. Never for what to
+ *  do now. src/header.js is the header of record.
+ *
+ *  Nothing below is edited: the artifact's own sha is
+ *  guarded by test_harness.js, and its header should keep
+ *  saying what it said when the code froze.
+ */
 // ==UserScript==
 // @name         Lichess Audioplay
 // @version      137
