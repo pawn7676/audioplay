@@ -363,6 +363,60 @@
                            list[list.length - 1]) + ".");
   }
 
+  /* ONE PLACE DECIDES PLAY OR ASK, AND ONE NARROWS BY CHECK.
+   *
+   * Six repairs carried a copy of each. The play-or-ask copy was
+   * always the same three lines - one candidate and confirmation
+   * off means play it, anything else asks - re-decided six times,
+   * each with its own log line saying the same thing in slightly
+   * different words. The check/mate copy was five lines, pasted
+   * verbatim; the w40 origin repair got its copy by pasting the
+   * w116 one, which is how a seventh would have arrived.
+   *
+   * Nothing behavioural changes here. The point is that the rule
+   * for when a move may be played WITHOUT being confirmed is the
+   * most consequential rule in this file - game6 was that rule
+   * getting it wrong once - and a rule worth that much should be
+   * readable in one place rather than reconstructed from six.
+   *
+   * The one caller NOT folded in is the main candidate path,
+   * which runs bareGuardCands first: that guard exists precisely
+   * because an ordinary reading is the one shape a misheard piece
+   * name can slip through, and the repairs below have already
+   * counted over every legal move landing where they are looking.
+   * Different decision, kept separate.
+   */
+  function offer(cands, label) {
+    var play = cands.length === 1 && !CFG.confirmMyMove;
+    if (label) {
+      log("CND", label + ": " +
+          cands.map(function (c) { return c.san; }).join(",") +
+          (cands.length === 1 ? " fits, " : " fit, ") +
+          (play ? "playing" : "asking"));
+    }
+    if (play) {
+      acceptMove(cands[0]);
+      return;
+    }
+    pending = { cands: cands, idx: 0 };
+    askCandidate();
+  }
+
+  /* A spoken check word narrows the fits to checks, "mate"
+   * narrows further to mates - but only when something survives,
+   * so a misheard check word can never empty the list. */
+  function narrowBySaid(cands, transcripts) {
+    if (transcripts.some(saysCheck)) {
+      var c = cands.filter(function (x) { return /[+#]$/.test(x.san); });
+      if (c.length) cands = c;
+    }
+    if (transcripts.some(saysMate)) {
+      var m = cands.filter(function (x) { return x.san.slice(-1) === "#"; });
+      if (m.length) cands = m;
+    }
+    return cands;
+  }
+
   function repeatLast() {
     speak(api.lastSan ? "Last move: " + sanToSpeech(api.lastSan)
                       : "No move to repeat yet.");
@@ -715,12 +769,7 @@
         // no bare-square guard here: it fires only on pawn
         // moves, and this question is only ever asked about
         // a square no pawn can reach
-        if (acs.length === 1 && !CFG.confirmMyMove) {
-          acceptMove(acs[0]);
-          return;
-        }
-        pending = { cands: acs, idx: 0 };
-        askCandidate();
+        offer(acs);
         return;
       }
       // A piece was named, the question is still open, and
@@ -754,12 +803,7 @@
             return c2.san;
           }).join(","));
           partialAsk = null;
-          if (pcs.length === 1 && !CFG.confirmMyMove) {
-            acceptMove(pcs[0]);
-            return;
-          }
-          pending = { cands: pcs, idx: 0 };
-          askCandidate();
+          offer(pcs);
           return;
         }
         log("CND", "partial answer: nothing fits, re-asking");
@@ -837,29 +881,7 @@
         var ocands = ocaps.map(function (m) {
           return { m: m, san: api.pos.sanOf(m) };
         });
-        if (transcripts.some(saysCheck)) {
-          var ock = ocands.filter(function (c2) {
-            return /[+#]$/.test(c2.san);
-          });
-          if (ock.length) ocands = ock;
-        }
-        if (transcripts.some(saysMate)) {
-          var ocm = ocands.filter(function (c2) {
-            return c2.san.slice(-1) === "#";
-          });
-          if (ocm.length) ocands = ocm;
-        }
-        if (ocands.length === 1 && !CFG.confirmMyMove) {
-          log("CND", "origin capture: only " + ocands[0].san +
-              " fits, playing");
-          acceptMove(ocands[0]);
-          return;
-        }
-        log("CND", "origin capture: " + ocands.map(function (c2) {
-          return c2.san;
-        }).join(",") + " fit, asking");
-        pending = { cands: ocands, idx: 0 };
-        askCandidate();
+        offer(narrowBySaid(ocands, transcripts), "origin capture");
         return;
       }
       // A PIECE WITH HALF A SQUARE (v116). Game20's mating
@@ -917,21 +939,9 @@
           return true;
         });
         if (half.length) {
-          var narrowed = half.map(function (m) {
+          var narrowed = narrowBySaid(half.map(function (m) {
             return { m: m, san: api.pos.sanOf(m) };
-          });
-          if (transcripts.some(saysCheck)) {
-            var chk = narrowed.filter(function (c2) {
-              return /[+#]$/.test(c2.san);
-            });
-            if (chk.length) narrowed = chk;
-          }
-          if (transcripts.some(saysMate)) {
-            var mt = narrowed.filter(function (c2) {
-              return c2.san.slice(-1) === "#";
-            });
-            if (mt.length) narrowed = mt;
-          }
+          }), transcripts);
           if (narrowed.length === 1) {
             // A UNIQUE FIT PLAYS AT ONCE (v119, was
             // mate-only in v118). Only one move fits
@@ -955,16 +965,7 @@
             // bare-square request with no take word still
             // confirms, because nothing there rules out a
             // push.
-            if (!CFG.confirmMyMove) {
-              log("CND", "half-square repair: only " +
-                  narrowed[0].san + " fits, playing");
-              acceptMove(narrowed[0]);
-              return;
-            }
-            log("CND", "half-square repair: only " +
-                narrowed[0].san + " fits, asking");
-            pending = { cands: narrowed, idx: 0 };
-            askCandidate();
+            offer(narrowed, "half-square repair");
             return;
           }
           // ASK FOR THE HALF THAT ACTUALLY NARROWS (w43).
@@ -1040,36 +1041,15 @@
                 " has nothing to take. Say again.");
           return;
         }
-        var ncaps = pcaps.map(function (m) {
+        var ncaps = narrowBySaid(pcaps.map(function (m) {
           return { m: m, san: api.pos.sanOf(m) };
-        });
-        if (transcripts.some(saysCheck)) {
-          var ck2 = ncaps.filter(function (c2) {
-            return /[+#]$/.test(c2.san);
-          });
-          if (ck2.length) ncaps = ck2;
-        }
-        if (transcripts.some(saysMate)) {
-          var mk2 = ncaps.filter(function (c2) {
-            return c2.san.slice(-1) === "#";
-          });
-          if (mk2.length) ncaps = mk2;
-        }
+        }), transcripts);
         if (ncaps.length === 1) {
           // named mover, unique capture: the v111 bar is
           // met, so it plays - see the half-square repair
           // above. "queen takes" with one queen capture on
           // the board can only be that capture.
-          if (!CFG.confirmMyMove) {
-            log("CND", "capture repair: only " + ncaps[0].san +
-                " fits, playing");
-            acceptMove(ncaps[0]);
-            return;
-          }
-          log("CND", "capture repair: only " + ncaps[0].san +
-              " fits, asking");
-          pending = { cands: ncaps, idx: 0 };
-          askCandidate();
+          offer(ncaps, "capture repair");
           return;
         }
         log("CND", "capture repair: " + ncaps.map(function (c2) {
@@ -1107,17 +1087,7 @@
           // Several still ask, because choosing among
           // moves the user distinguished and we could not
           // is a guess, however harmless its outcome.
-          if (nmates.length === 1 && !CFG.confirmMyMove) {
-            log("CND", "mate repair: only " + nmates[0].san +
-                ", playing");
-            acceptMove(nmates[0]);
-            return;
-          }
-          log("CND", "mate repair: " + nmates.map(function (c2) {
-            return c2.san;
-          }).join(","));
-          pending = { cands: nmates, idx: 0 };
-          askCandidate();
+          offer(nmates, "mate repair");
           return;
         }
       }
