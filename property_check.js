@@ -153,6 +153,22 @@ function blindBattery() {
     u.push({ t: "takes " + SAY_SQ(sq), kind: "takes-square", sq: sq });
     u.push({ t: SAY_SQ(sq) + " takes", kind: "square-takes" });
   });
+  // THE VICTIM FORMS. "queen takes queen" names the prey
+  // instead of the square (v111, widened at v121 so the mover
+  // need not be named). A whole branch of the grammar, and it
+  // had NO generated coverage until a mutant that deleted the
+  // victim filter outright survived the entire suite - not
+  // because the rule was unchecked, but because nothing ever
+  // said a victim. Third time this shape has been found: a
+  // generator that never builds the case is a test that passes
+  // for the wrong reason.
+  "pnbrqk".split("").forEach(v => {
+    u.push({ t: "takes " + PIECE_WORD[v], kind: "takes-victim" });
+    "pnbrqk".split("").forEach(mv => {
+      u.push({ t: PIECE_WORD[mv] + " takes " + PIECE_WORD[v],
+               kind: "piece-takes-victim" });
+    });
+  });
   FILES.forEach(f => {
     u.push({ t: "takes " + SPOKEN_FILE[f], kind: "takes-file" });
     u.push({ t: SPOKEN_FILE[f] + " takes", kind: "file-takes" });
@@ -188,6 +204,11 @@ function derivedBattery(moves) {
     add(SPOKEN_FILE[ff] + " takes", "file-takes");
     add(SAY_SQ(m.from) + " takes", "square-takes");
     add("takes " + SPOKEN_FILE[m.to[0]], "takes-file");
+    add("takes " + PIECE_WORD[m.captured], "takes-victim");
+    add(PIECE_WORD[m.piece] + " takes " + PIECE_WORD[m.captured],
+        "piece-takes-victim");
+    add(SPOKEN_FILE[ff] + " takes " + PIECE_WORD[m.captured],
+        "file-takes-victim");
   });
   return u;
 }
@@ -277,33 +298,44 @@ vm.runInContext(`
           note("named " + req.piece + " but moved " + m.piece, u.t, uci);
         }
 
-        // 6. A SPOKEN FROM-FILE IS THE MOVER'S FILE, whenever no
-        //    whole from-square was given. Every capture widening
-        //    from w40 on leaned on this to argue it was safe.
-        if (req.fromFile && req.squares.length < 2 &&
-            from[0] !== req.fromFile) {
-          note("from-file " + req.fromFile + " but moved from " + from,
-               u.t, uci);
+        // 6. EVERY CONSTRAINT THE WORDS SET IS HONOURED. This
+        //    used to read req.fromFile and assert it was the
+        //    MOVER's file - which was true of some utterances
+        //    and false of others, because that one field meant
+        //    the origin here and the target there. It is the
+        //    ambiguity the constraint set was built to remove,
+        //    and the property had quietly encoded one side of
+        //    it: migrating findMoves failed this rule three
+        //    times on correct code before the rule was fixed.
+        //
+        //    Asked of the constraint the utterance actually
+        //    produced, it is one statement instead of four, and
+        //    it covers the halves the old form could not name.
+        //    A move may only satisfy a LATER reading, so the
+        //    check is that it satisfies SOME reading.
+        var rs = readingsOf(req);
+        var honoured = false;
+        for (var k = 0; k < rs.length; k++) {
+          var cc = rs[k].c;
+          if ((!cc.from.file || from[0] === cc.from.file) &&
+              (!cc.from.rank || from[1] === cc.from.rank) &&
+              (!cc.to.file   || to[0]   === cc.to.file) &&
+              (!cc.to.rank   || to[1]   === cc.to.rank) &&
+              (!cc.piece     || m.piece === cc.piece) &&
+              (!cc.victim    || m.captured === cc.victim) &&
+              (!cc.mustCapture || m.captured)) { honoured = true; break; }
+        }
+        if (!honoured) {
+          note("no reading of the utterance allows this move", u.t, uci);
         }
 
-        // 7b. A SPOKEN FROM-SQUARE IS THE MOVER'S SQUARE. Added
-        //    after a mutant that deleted this filter outright
-        //    SURVIVED the whole suite: properties 1 and 7 only
-        //    check that the DESTINATION is right and that the
-        //    move is legal, so "e2 delta three" answered with
-        //    some other piece's move to d3 passed every rule
-        //    there was. The fully-spelled form is the one that
-        //    skips the bare-square guard, so it is the last form
-        //    that should be allowed to move a piece nobody named.
-        if (req.squares.length >= 2 && from !== req.squares[0]) {
-          note("from-square " + req.squares[0] + " but moved from " + from,
-               u.t, uci);
-        }
-
-        // 7. A SPOKEN DESTINATION IS THE DESTINATION.
-        if (u.sq && req.squares.length === 1 && to !== u.sq) {
-          note("destination " + u.sq + " but moved to " + to, u.t, uci);
-        }
+        // 7. The from-square and destination rules that used to
+        //    stand here are subsumed by the reading check: a
+        //    whole square is just both halves of one end, and
+        //    the check above names every half. The mutants that
+        //    earned them (deleting the from-square filter,
+        //    deleting the destination filter) are still caught -
+        //    verified, not assumed.
       }
 
       // 8. DETERMINISM. The same words on the same board must

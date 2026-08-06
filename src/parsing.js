@@ -396,6 +396,75 @@
     return req;
   }
 
+  /*================= WHAT THE WORDS RULE OUT =======================
+   *
+   *  THE CONSTRAINT SET. Everything above produces a bag of
+   *  thirteen flat fields whose meanings depend on each other:
+   *  squares[0] is the origin only when there are two of them,
+   *  fromFile is the mover's file unless the half-square repair
+   *  is reading it, in which case it is the target's. Adding a
+   *  capture form meant adding a field and teaching every
+   *  consumer the new interaction (w40 added four).
+   *
+   *  A constraint says the same things without the
+   *  interactions: which squares can the mover be on, which can
+   *  the target be, what must be true of the pieces. Matching
+   *  is then one filter with no special cases, and constraining
+   *  the ORIGIN is the same KIND of thing as constraining the
+   *  TARGET - which is exactly the distinction w40 and w41 had
+   *  to be taught one form at a time.
+   *
+   *    { castle, piece, victim, mustCapture, promotion, promoKw,
+   *      from: { file, rank },
+   *      to:   { file, rank } }
+   *
+   *  A whole square sets both halves of its end. Null means
+   *  "not said", never "any" - nothing here is ever a wildcard
+   *  the user typed, only silence about that half.
+   *
+   *  WHAT IT DELIBERATELY CANNOT SAY: "the d-file is either the
+   *  mover's or the target's". That ambiguity is real - it is
+   *  what "queen takes delta" means, and today findMoves reads
+   *  it one way while the half-square repair reads it the other
+   *  - and a single constraint cannot hold both. It becomes TWO
+   *  READINGS instead, which is the section below.
+   *================================================================*/
+  function constraintOf(req) {
+    var c = { castle: req.castle, piece: req.piece, victim: req.victim,
+              mustCapture: !!req.capture, promotion: req.trailingPiece,
+              promoKw: !!req.promoKw,
+              from: { file: null, rank: null },
+              to:   { file: null, rank: null } };
+    var sq = req.squares;
+    if (sq.length > 1) {
+      c.from.file = sq[0][0]; c.from.rank = sq[0][1];
+      c.to.file   = sq[1][0]; c.to.rank   = sq[1][1];
+    } else if (sq.length === 1) {
+      // ONE SQUARE IS THE TARGET, unless the take word came
+      // after it - the w40 rule, now the only place it is
+      // written. Everything before "takes" is the mover.
+      var end = (req.takeAt === 1) ? c.from : c.to;
+      end.file = sq[0][0]; end.rank = sq[0][1];
+    }
+    // a dangling half joins whichever end it was spoken at
+    if (req.fromFile) {
+      (req.fromBeforeTake ? c.from : c.to).file = req.fromFile;
+    }
+    if (req.fromRank) {
+      (req.fromBeforeTake ? c.from : c.to).rank = req.fromRank;
+    }
+    if (req.toFile) c.to.file = req.toFile;
+    if (req.toRank) c.to.rank = req.toRank;
+    return c;
+  }
+
+  /* Is anything constrained at all? A request with no square,
+   * no victim and no castle has no move in it. */
+  function constraintIsEmpty(c) {
+    return !c.castle && !c.victim &&
+           !c.from.file && !c.from.rank && !c.to.file && !c.to.rank;
+  }
+
   function reqIsEmpty(req) {
     return !req.castle && !req.squares.length && !req.victim;
   }
