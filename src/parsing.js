@@ -21,7 +21,20 @@
    *  A BARE SQUARE IS ALWAYS A PAWN PUSH. "foxtrot three"
    *  is f3 - never Nf3, never a capture onto f3. Say "pawn
    *  foxtrot three" or "push foxtrot three" to rule out the
-   *  piece name having been lost by the mic. This is the
+   *  piece name having been lost by the mic.
+   *
+   *  "PUSH" IS A PAWN WORD EVERYWHERE, not only on a push.
+   *  v120 added it because Safari renders "pawn" as pollen,
+   *  pond, pot, paw, pan - and, by game w47-1, as plants,
+   *  plantains, fontes and po. It is a token meaning the
+   *  PIECE, so "push takes" parses exactly as "pawn takes"
+   *  does. Odd English, reliable transcription; worth knowing
+   *  at a board when the word will not land.
+   *
+   *  Better still, a pawn capture rarely needs the word at
+   *  all: name the FILE the pawn stands on. "bravo takes" is
+   *  the b-pawn and nothing else, and it is shorter than
+   *  either. This is the
    *  oldest rule here and the most expensive one: game6
    *  played a pawn capture that was meant as a queen
    *  capture, unasked, and lost. property_check.js
