@@ -551,9 +551,21 @@
       // was asked for, in the position the first one held
       if (m.promotion === want) kept[at[key]] = m;
     });
+    var legal = api.pos.legalMoves();
     return kept.map(function (m) {
-      return { m: m, san: api.pos.sanOf(m) };
+      return { m: m, san: api.pos.sanOf(m, legal) };
     });
+  }
+
+  /* NAMING SEVERAL MOVES FROM ONE POSITION (w53). sanOf
+   * regenerates the legal move list whenever it is not handed
+   * one - it needs it for disambiguation - so a map or filter
+   * that names N moves generated the list N times, from a
+   * position that cannot have changed inside the loop. Every
+   * such place now generates it once and passes it down. */
+  function sansOf(moves) {
+    var legal = api.pos.legalMoves();
+    return moves.map(function (m) { return api.pos.sanOf(m, legal); });
   }
 
   function offer(cands, label) {
@@ -764,17 +776,20 @@
     });
     var chk = partialAsk.chk || transcripts.some(saysCheck);
     var mate = partialAsk.mate || transcripts.some(saysMate);
-    if (chk) {
-      var c2 = fits.filter(function (m) {
-        return /[+#]$/.test(api.pos.sanOf(m));
-      });
-      if (c2.length) fits = c2;
-    }
-    if (mate) {
-      var m2 = fits.filter(function (m) {
-        return api.pos.sanOf(m).slice(-1) === "#";
-      });
-      if (m2.length) fits = m2;
+    if (chk || mate) {
+      var legalNow = api.pos.legalMoves();
+      if (chk) {
+        var c2 = fits.filter(function (m) {
+          return /[+#]$/.test(api.pos.sanOf(m, legalNow));
+        });
+        if (c2.length) fits = c2;
+      }
+      if (mate) {
+        var m2 = fits.filter(function (m) {
+          return api.pos.sanOf(m, legalNow).slice(-1) === "#";
+        });
+        if (m2.length) fits = m2;
+      }
     }
     return fits;
   }
@@ -1074,9 +1089,11 @@
       // goes through movesFor and the mate test stays here.
       var mc = anyMove();
       mc.piece = req.piece;
-      var pmates = movesFor(api.pos, mc).filter(function (m) {
-        return api.pos.sanOf(m).slice(-1) === "#";
-      });
+      var legalMate = api.pos.legalMoves();
+      var pmates = movesFor(api.pos, mc, false, legalMate)
+        .filter(function (m) {
+          return api.pos.sanOf(m, legalMate).slice(-1) === "#";
+        });
       if (pmates.length) {
         var nmates = candidatesOf(pmates, req);
         // one mate plays at once - every candidate here
@@ -1537,7 +1554,7 @@
         var caps = all.filter(function (m) { return m.captured; });
         if (!req.capture && caps.length) {
           log("CND", "push-only: capture available " +
-              caps.map(function (m) { return api.pos.sanOf(m); }).join(","));
+              sansOf(caps).join(","));
           // THE ANSWER MAY BE ONE WORD (v103). Through v102
           // this spoke and returned, leaving nothing behind,
           // so game14 answered "Bishop" — twice — and was
@@ -1557,7 +1574,7 @@
       }
       if (alt.length) {
         log("CND", "strict: pawn cannot, but " +
-            alt.map(function (m) { return api.pos.sanOf(m); }).join(",") +
+            sansOf(alt).join(",") +
             " could");
         // askPiece leaves the question open: see pieceAsk
         // in the state block at the top of this file for why

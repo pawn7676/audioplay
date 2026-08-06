@@ -141,6 +141,27 @@
 
   var FUZZY_SETS = [[NATO, "file"], [NUMS, "rank"], [PIECES, "piece"]];
 
+  /* THE CANDIDATE LIST IS BUILT ONCE (w53). fuzzyToken ran
+   * Object.keys over all three tables and re-applied the same
+   * two filters on EVERY unknown word - and an utterance is
+   * parsed several times over (the move-like scan,
+   * collectCandidates, the repair chain, semanticKey), across
+   * up to eight rival readings, each with its own unknown
+   * words. The tables are constants; the eligible spellings
+   * cannot change, so they are flattened here at load. */
+  var FUZZY_TARGETS = (function () {
+    var out = [];
+    FUZZY_SETS.forEach(function (pair) {
+      var dict = pair[0], kind = pair[1];
+      Object.keys(dict).forEach(function (w) {
+        if (w.length < 4) return;
+        if (FUZZY_EXACT_ONLY[w]) return;
+        out.push({ t: kind, v: dict[w], w: w });
+      });
+    });
+    return out;
+  })();
+
   function fuzzyToken(tk) {
     if (tk.length < 4) return null;
     if (FUZZY_NEVER[tk]) return null;
@@ -152,14 +173,10 @@
     /* short words are dense with collisions, long ones are not */
     var tol = tk.length >= 6 ? 2 : 1;
     var hits = [];
-    FUZZY_SETS.forEach(function (pair) {
-      var dict = pair[0], kind = pair[1];
-      Object.keys(dict).forEach(function (w) {
-        if (w.length < 4) return;
-        if (FUZZY_EXACT_ONLY[w]) return;
-        if (editDistance(tk, w, tol) <= tol) hits.push({ t: kind, v: dict[w], w: w });
-      });
-    });
+    for (var fi = 0; fi < FUZZY_TARGETS.length; fi++) {
+      var cand = FUZZY_TARGETS[fi];
+      if (editDistance(tk, cand.w, tol) <= tol) hits.push(cand);
+    }
     if (!hits.length) return null;
     var distinct = {};
     hits.forEach(function (h) { distinct[h.t + h.v] = h; });

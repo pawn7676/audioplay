@@ -83,7 +83,13 @@
     return rs;
   }
 
-  function findMoves(pos, req, ignoreStrict) {
+  /* `legal` is optional and is passed by anything that has one
+   * already (w53). Without it every call regenerated the legal
+   * moves for a position that cannot have changed: up to eight
+   * transcripts, each with two or three readings, plus the
+   * fuzzy retry and the bare-square guard, all asking the same
+   * board the same question. */
+  function findMoves(pos, req, ignoreStrict, legal) {
     // "IS THERE A MOVE IN THIS AT ALL" is a question about the
     // UTTERANCE and it is asked here, once. movesFor used to ask
     // it and that made a square-less constraint unusable - which
@@ -93,7 +99,7 @@
     if (!req.castle && constraintIsEmpty(constraintOf(req))) return [];
     var rs = readingsOf(req), i, found;
     for (i = 0; i < rs.length; i++) {
-      found = movesFor(pos, rs[i].c, ignoreStrict);
+      found = movesFor(pos, rs[i].c, ignoreStrict, legal);
       if (found.length) {
         if (i) log("CND", "reading: " + rs[i].why);
         return found;
@@ -102,8 +108,8 @@
     return [];
   }
 
-  function movesFor(pos, c, ignoreStrict) {
-    var legal = pos.legalMoves();
+  function movesFor(pos, c, ignoreStrict, legalList) {
+    var legal = legalList || pos.legalMoves();
     if (c.castle) {
       return legal.filter(function (m) {
         if (m.flags.indexOf("k") >= 0) return c.castle !== "q";
@@ -230,11 +236,21 @@
       // no candidates into candidates, never rewrite a
       // reading that already worked - and it costs one
       // extra parse of one transcript, only on failure.
-      var found = findMoves(pos, req);
+      // ASKED BEFORE THE WORK, NOT AFTER IT (w53). This test
+      // sat below, so a request the repair chain owns - "queen
+      // takes delta", "rook delta", anything with a constraint
+      // but no square, victim or castle - ran findMoves in
+      // full, up to two readings and a fuzzy retry, and then
+      // had every result thrown away by this line. Safe to
+      // hoist because fuzzy parsing only ever ADDS symbols: an
+      // empty fuzzy request implies an empty plain one, so the
+      // retry below could never have rescued it either.
+      if (reqIsEmpty(req)) return;
+      var found = findMoves(pos, req, false, legal);
       if (!found.length && req.usedFuzzy) {
         var plain = parseTranscript(raw, true);
         if (!reqIsEmpty(plain)) {
-          var pf = findMoves(pos, plain);
+          var pf = findMoves(pos, plain, false, legal);
           if (pf.length) {
             log("PRS", "near-miss poisoned the reading, " +
                 "retrying without it");
@@ -243,7 +259,6 @@
           }
         }
       }
-      if (reqIsEmpty(req)) return;
       var namedPiece = !!req.piece;
       found.forEach(function (m) {
         // An explicit promotion ("g1 equals knight", or any

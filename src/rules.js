@@ -20,6 +20,35 @@
     var ROOK = [16, 1, -16, -1];
     var ROYAL = [17, 16, 15, 1, -17, -16, -15, -1];
 
+    /* the two slider families, built once. attacked() used to
+     * write these as literals in its own body, so every call
+     * allocated two arrays purely to be read twice (w53). */
+    var BISHOPQ = ["b", "q"], ROOKQ = ["r", "q"];
+
+    /* Does a slider of one of `types` sit on a clear ray from
+     * `sq`? Lifted out of attacked() (w53): it was a closure
+     * declared INSIDE the hottest predicate in the program, so
+     * a new function object was allocated on every call - and
+     * attacked() is called at least once per pseudo-move, which
+     * is once per clone, which is a million times in a perft.
+     * It closed over sq/by/d/i/p; they are parameters and
+     * locals now, which is also why it can be read on its own.
+     */
+    function raySees(b, sq, by, dirs, types) {
+      for (var m = 0; m < dirs.length; m++) {
+        var d = dirs[m], i = sq + d;
+        while ((i & 0x88) === 0) {
+          var p = b[i];
+          if (p) {
+            if (colorOf(p) === by && types.indexOf(typeOf(p)) >= 0) return true;
+            break;
+          }
+          i += d;
+        }
+      }
+      return false;
+    }
+
     function sqName(i) { return FILES[i & 15] + ((i >> 4) + 1); }
     function nameSq(s) { return (s.charCodeAt(1) - 49) * 16 + (s.charCodeAt(0) - 97); }
     function isWhite(p) { return p && p === p.toUpperCase(); }
@@ -62,8 +91,18 @@
       this.full = parseInt(parts[5] || "1", 10);
     };
 
+    /* THE HOTTEST FUNCTION IN THE FILE, and it used to parse a
+     * FEN (w53). legalMoves clones once per pseudo-move to test
+     * the king - about 35 times per position, and perft alone
+     * does it a million times - and every one of those went
+     * through new Position(START), which fills a 128-slot array
+     * and then splits and regexes the start FEN character by
+     * character, before the six lines below overwrite every
+     * field it just set. Object.create skips the constructor
+     * entirely; the fields are all assigned here anyway, so
+     * nothing is left undefined. */
     Position.prototype.clone = function () {
-      var p = new Position(START);
+      var p = Object.create(Position.prototype);
       p.board = this.board.slice();
       p.turn = this.turn;
       p.castle = { K: this.castle.K, Q: this.castle.Q, k: this.castle.k, q: this.castle.q };
@@ -82,7 +121,7 @@
 
     /* is square `sq` attacked by side `by` */
     Position.prototype.attacked = function (sq, by) {
-      var b = this.board, i, j, d, p;
+      var b = this.board, i, j, p;    /* `d` left with raySees */
       /* pawns */
       var pd = by === "w" ? [-17, -15] : [17, 15];
       for (j = 0; j < 2; j++) {
@@ -99,23 +138,9 @@
         i = sq + ROYAL[j];
         if (onBoard(i)) { p = b[i]; if (p && typeOf(p) === "k" && colorOf(p) === by) return true; }
       }
-      /* sliders */
-      function ray(self, dirs, types) {
-        for (var m = 0; m < dirs.length; m++) {
-          d = dirs[m]; i = sq + d;
-          while (onBoard(i)) {
-            p = self.board[i];
-            if (p) {
-              if (colorOf(p) === by && types.indexOf(typeOf(p)) >= 0) return true;
-              break;
-            }
-            i += d;
-          }
-        }
-        return false;
-      }
-      if (ray(this, BISHOP, ["b", "q"])) return true;
-      if (ray(this, ROOK, ["r", "q"])) return true;
+      /* sliders - see raySees, lifted out of here at w53 */
+      if (raySees(b, sq, by, BISHOP, BISHOPQ)) return true;
+      if (raySees(b, sq, by, ROOK, ROOKQ)) return true;
       return false;
     };
 
@@ -319,8 +344,11 @@
       return san;
     };
 
-    Position.prototype.findUci = function (uci) {
-      var moves = this.legalMoves();
+    /* legalList is optional and is passed by anything that has
+     * already generated one (w53) - see applyUci, which used to
+     * make the list here and then make it AGAIN inside sanOf. */
+    Position.prototype.findUci = function (uci, legalList) {
+      var moves = legalList || this.legalMoves();
       for (var i = 0; i < moves.length; i++) {
         if (this.uciOf(moves[i]) === uci) return moves[i];
       }
@@ -337,9 +365,16 @@
     };
 
     Position.prototype.applyUci = function (uci) {
-      var m = this.findUci(uci);
+      /* ONE LIST, USED TWICE (w53). findUci generated the legal
+       * moves and threw them away, then sanOf generated the
+       * same list again from the same untouched position -
+       * doubling the cost of every move replayed from the
+       * stream, which is how the board is rebuilt after any
+       * reconnect. */
+      var moves = this.legalMoves();
+      var m = this.findUci(uci, moves);
       if (!m) return null;
-      var san = this.sanOf(m);
+      var san = this.sanOf(m, moves);
       this.apply(m);
       return { move: m, san: san };
     };

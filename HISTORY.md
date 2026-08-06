@@ -1021,3 +1021,67 @@ low-risk; it means the bugs are still there. The harness now drives this
 path directly with a stubbed endpoint - the first tests it has ever had -
 and five of the fixes were mutation-tested.
 
+
+### w53
+
+THE SAME ANSWER, FASTER. Every change here is meant to be invisible: not one
+of them may alter which moves are found or what they are called. That is
+also what makes the batch worth being careful about, because the failure
+mode is silent. The efficiency items from the review, in one pass, with
+perft and the property check as the gate on either side.
+
+THE HOTTEST FUNCTION IN THE PROGRAM WAS PARSING A FEN. clone() is called
+once per pseudo-move by legalMoves, to test whether the king is left in
+check - about thirty-five times per position, and a million times in a
+single perft - and every one of those went through new Position(START),
+which fills a 128-slot array and then splits and regexes the starting FEN
+character by character, before the next six lines overwrite every field it
+had just set. Object.create skips the constructor; every field is assigned
+anyway. Perft went from 7.0 seconds to 1.6.
+
+AND attacked() DECLARED A FUNCTION INSIDE ITSELF. The slider scan was a
+closure written in the body of the most-called predicate in the file, so a
+function object was allocated on every call, and two array literals with it.
+Lifted out, given parameters instead of closed-over variables - which is
+also the first time it can be read on its own terms.
+
+THE LEGAL MOVE LIST WAS GENERATED OVER AND OVER FOR A POSITION THAT COULD
+NOT CHANGE. findMoves regenerated it per reading, per transcript - up to
+eight of those - plus the fuzzy retry; sanOf regenerates it whenever it is
+not handed one, because it needs it for disambiguation, so any map or filter
+naming N moves generated it N times; and applyUci made the list in findUci,
+threw it away, and made it again inside sanOf. All of these now pass the one
+they already have. Nothing changed about what they compute, and the harness
+proves it move by move: the same position named with the list and without it
+must produce identical SAN, disambiguation included. That test earns its
+keep - reverting sanOf to ignore the list leaves every check green EXCEPT
+the disambiguation count, which is exactly the shape of the bug this could
+have introduced.
+
+collectCandidates ALSO DID WORK IT ALWAYS THREW AWAY. The reqIsEmpty test
+sat below findMoves, so every request the repair chain owns - "queen takes
+delta", "rook delta", anything with a constraint but no square, victim or
+castle - ran the full search, both readings and the fuzzy retry, and then
+had the results discarded by the next line. Hoisting it is safe for a reason
+worth writing down: fuzzy parsing only ever ADDS symbols, so an empty fuzzy
+request implies an empty plain one, and the retry could never have rescued
+it either.
+
+THE REST ARE SMALL AND WERE FREE. fuzzyToken re-enumerated all three word
+tables and re-applied the same two filters on every unknown word, several
+times per utterance; the tables are constants, so the eligible spellings are
+flattened once at load. log() joined up to three thousand lines and
+reassigned textContent on EVERY line whether or not the panel was open -
+several hundred kilobytes built and discarded per move, on a device also
+running recognition and synthesis - and now paints only when the panel can
+be seen, which is a thing the toggle already knew. The keep-alive assembled
+a 22KB base64 string on every start and threw it away unused on every
+browser that has Blob. And bakePieces redrew the whole board once per piece
+image, twelve times at boot, each guaranteed to be replaced by the next.
+
+WHAT THIS DOES NOT DO: nothing here changes rules.js's answers, and nothing
+here evaluates anything. The perft numbers are the proof of the first, and
+they are unchanged across all four positions - which is also why w50's
+perft work had to come first. A speed change to a move generator with no
+promotion coverage would have been a gamble.
+

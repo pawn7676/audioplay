@@ -337,10 +337,10 @@
     logBtn.addEventListener("click", function () {
       var open = logPanel.style.display !== "none";
       logPanel.style.display = open ? "none" : "flex";
-      if (!open) {
-        logBody.textContent = LOG.join("\n");
-        logBody.scrollTop = logBody.scrollHeight;
-      }
+      // log.js repaints only while this is true (w53), so the
+      // toggle owns it and the open case paints once, here
+      logPanelVisible = !open;
+      if (!open) paintLog();
       renderButton();
     });
 

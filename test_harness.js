@@ -1543,6 +1543,84 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 /bravo 4|nothing|say again|which/i,
                 'a bare "b4" never becomes the capture on b5');
 
+  // ============== w53: THE SAME ANSWER, FASTER =============
+  // Every change in w53 is meant to be invisible. The risk is
+  // not that it gets slower, it is that a list passed in to
+  // save regenerating it is the WRONG list - and the thing it
+  // is used for is disambiguation, which is silent when wrong:
+  // "knight f3" instead of "knight b-f3" names a different
+  // move than the one being played.
+  const sanSame = vm.runInContext(`
+    (function () {
+      // two knights both able to reach d2: SAN must disambiguate
+      var p = new RULES.Position("4k3/8/8/8/8/8/8/1N1K1N2 w - - 0 1");
+      var legal = p.legalMoves();
+      var out = { withList: [], without: [] };
+      legal.forEach(function (m) {
+        out.withList.push(p.sanOf(m, legal));
+        out.without.push(p.sanOf(m));
+      });
+      return { same: out.withList.join(",") === out.without.join(","),
+               sans: out.withList.join(","),
+               disambiguated: out.withList.filter(function (s) {
+                 return /^N[a-h]d2$/.test(s);
+               }).length };
+    })()
+  `, sandbox);
+  check("a passed legal list names moves identically",
+        sanSame.same === true);
+  check("and disambiguation still happens (" + sanSame.disambiguated +
+        " of the Nd2 pair)", sanSame.disambiguated === 2);
+
+  // findMoves given the list must answer as it does without
+  const findSame = vm.runInContext(`
+    (function () {
+      var p = new RULES.Position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+      var legal = p.legalMoves();
+      var req = parseTranscript("echo four");
+      var a = findMoves(p, req).map(function (m) { return p.uciOf(m); }).join(",");
+      var b = findMoves(p, req, false, legal)
+                .map(function (m) { return p.uciOf(m); }).join(",");
+      return { a: a, b: b };
+    })()
+  `, sandbox);
+  check("findMoves answers the same with the list as without (" +
+        findSame.a + ")", findSame.a === findSame.b && findSame.a.length > 0);
+
+  // applyUci names the move the same way after sharing its list
+  check("applyUci still names its move",
+        vm.runInContext(`
+          (function () {
+            var p = new RULES.Position();
+            return p.applyUci("g1f3").san;
+          })()
+        `, sandbox) === "Nf3");
+
+  // the flattened fuzzy table finds what the loop found
+  check("a near-miss still resolves (brooke -> rook)",
+        vm.runInContext('JSON.stringify(fuzzyToken("brooke"))', sandbox)
+          .indexOf('"v":"r"') >= 0);
+  check("and an ambiguous near-miss still refuses to guess",
+        vm.runInContext('fuzzyToken("zzzzzz")', sandbox) === null);
+
+  // the log panel is not repainted while it cannot be seen
+  const logPaint = vm.runInContext(`
+    (function () {
+      var before = logBody ? logBody.textContent : "";
+      logPanelVisible = false;
+      log("TST", "a line nobody can see");
+      var hidden = logBody ? logBody.textContent : "";
+      logPanelVisible = true;
+      paintLog();
+      var shown = logBody ? logBody.textContent : "";
+      logPanelVisible = false;
+      return { unchanged: hidden === before,
+               painted: shown.indexOf("a line nobody can see") >= 0 };
+    })()
+  `, sandbox);
+  check("a hidden log panel is not repainted", logPaint.unchanged === true);
+  check("and opening it paints what was missed", logPaint.painted === true);
+
   // ============ w52: THE POLL FALLBACK, AT LAST ============
   // This path had no test at all, which is most of why it had
   // three faults. The device can stream, so none of it was ever
