@@ -193,7 +193,10 @@ function derivedBattery(moves) {
     add(SAY_SQ(m.to), "bare-square", { sq: m.to });
     add(PIECE_WORD[m.piece] + " " + SAY_SQ(m.to), "piece-square",
         { piece: m.piece, sq: m.to });
-    add(m.from + " " + SAY_SQ(m.to), "from-to", { sq: m.to });
+    // `want` is what rule 9 holds this utterance to: name both
+    // squares of a legal move and that move must come back.
+    add(m.from + " " + SAY_SQ(m.to), "from-to",
+        { sq: m.to, want: m.from + m.to });
     if (!m.captured) return;
     add("takes " + SAY_SQ(m.to), "takes-square", { sq: m.to });
     add(SPOKEN_FILE[ff] + " takes " + SAY_SQ(m.to), "file-takes-square",
@@ -336,6 +339,39 @@ vm.runInContext(`
         //    earned them (deleting the from-square filter,
         //    deleting the destination filter) are still caught -
         //    verified, not assumed.
+      }
+
+      // 9. COMPLETENESS - THE ONLY RULE POINTING THE OTHER WAY.
+      //    Rules 1 to 8 all quantify over the moves findMoves
+      //    RETURNED, so every one of them is vacuously true of
+      //    an empty list: a findMoves that answered nothing at
+      //    all, to anything, passed this entire file. That is a
+      //    whole class of mutant - and worse, it is the shape of
+      //    a real regression, since every capture widening from
+      //    w40 on has worked by narrowing what comes back.
+      //
+      //    Soundness is still the aim (the game6 invariant is
+      //    what this file was built for) and completeness cannot
+      //    be asserted in general - "takes" SHOULD return
+      //    nothing when nothing can take. But one form is not
+      //    ambiguous at all: an utterance naming both squares of
+      //    a move that is legal right now. If that does not come
+      //    back, words were lost.
+      if (u.want) {
+        var got = false;
+        for (var w = 0; w < ms.length; w++) {
+          if (RULES.sqName(ms[w].from) + RULES.sqName(ms[w].to) === u.want) {
+            got = true; break;
+          }
+        }
+        if (!got) {
+          note("both squares of a legal move were said and it was " +
+               "not offered", u.t,
+               u.want + " (got " +
+               (ms.length
+                 ? ms.map(function (m2) { return pos.uciOf(m2); }).join(" ")
+                 : "nothing") + ")");
+        }
       }
 
       // 8. DETERMINISM. The same words on the same board must
