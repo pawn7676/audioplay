@@ -27,6 +27,19 @@ const path = require("path");
 const manifest = process.argv[2] || "manifest.txt";
 const outFile  = process.argv[3] || "index.html";
 
+/* IT WILL NOT WRITE OVER ANYTHING IT READ (w57). The
+ * arguments are (manifest, output) and reversing them - easy,
+ * since the manifest is the one you name more often - made
+ * this truncate manifest.txt to nothing and report success.
+ * That instance was recoverable from git; an uncommitted src
+ * file would not have been.
+ *
+ * The check is "is the output one of the files I just read",
+ * asked below where every input is known, rather than a guess
+ * at which argument looks like a manifest. build.js is allowed
+ * to be dumb; it is not allowed to eat its own sources. */
+const readFiles = new Set([path.resolve(manifest)]);
+
 let template = null;
 const names = fs.readFileSync(manifest, "utf8").split("\n")
   .map(s => s.trim()).filter(s => s && !s.startsWith("#"))
@@ -42,6 +55,7 @@ let out = "";
 for (const n of names) {
   const p = path.join("src", n);
   if (!fs.existsSync(p)) { console.error("MISSING: " + p); process.exit(1); }
+  readFiles.add(path.resolve(p));
   let part = fs.readFileSync(p, "utf8");
   // A FILE MUST END ITS OWN LAST LINE (w54). The join is
   // byte-for-byte, so a source whose final line is a //
@@ -64,6 +78,7 @@ if (template) {
   // prose in comments may mention the word, so a bare
   // replace() once hit a comment and buried the whole
   // program inside it. Exactly one such line, or refuse.
+  readFiles.add(path.resolve(path.join("src", template)));
   const t = fs.readFileSync(path.join("src", template), "utf8");
   const lines = t.split("\n");
   const hits = lines.filter(l => l.trim() === "AUDIOPLAY_JS").length;
@@ -73,6 +88,30 @@ if (template) {
     process.exit(1);
   }
   out = lines.map(l => l.trim() === "AUDIOPLAY_JS" ? out : l).join("\n");
+}
+/* THREE WAYS THE OUTPUT CAN BE A SOURCE, and it took two
+ * destroyed manifests to enumerate them (w57). Checking only
+ * "is the output a file I read" is not enough: point the
+ * manifest argument at a copy and the real manifest.txt is
+ * not in the read set, so it looks like a perfectly good
+ * place to write 350KB of HTML. What is being protected is
+ * not this run's inputs, it is the SOURCES - so say that. */
+if (readFiles.has(path.resolve(outFile))) {
+  console.error("refusing: the output (" + outFile + ") is one of the " +
+    "files this build just read. The arguments are (manifest, output), " +
+    "in that order.");
+  process.exit(1);
+}
+if (path.resolve(path.dirname(outFile)) === path.resolve("src")) {
+  console.error("refusing: the output (" + outFile + ") would land in src/, " +
+    "which is where the sources live");
+  process.exit(1);
+}
+if (path.basename(outFile) === path.basename(manifest) ||
+    /^manifest.*\.txt$/i.test(path.basename(outFile))) {
+  console.error("refusing: the output (" + outFile + ") is named like a " +
+    "manifest. The arguments are (manifest, output), in that order.");
+  process.exit(1);
 }
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 fs.writeFileSync(outFile, out);

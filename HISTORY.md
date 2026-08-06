@@ -1299,3 +1299,72 @@ of the page. The position is asserted, not just the presence - a doctype
 anywhere but first does nothing at all, which is a thing that would otherwise
 look fixed and not be.
 
+
+### w57
+
+PURE MOTION, ON ITS OWN, AFTER THE BEHAVIOUR SETTLED - which is what w54's
+new dialogue.js header said would happen and why it said not to do it yet.
+Nothing here changes what the program does. The four structural items from
+the review, and one footgun found by falling into it.
+
+dialogue.js WAS THREE FILES. It ran to 1,692 lines and did three jobs: decide
+what a sentence means and what to say back, simulate a practice opponent, and
+repair an utterance that almost worked. Now 1,217, plus practice.js at 94 and
+repairs.js at 461.
+
+PRACTICE IS NOT DIALOGUE. It shares exactly one flag with the rest of the
+program - dryRun - and that flag is declared with it now, because this is
+what owns it: everything else only ever asks. It is the most separable thing
+that was in there and it had been sitting in the middle of the ambiguity
+code since the v-series.
+
+THE REPAIR CHAIN HAD GROWN ITS OWN DOCTRINE, which is the real argument for
+its own file: order is data (REPAIRS is a list you can read, and reordering
+it changes the grammar), a repair fired by a rival reading may only ASK
+(w49), and ask about whichever half still narrows (w43, w48 - the rule that
+was proved in one repair, left there, and broken in the repair next door for
+five days). Three rules that are about repairing, and were previously
+scattered through a file that is mostly about something else. refuse and
+heardSoFar stayed behind: the repairs lean on them, but so does
+handleTranscripts, and they are how the program says what it HEARD rather
+than part of repairing it.
+
+THE TWO CLASSIFIERS MOVED to parsing.js beside classifyCommand, which is the
+same kind of thing they are. They had been in the word-table file, and that
+had already misled once - dialogue.js's own comment pointed a reader at
+"memoTranscript in parsing.js", which is where it belonged and was not.
+Both true now.
+
+AND CHECK/MATE NARROWING IS ONE FUNCTION. There were two copies, ten lines
+each: one over candidates, which carry their san, and one inside
+partialAnswer over raw moves, which have to be named first. Check and mate
+are the two words in this grammar that describe the position AFTER a move
+rather than the move itself, so they are exactly the handling that should
+not fork. Both callers keep their own idea of WHETHER check was said -
+partialAnswer also honours one from the earlier half of the utterance - and
+share the filtering.
+
+NOTHING WAS LOST IN THE MOVE, and that was checked rather than trusted: the
+set of top-level declarations across the old three files and the new five is
+identical but for narrowByCheck, the de-duplication above. 255 pass,
+properties and perft green.
+
+AND build.js WILL NO LONGER EAT ITS OWN SOURCES. Its arguments are (manifest,
+output), and reversing them - easy, since the manifest is the one you name
+more often - truncated manifest.txt to nothing and reported success. Twice,
+in one session: the second time while TESTING the guard written after the
+first, because that guard only asked "is the output a file I read" and
+pointing the manifest argument at a copy leaves the real manifest.txt outside
+that set. The rule is about the SOURCES, not this run's inputs, so it says
+so now: not a file just read, not anything in src/, not anything named like a
+manifest. Recorded because the near-miss is the interesting part - a build
+step allowed to be dumb is not allowed to be destructive, and the second
+failure came from fixing the first too narrowly.
+
+THE MANIFEST IS ALSO CHECKED NOW. A new file in src/ that nobody adds to the
+manifest is simply not in the page - it builds, it passes, it runs, until
+something calls a function that was never shipped. Splitting one file into
+three is exactly when that happens, so the harness compares the two lists.
+The other direction kills the harness at startup with ENOENT and build.js
+with MISSING, which is loud enough already.
+

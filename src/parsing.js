@@ -194,6 +194,41 @@
       .split(/\s+/).filter(Boolean);
   }
 
+  /* THE CLASSIFIERS THAT LIVED IN vocabulary.js (w57).
+   * memoTranscript and classifyFlipClock are the same kind of
+   * thing as classifyCommand below - they read an utterance
+   * and decide what KIND of thing it is - and they sat in the
+   * word-table file, whose job is the lists themselves. That
+   * had already misled once: dialogue.js's comment pointed a
+   * reader at "memoTranscript in parsing.js", which is where
+   * it belonged and was not. Now it is both.
+   */
+  function memoTranscript(transcripts) {
+    for (var i = 0; i < transcripts.length; i++) {
+      var toks = wordsOf(transcripts[i]);
+      if (toks.length > 1 && MEMO_WORDS[toks[0]]) return transcripts[i];
+    }
+    return null;
+  }
+
+  // "flip clock" (or "swap clocks", "switch the clock")
+  // swaps which side of the screen your clock is on. As
+  // strict as its neighbors: a flip word AND a clock word,
+  // and any other content word disqualifies. It cannot
+  // collide with bare "clock", which needs no other content
+  // word at all.
+  function classifyFlipClock(raw) {
+    var toks = wordsOf(raw);
+    var flip = 0, clk = 0, other = 0;
+    for (var i = 0; i < toks.length; i++) {
+      var t = toks[i];
+      if (FLIP_WORDS[t]) flip++;
+      else if (CLOCK_WORDS[t]) clk++;
+      else if (!FILLER[t]) other++;
+    }
+    return !!(flip && clk && !other);
+  }
+
   function classifyCommand(raw) {
     var toks = wordsOf(raw);
     var yes = 0, no = 0, cancel = 0, repeat = 0, clock = 0,
