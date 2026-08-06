@@ -627,3 +627,52 @@ sentence still reads plausibly. w43 added the caller and did not re-read
 what the answer path believed about the question. Both bugs were still
 just sitting in the log; the owner read it as working, and it was working
 - it was only LYING, which is harder to see and worth more.
+
+### w46
+
+A REFUSAL SAYS WHAT WAS HEARD. "That's not a legal move. Say again." was
+the whole sentence, and it answers the wrong question. Standing at a board
+across the room, the first thing the owner needs to know is whether the
+MACHINE misheard him or whether HIS MOVE is wrong - and those want opposite
+next actions: say it again more clearly, or look at the board. The old
+sentence cannot be told apart in either case, so it was worth nothing on
+the one occasion anyone heard it. Saying the reading back settles it in
+three words: "I heard queen delta 4. That is not a legal move."
+
+This is the third time the same rule has been learned. w44: a lead claiming
+a rank nobody said. w45: a refusal blaming the file when the victim was
+what was missing. Twice it was fixed where it happened; the third time it
+is a function, refuse(), and every refusal goes through it.
+
+heardSoFar had to grow up first, and how it was broken is the interesting
+part. It rendered the piece, the take word and a dangling half - correct
+for the only callers it had, the half-square questions, which cannot
+contain a whole square. Point it at any other request and it silently
+dropped one: "queen delta four" came back as "queen". Not a lie this time
+but a SWALLOW, and it fails the same job from the other side - a read-back
+missing half the sentence leaves the owner just as unable to tell a
+mishearing from a bad move. It renders the whole utterance now, in spoken
+order, using takeAt to put the halves back on the right sides of the take
+word.
+
+The victim clause moved to the front of its own sentence. w45 appended "of
+a knight", which was true and read badly the moment the lead began
+repeating it: "I heard golf takes knight. No capture from the golf file of
+a knight." It is "No knight to take from the golf file" now - the missing
+thing as the subject, not a qualifier trailing off the end.
+
+ONE BARE "Say again." SURVIVES, and it is the exception that shows the
+rule. When an utterance parses to nothing there is no reading to give back,
+and we cannot tell whether the words were misheard or were simply never a
+move. "No move in that" would claim the second. Saying only "Say again."
+claims neither, which is the only true thing available.
+
+The property that guards this was upgraded twice while being written, both
+times because a mutant walked through it. It checked that no rank appears
+unless one was spoken; it now checks that every file, rank and take word
+spoken appears and nothing else does - the swallow direction is the one
+that was missing, and it is the one that was live. And it only inspected
+sentences that already said "I heard", so deleting that clause made the
+property stop looking. It asks the parser whether a reading existed, and
+requires one whenever it did. A rule that only inspects what already obeys
+it is not a rule.

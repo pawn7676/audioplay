@@ -474,12 +474,65 @@
   // square still reaches the ear, as something offered
   // rather than something claimed.
   function heardSoFar(req) {
-    var bits = [];
+    if (req.castle) {
+      return "castle" + (req.castle === "k" ? " kingside"
+                       : req.castle === "q" ? " queenside" : "");
+    }
+    // IN THE ORDER IT WAS SPOKEN. The first version rendered
+    // piece, take word and dangling half and stopped there,
+    // because the only callers were the half-square questions
+    // and those cannot have a whole square in them. Used
+    // anywhere else it silently dropped one: "queen delta
+    // four" came back as "queen". A read-back that quietly
+    // omits half the sentence is the w44 fault from the other
+    // side - it does not claim something unsaid, it swallows
+    // something said, and either one leaves the owner unable
+    // to tell a mishearing from a bad move.
+    //
+    // takeAt is how many squares had arrived when the take
+    // word did, so it puts the halves back on the right sides
+    // of it without guessing.
+    var bits = [], i;
+    var n = req.takeAt < 0 ? req.squares.length : req.takeAt;
     if (req.piece) bits.push(PIECE_NAME[req.piece]);
+    for (i = 0; i < n; i++) bits.push(spokenSquare(req.squares[i]));
+    if (req.fromBeforeTake) {
+      if (req.fromFile) bits.push(SPOKEN_FILE[req.fromFile] || req.fromFile);
+      if (req.fromRank) bits.push("rank " + req.fromRank);
+    }
     if (req.capture) bits.push("takes");
-    if (req.fromFile) bits.push(SPOKEN_FILE[req.fromFile] || req.fromFile);
-    if (req.fromRank) bits.push("rank " + req.fromRank);
+    if (req.victim) bits.push(PIECE_NAME[req.victim]);
+    for (; i < req.squares.length; i++) bits.push(spokenSquare(req.squares[i]));
+    if (!req.fromBeforeTake) {
+      if (req.fromFile) bits.push(SPOKEN_FILE[req.fromFile] || req.fromFile);
+      if (req.fromRank) bits.push("rank " + req.fromRank);
+    }
+    if (req.toFile) bits.push(SPOKEN_FILE[req.toFile] || req.toFile);
+    if (req.toRank) bits.push("rank " + req.toRank);
+    if (req.trailingPiece) bits.push(PIECE_NAME[req.trailingPiece]);
     return bits.join(" ") || "that";
+  }
+
+  /* EVERY REFUSAL SAYS TWO THINGS: what was heard, and what
+   * ruled it out. Neither is usable alone, and the missing
+   * one is always the same missing one.
+   *
+   * "That's not a legal move. Say again." was the whole
+   * sentence until now, and it answers the wrong question.
+   * Standing at a board across the room, what the owner needs
+   * to know first is whether the MACHINE misheard him or
+   * whether HIS MOVE is wrong - and those want opposite next
+   * actions: say it again more clearly, or look at the board.
+   * The old sentence cannot be told apart in either case, so
+   * it was worth nothing on the one occasion it was heard.
+   * Saying the reading back settles it in three words.
+   *
+   * The same rule caught w44 (a lead claiming an unspoken
+   * rank) and w45 (a refusal blaming the file when the victim
+   * was what was missing). Third time it is a function.
+   */
+  function refuse(req, because) {
+    speak("I heard " + heardSoFar(req) + ". " + because + " Say again.");
   }
 
   function askPartial(req, want, chk, mate) {
@@ -885,25 +938,30 @@
           // "no capture from the charlie file" is a lie the
           // moment cxb5 is sitting there legal and it was the
           // DELTA file that had nothing on it.
-          // NAME THE VICTIM TOO (w45). Game w44-1 at 17:49:08
-          // said "golf takes night" with no knight to take and
-          // was told "No capture from the golf file" - while
-          // gxh6 and gxf6 sat there legal. It was the KNIGHT
-          // that was missing, not the capture, and the sentence
-          // blamed the wrong half. Same fault as w44's lead:
-          // the part that ruled everything out is the part the
-          // owner most needs said back.
+          // WHAT WAS MISSING, NOT WHAT WAS LOOKED THROUGH.
+          // Three halves can each empty this list, and the
+          // refusal has to name the one that did: the origin
+          // ("no capture from the golf file"), the target
+          // ("...onto the hotel file"), or the VICTIM. w45
+          // fixed the victim case by appending "of a knight",
+          // which was true but read badly once the lead
+          // started repeating it - "I heard golf takes
+          // knight. No capture from the golf file of a
+          // knight." The victim belongs at the front of the
+          // clause, where it is the subject of the sentence
+          // rather than a qualifier trailing off the end.
+          var what = req.victim
+                ? "No " + PIECE_NAME[req.victim] + " to take"
+                : "No capture";
+          var whence = origin.length === 2
+                ? " from " + spokenSquare(origin)
+                : /[a-h]/.test(origin)
+                    ? " from the " + SPOKEN_FILE[origin] + " file"
+                    : " from rank " + origin;
           var whither = req.toFile
                 ? " onto the " + SPOKEN_FILE[req.toFile] + " file"
                 : req.toRank ? " onto rank " + req.toRank : "";
-          if (req.victim) whither += " of a " + PIECE_NAME[req.victim];
-          speak((origin.length === 2
-                   ? "Nothing on " + spokenSquare(origin) + " can take" + whither
-                   : /[a-h]/.test(origin)
-                       ? "No capture from the " + SPOKEN_FILE[origin] +
-                         " file" + whither
-                       : "No capture from rank " + origin + whither) +
-                ". Say again.");
+          refuse(req, what + whence + whither + ".");
           return;
         }
         var ocands = ocaps.map(function (m) {
@@ -1065,8 +1123,7 @@
           return m.piece === req.piece && m.captured;
         });
         if (!pcaps.length) {
-          speak("The " + PIECE_NAME[req.piece] +
-                " has nothing to take. Say again.");
+          refuse(req, "It has nothing to take.");
           return;
         }
         var ncaps = narrowBySaid(pcaps.map(function (m) {
@@ -1145,6 +1202,15 @@
           log("HRD", "ignored, nothing but filler: " + primary);
           return;
         }
+        // THIS ONE STAYS BARE, and it is the exception that
+        // shows the rule. Everywhere else a refusal says the
+        // reading back, so the owner can tell a mishearing
+        // from a bad move. Here there IS no reading - words
+        // arrived and no move came out of them - and we
+        // cannot tell whether they were misheard or simply
+        // were not a move. "No move in that" would claim the
+        // second. "Say again." claims neither, which is the
+        // only true thing available.
         speak("Say again.");
         return;
       }
@@ -1236,7 +1302,7 @@
         askPiece(alt, "No pawn can go there.");
         return;
       }
-      speak("That's not a legal move. Say again.");
+      refuse(req, "That is not a legal move.");
       return;
     }
     pending = { cands: cands, idx: 0 };
