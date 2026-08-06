@@ -48,7 +48,14 @@ const fs = require("fs");
 const vm = require("vm");
 
 const POSITIONS = parseInt(process.argv[2] || "150", 10);
-const SEED = 20260806;
+/* THE SEED IS AN ARGUMENT TOO (w54). The position count has
+ * been tunable since this file was written and the seed was
+ * not, so every soak run - "node property_check.js 900" -
+ * re-tested the SAME games, only more of them. A generator you
+ * cannot re-seed explores one path through its own space
+ * forever. Default unchanged, so an unqualified run is still
+ * the reproducible one that CI does. */
+const SEED = parseInt(process.argv[3] || "20260806", 10);
 
 /* ---- the slice, loaded as one script ------------------------ */
 const sandbox = vm.createContext({ console });
@@ -213,6 +220,51 @@ function derivedBattery(moves) {
     add(SPOKEN_FILE[ff] + " takes " + PIECE_WORD[m.captured],
         "file-takes-victim");
   });
+
+  /* THE SHAPES THE GENERATOR NEVER BUILT (w54). Everything
+   * above is a capture or a plain square; between them they
+   * never once said "castles", never promoted a pawn, never
+   * used a bare LETTER, and never said a piece with only a
+   * file. That is not a small gap - the letter grammar is two
+   * lines in parsing.js that the harness itself notes "could
+   * have been refactored away with every test still green",
+   * and it is the owner's natural English under time. Same
+   * lesson as the victim forms and the spoken from-file before
+   * them: a generator that never builds the case is a test
+   * that passes for the wrong reason. */
+  moves.forEach(function (m) {
+    var ff = m.from[0];
+    // castling, said both ways round
+    if (m.castle === "k" || /O-O(?!-)/.test(m.san || "")) {
+      add("castle kingside", "castle");
+      add("castles", "castle");
+    }
+    if (m.castle === "q" || /O-O-O/.test(m.san || "")) {
+      add("castle queenside", "castle");
+    }
+    // promotions: the bare square, and the named piece
+    if (m.promotion) {
+      "qrbn".split("").forEach(function (pc) {
+        add(SAY_SQ(m.to) + " equals " + PIECE_WORD[pc], "promotion",
+            { sq: m.to });
+      });
+    }
+    // a piece and a FILE, no rank - the w47 shape
+    add(PIECE_WORD[m.piece] + " " + SPOKEN_FILE[m.to[0]], "piece-file",
+        { piece: m.piece });
+    // BARE LETTERS. The same sentences as above, in the two
+    // forms parsing.js supports: the lone letter and the
+    // glued letter-and-digit.
+    add(m.to, "bare-square", { sq: m.to });                 // "e4"
+    add(m.from + " " + m.to, "from-to",
+        { sq: m.to, want: m.from + m.to });                 // "e2 e4"
+    if (m.captured) {
+      add(ff + " takes", "file-takes");                     // "b takes"
+      add(ff + " takes " + m.to, "file-takes-square", { sq: m.to });
+      add("pawn takes", "pawn-takes");
+      add(PIECE_WORD[m.piece] + " takes", "piece-takes");
+    }
+  });
   return u;
 }
 
@@ -271,21 +323,37 @@ vm.runInContext(`
                (m.captured ? " takes " + m.captured : " push") + ")");
         }
 
-        // 3. NO TAKE WORD, NO PAWN CAPTURE - UNLESS BOTH SQUARES
-        //    WERE SPOKEN. "charlie five" means the pawn steps
-        //    there even when a pawn could also capture there; but
-        //    "bravo one charlie three" names the whole move and
-        //    is exempt by design (matching.js applies the strict
-        //    filters only when no from-square was given).
+        // 3. NO TAKE WORD, NO PAWN CAPTURE - when a whole
+        //    DESTINATION was named and the origin was not.
+        //    "charlie five" means the pawn steps there even when
+        //    a pawn could also capture there; "bravo one charlie
+        //    three" names the whole move and is exempt by
+        //    design.
         //
         //    This property was first written WITHOUT the
-        //    exemption and immediately failed on clean source,
-        //    five times, on utterances like "e2 delta three". The
-        //    code was right and the rule was wrong. Worth leaving
-        //    in the comment: the first thing a property test
-        //    finds is usually the author's own misunderstanding
-        //    of the invariant.
-        if (!req.capture && req.squares.length < 2 &&
+        //    from-square exemption and immediately failed on
+        //    clean source, five times, on utterances like "e2
+        //    delta three". The code was right and the rule was
+        //    wrong. Worth leaving in the comment: the first
+        //    thing a property test finds is usually the author's
+        //    own misunderstanding of the invariant.
+        //
+        //    AND IT HAPPENED AGAIN AT w54, which is why the
+        //    condition is now the constraint's rather than
+        //    req.squares'. Adding piece+file utterances to the
+        //    generator ("pawn hotel") failed this five times on
+        //    clean source: a lone FILE pins no destination
+        //    square, so matching.js deliberately does not apply
+        //    the strict filters - the bare-square reading is not
+        //    on the table to be confused with, and its own
+        //    comment says so. The old form read req.squares and
+        //    could not see that distinction. Stated in the same
+        //    terms the code uses, the rule holds and still
+        //    guards game6, which is rule 2's job anyway.
+        var c3 = constraintOf(req);
+        var toWhole = !!(c3.to.file && c3.to.rank);
+        var fromWhole = !!(c3.from.file && c3.from.rank);
+        if (!req.capture && toWhole && !fromWhole &&
             m.piece === "p" && m.captured) {
           note("pawn capture from an utterance with no take word", u.t, uci);
         }

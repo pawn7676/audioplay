@@ -125,6 +125,43 @@
     "ticks tick text texts cakes cake captures capture capturing");
   var CASTLE_WORDS = wordSet("castle castles castling cassel cattle " +
     "castel hassle");
+
+  /* AND NOW ACROSS THE TABLES, NOT JUST WITHIN THEM (w54).
+   *
+   * expand() throws when one word is given two values inside a
+   * single map - that is what the grouped shape above is for -
+   * and nothing checked the same word appearing in two
+   * DIFFERENT maps, where it is just as wrong and quieter.
+   * parseTranscript tries NATO, then NUMS, then PIECES, then
+   * the take words; a word in two of them is decided by that
+   * order, silently, and the loser's meaning simply never
+   * happens. These tables only ever grow, one real log at a
+   * time - "cakes" at w48, "text" at w44, the whole plant
+   * family - and a homophone landing in two of them is exactly
+   * the kind of thing that gets added twice by two different
+   * sessions reading two different game logs.
+   *
+   * Checked at load, throwing like expand() does, because a
+   * grammar that is wrong should refuse to start rather than
+   * quietly mean something else. FILLER is deliberately NOT in
+   * the set: it is consumed last on purpose, so a word in both
+   * FILLER and a value map reads as the value, which is how
+   * "a" works.
+   */
+  (function crossCheckVocabulary() {
+    var maps = { NATO: NATO, NUMS: NUMS, PIECES: PIECES,
+                 TAKE_WORDS: TAKE_WORDS, CASTLE_WORDS: CASTLE_WORDS };
+    var owner = {};
+    Object.keys(maps).forEach(function (name) {
+      Object.keys(maps[name]).forEach(function (w) {
+        if (owner[w] && owner[w] !== name) {
+          throw new Error("vocab: \"" + w + "\" is in both " +
+                          owner[w] + " and " + name);
+        }
+        owner[w] = name;
+      });
+    });
+  })();
   // whose/whos/who/which joined in v65 so that "whose time
   // is it" reaches the clock and "whose turn" the turn
   // answer, instead of counting as unknown words. Filler is

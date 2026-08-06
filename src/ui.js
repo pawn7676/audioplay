@@ -149,17 +149,17 @@
     settingsBtn = document.createElement("button");
     settingsBtn.textContent = "Settings";   /* WEB w30: capitalised */
     settingsBtn.style.cssText = logBtn.style.cssText;
+    // THIS LISTENER OWNS THE TOGGLE, AND ONLY THE TOGGLE (w54).
+    // It used to anchor the panel above the voice button as
+    // well, and that work was always thrown away: buildWebUI
+    // registers a SECOND listener on this same button which
+    // re-anchors to top/left within the same click dispatch,
+    // so the value computed here survived for no time at all
+    // and its correctness rested entirely on the order the two
+    // listeners happened to be registered in. One anchoring,
+    // in the file that knows where the button actually is.
     settingsBtn.addEventListener("click", function () {
       var open = setPanel.style.display !== "none";
-      if (!open) {
-        // anchor just above the tallest thing in the row -
-        // the voice button
-        try {
-          var top = bigBtn.getBoundingClientRect().top;
-          setPanel.style.bottom =
-            Math.max(60, window.innerHeight - top + 8) + "px";
-        } catch (e) {}
-      }
       setPanel.style.display = open ? "none" : "block";
       renderButton();
     });

@@ -242,7 +242,24 @@ function heard() {
 }
 
 heard(); // drop the practice greeting
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* THE WAITS ARE A MARGIN, AND THE MARGIN WAS 100x (w54).
+ * Nearly every sleep here is waiting for a speech chain to
+ * settle, and the TTS stub fires onend after ONE millisecond -
+ * so a 120ms wait was two orders of magnitude more than the
+ * thing it waits for needs. Across 57 of them that is most of
+ * the suite's wall time, and a suite that takes twenty seconds
+ * is one that gets run less often than the rule says it must.
+ *
+ * Scaled rather than rewritten: virtualising the clock would
+ * be the real fix and it would mean the harness no longer
+ * drives the product's own timers, which is a bigger change
+ * than this batch should carry. HARNESS_SLEEP=1 restores the
+ * old margins if anything ever looks timing-flaky - and if it
+ * does, that is worth knowing rather than papering over.
+ */
+const SLEEP_SCALE = Number(process.env.HARNESS_SLEEP || 0.35);
+const sleep = ms =>
+  new Promise(r => setTimeout(r, Math.max(15, Math.round(ms * SLEEP_SCALE))));
 
 (async () => {
   let pass = 0, fail = 0;
@@ -291,11 +308,22 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   vm.runInContext("enterClockMode();", sandbox);
   check("clock mode reports on",
         vm.runInContext("clockModeOn()", sandbox) === true);
+  // FLIP CLOCK ANSWERS (w54). This used to assert only that a
+  // string was absent from the log - which a throw inside
+  // speak() would have crashed the harness over anyway, so it
+  // proved almost nothing, and it never checked the flip
+  // happened. It is a VOICE command reachable with the overlay
+  // down, where the repaint is invisible: the spoken answer is
+  // the only thing that reaches the user at all.
+  heard();
+  const sideBefore = vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox);
   say("flip clock");
   await sleep(120);
-  check("flip clock handled without throwing",
-        !vm.runInContext("LOG.slice(-5).join(' ')", sandbox)
-          .includes("flipClockSides"));
+  const flipSaid = heard().join(" | ");
+  check("flip clock actually flips the sides",
+        vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox) !== sideBefore);
+  check("and says which side is yours now (" + flipSaid + ")",
+        /your clock on the (left|right)/i.test(flipSaid));
   vm.runInContext("exitClockMode(true);", sandbox);
   check("tap leaves clock mode",
         vm.runInContext("clockModeOn()", sandbox) === false);
@@ -570,9 +598,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         !/\n  button \{/.test(tmpl) && /\.panel button \{/.test(tmpl));
   check("the Voice panel hosts the buttons",
         tmpl.includes('id="panelControls"'));
+  // ASK THE BUILT TREE (w54). This grepped ui.js for the
+  // string 'el("panelControls")', which would pass on a page
+  // that never called it, and is answered properly ten lines
+  // down anyway - where the row's children are counted.
   check("the button row is re-parented into it",
-        fs.readFileSync("src/ui.js", "utf8")
-          .includes('el("panelControls")'));
+        vm.runInContext(`
+          (function () {
+            var host = document.getElementById("panelControls");
+            return !!host && host.children.indexOf(wrapEl) >= 0;
+          })()
+        `, sandbox) === true);
 
   // ---- w19: panel open/closed survives a reload ----
   vm.runInContext("savePanels();", sandbox);
@@ -586,9 +622,19 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         fakePanels[0].open === true && fakePanels[2].open === true);
 
   // ---- w25: no double-tap zoom on the overlays ----
-  check("overlays and their buttons get touch-action",
-        /touchAction = "manipulation"/.test(
-          fs.readFileSync("src/ui.js", "utf8")));
+  // The built panels, not the source (w54). The old grep
+  // matched the assignment wherever it appeared - including
+  // inside the comment above it explaining why the viewport
+  // meta cannot do this job.
+  check("the overlays themselves get touch-action",
+        vm.runInContext(`
+          (function () {
+            return [setPanel, logPanel].filter(Boolean).length === 2 &&
+              [setPanel, logPanel].every(function (p) {
+                return p.style.touchAction === "manipulation";
+              });
+          })()
+        `, sandbox) === true);
 
   // ---- w29: the voice button is a labelled pill ----
   const btnState = () => vm.runInContext(`
@@ -923,14 +969,50 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // ---- w20: the web deltas themselves ----
   // delta 2: sign-in owns the connection - the voice-off path
   // must not abort the game stream
-  const srcUiOff = fs.readFileSync("src/ui.js", "utf8");
-  const offPath = srcUiOff.slice(srcUiOff.indexOf("voice play off") - 800,
-                              srcUiOff.indexOf("voice play off"));
-  check("voice off tears down no network",
-        !/streamAbort|pollTimer|reconnectTimer/.test(offPath));
+  // DRIVEN, NOT REGEXED (w54). This read an 800-character
+  // window of ui.js ending at the string "voice play off" and
+  // asserted three identifiers were absent from it - a test
+  // whose result changes if someone adds a paragraph of
+  // comment above the function, and which says nothing at all
+  // about what happens when the button is actually pressed.
+  // Press it, and watch what gets called.
+  const offBehaviour = vm.runInContext(`
+    (function () {
+      var calls = [];
+      var realStop = stopPolling, realRe = scheduleReconnect;
+      var realAbort = streamAbort;
+      stopPolling = function () { calls.push("stopPolling"); };
+      scheduleReconnect = function () { calls.push("scheduleReconnect"); };
+      streamAbort = { abort: function () { calls.push("streamAbort"); } };
+      api.gameId = "G9"; api.over = false; dryRun = false;
+      running = true;
+      bigBtn.on_click();                 // turn voice OFF
+      var out = { calls: calls, running: running };
+      stopPolling = realStop; scheduleReconnect = realRe;
+      streamAbort = realAbort;
+      return out;
+    })()
+  `, sandbox);
+  check("the button turns voice off", offBehaviour.running === false);
+  check("and voice off tears down no network (" +
+        (offBehaviour.calls.join(",") || "nothing") + ")",
+        offBehaviour.calls.length === 0);
+
   // delta 3: leaving practice rejoins through the account API
-  check("practice off rejoins a live game",
-        /rejoinCurrent\(\)/.test(srcUiOff));
+  const practiceOff = vm.runInContext(`
+    (function () {
+      var called = 0;
+      var real = rejoinCurrent;
+      rejoinCurrent = function () { called++; };
+      dryRun = true;
+      practiceBtn.on_click();            // leave practice
+      rejoinCurrent = real;
+      return { called: called, dry: dryRun };
+    })()
+  `, sandbox);
+  check("leaving practice actually leaves it", practiceOff.dry === false);
+  check("and rejoins a live game through the account API",
+        practiceOff.called === 1);
   // THE USERSCRIPT IS FROZEN AT v137 (Aug 5 2026): its
   // identity is the canon FILE, not continued buildability.
   // The numbered section files now serve the website and may
@@ -966,11 +1048,19 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // Sleeping it off was the first attempt and it is the wrong
   // shape: it makes every helper wait 1.7s and it still races.
   // These tests set their own position, so the random opponent
-  // has no part in them at all - absorb the one already in
-  // flight, then stop scheduling more.
-  await sleep(1700);
-  heard();
+  // has no part in them at all - so it is switched off, and
+  // that now calls off the one already in flight too.
+  //
+  // It could not, until w54. acceptMove scheduled the reply as
+  // setTimeout(dryOpponentReply, 1600), which captures the
+  // function REFERENCE, so this stub only affected replies
+  // scheduled afterwards and the in-flight one still ran the
+  // original - hence the 1.7-second sleep that used to sit
+  // here, absorbing it. dialogue.js now schedules a call by
+  // name, so the stub takes effect immediately and the wait is
+  // gone along with the race the old comment admits to.
   vm.runInContext("dryOpponentReply = function () {};", sandbox);
+  heard();
 
   async function setBoard(fen) {
     heard();
@@ -1270,6 +1360,19 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       await sleep(60);
       const out = heard().join(" | ");
       if (!out) { silences++; worst = worst || ("silent on: " + utt); continue; }
+      // NOTHING SPOKEN MAY CONTAIN "undefined" (w54). One
+      // hand-picked utterance was checked for this and the
+      // whole generated battery was not - and this is the
+      // cheapest possible check on a class of bug that is
+      // pure embarrassment out loud: a missing table entry,
+      // a renamed field, a piece with no spoken name. The
+      // owner hears "I heard queen undefined" across a room
+      // and has no idea what the program thinks it heard.
+      if (/undefined|\[object|NaN/i.test(out)) {
+        lies++;
+        worst = worst || ('said "' + utt + '" -> spoke a placeholder: "' +
+                          out + '"');
+      }
       // A REFUSAL MUST CARRY THE READING. Checking only the
       // sentences that already say "I heard" leaves the way
       // out wide open: delete the clause and the property

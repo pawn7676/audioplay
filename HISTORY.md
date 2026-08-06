@@ -1178,3 +1178,90 @@ dead-code audit comes out clean would leave the function returning undefined
 in the case nobody predicted. That is the trade this whole entry is about,
 pointing the other way, and it is worth having both directions on record.
 
+
+### w55
+
+THE TESTS, AND THE LAST OF THE STRAGGLERS. Mostly work on the things that
+check the program rather than the program itself - which is where this whole
+review started, and a fitting place for it to end up again.
+
+THE VOCABULARY NOW REFUSES TO START IF IT CONTRADICTS ITSELF. expand() has
+always thrown when one word is given two values inside a single map; nothing
+checked a word appearing in two DIFFERENT maps, where it is just as wrong and
+much quieter - parseTranscript tries NATO, then NUMS, then PIECES, then the
+take words, so the collision is resolved by that order, silently, and the
+loser's meaning simply never happens. These tables only ever grow, one real
+game log at a time - "cakes" at w48, "text" at w44, the whole plant family -
+and a homophone landing in two of them is exactly what two sessions reading
+two different logs would do. Checked at load and thrown, like expand() does,
+because a grammar that is wrong should refuse to start rather than quietly
+mean something else. Current data is clean; adding "rook" to the NATO g-line
+now fails with the two map names.
+
+THE PROPERTY GENERATOR NEVER SAID "CASTLES", NEVER PROMOTED A PAWN, AND
+NEVER USED A BARE LETTER. Three whole branches of the grammar with no
+generated coverage at all - and the letter forms are two lines in parsing.js
+that the harness itself notes could be refactored away with every test still
+green, and they are the owner's natural English under time. Added, along with
+piece+file, "pawn takes" and "piece takes".
+
+IT FOUND SOMETHING IMMEDIATELY, and the finding was that the PROPERTY was
+wrong. "pawn hotel" - a piece and a lone file - failed rule 3 five times on
+clean source. matching.js applies the strict no-capture-without-a-take-word
+filter only when a WHOLE destination square was named and the origin was not,
+and says so in its own comment: a lone file pins no destination, so the
+bare-square reading is not on the table to be confused with. Rule 3 was
+written against req.squares and could not see that distinction. Restated in
+the same terms the code uses, it holds - and the game6 mutants (delete the
+pawn-capture filter, delete the piece filter) are still caught, by rule 2 and
+by rule 3 both, which was checked rather than assumed. That is now the SECOND
+time this file's own comment has been right: the first thing a property test
+finds is usually the author's misunderstanding of the invariant.
+
+The seed is an argument too. The position count has been tunable since this
+file was written and the seed was not, so every soak run re-tested the same
+games, only more of them.
+
+THE HARNESS RUNS IN A THIRD OF THE TIME: 19.5 seconds to 6.5. Two causes,
+and the interesting one is a product bug. acceptMove scheduled the practice
+opponent as setTimeout(dryOpponentReply, 1600), which captures the function
+REFERENCE - so the harness stubbing dryOpponentReply out only affected
+replies scheduled afterwards, and the one already in flight ran the original
+regardless. That is why a 1.7-second sleep sat in the middle of the suite
+absorbing it, with a comment admitting it "still races". Scheduling a call by
+name instead is late binding, costs nothing, and means the current definition
+is the one that runs - the wait and the race both go. The other cause was
+plain margin: the TTS stub fires onend after ONE millisecond and the waits
+were 120, so they are scaled, with HARNESS_SLEEP=1 to put them back if
+anything ever looks flaky. Five consecutive runs, all 250 passing.
+
+AND THE LAST BEHAVIOUR-BY-GREP TESTS ARE GONE. "Voice off tears down no
+network" read an 800-character window of ui.js ending at a string and
+asserted three identifiers were absent from it - a test whose result changes
+if someone adds a paragraph of comment above the function, and which says
+nothing about what happens when the button is pressed. It presses the button
+now and watches what gets called; adding an abort to that path fails it.
+Same for leaving practice, the re-parented button row, and the overlay
+touch-action, where the old grep would have matched the assignment inside the
+comment explaining why the viewport meta cannot do that job.
+
+TWO SMALL THINGS FROM THE REVIEW'S TAIL. "flip clock" repainted and said
+nothing, which is fine while you are looking at the overlay and is silence
+everywhere else - and it is a VOICE command, reachable with the overlay down,
+where the repaint is invisible and nothing else happens at all. It answers
+with the new state rather than "flipped", because a confirmation has to carry
+information to earn its airtime. And loadSettings read and parsed the same
+localStorage key twice, with two catch blocks disagreeing about what to say
+when it failed.
+
+WHAT IS DELIBERATELY DOCUMENTED RATHER THAN CHANGED. "Yes", "no" and "cancel"
+with nothing open stay silent: CANCEL_WORDS contains "stop" and "forget",
+which land in ordinary speech at the board more often than as commands, and
+answering every one with "nothing to cancel" is the flat repeated speech the
+sound arc ended by deleting. Commands are still read from the primary
+transcript only: a missed command costs one repetition, while a command
+invented from a reading the mic ranked second could resign a game. And
+partialAsk's "both halves came from the user" is not literally true since w49
+- a rival reading may raise the question - but the question is the safeguard,
+because nothing plays until the user has answered.
+

@@ -291,11 +291,24 @@
   // OVERLAY_TICK_MS, so the overlay is never disturbed —
   // which matters, because it cannot be retaken without
   // another tap. CONFIRMED in use.
+  // AND IT SAYS WHICH SIDE (w54). This repainted and said
+  // nothing, which is fine while you are looking at the
+  // overlay and is silence everywhere else - and "flip clock"
+  // is a VOICE command, reachable with the overlay down, where
+  // the repaint is invisible and nothing else happens at all.
+  // That is constraint 5: silence reads as "not heard", so the
+  // user says it again, and flips it back.
+  //
+  // It answers with the new state rather than "flipped",
+  // because a confirmation has to carry information to earn
+  // its airtime - the rule the whole sound arc ended in (see
+  // the chimes tombstone in header.js).
   function flipClockSides() {
     PLAYER_ON_LEFT_OF_CLOCK = !PLAYER_ON_LEFT_OF_CLOCK;
     var side = PLAYER_ON_LEFT_OF_CLOCK ? "left" : "right";
     log("CLK", "my clock now on the " + side);
     renderClockMode();
+    speak("your clock on the " + side + ".");
   }
 
   function acquireClockLock() {

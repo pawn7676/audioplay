@@ -143,25 +143,25 @@
     Object.keys(SETTING_DEFAULTS).forEach(function (k) {
       out[k] = SETTING_DEFAULTS[k];
     });
+    // ONE READ, ONE PARSE (w54). This read the key and parsed
+    // it, then read and parsed the SAME key again a few lines
+    // down for the v131 rename - two trips for one string,
+    // with two catch blocks disagreeing about what to say when
+    // it failed.
     try {
-      var raw = localStorage.getItem(SETTINGS_KEY);
-      if (raw) {
-        var saved = JSON.parse(raw);
-        Object.keys(SETTING_DEFAULTS).forEach(function (k) {
-          if (typeof saved[k] === "boolean") out[k] = saved[k];
-        });
+      var saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+      Object.keys(SETTING_DEFAULTS).forEach(function (k) {
+        if (typeof saved[k] === "boolean") out[k] = saved[k];
+      });
+      // confirmAllMoves became confirmMyMove at v131; carry a
+      // stored value across once. Deletable once the panel has
+      // been saved on the device - still here because there is
+      // no way to know from here whether it has been.
+      if (typeof saved.confirmAllMoves === "boolean" &&
+          typeof saved.confirmMyMove !== "boolean") {
+        out.confirmMyMove = saved.confirmAllMoves;
       }
     } catch (e) { /* defaults stand */ }
-    // confirmAllMoves became confirmMyMove at v131; carry
-    // a stored value across once. Deletable after the
-    // panel has been saved once on the device.
-    try {
-      var prior = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
-      if (typeof prior.confirmAllMoves === "boolean" &&
-          typeof prior.confirmMyMove !== "boolean") {
-        out.confirmMyMove = prior.confirmAllMoves;
-      }
-    } catch (e) { /* the default stands */ }
     // messages must keep one channel (v129): a stored
     // off/off - an old save, a hand-edit - would let a
     // question hang silently. Voice is the channel that

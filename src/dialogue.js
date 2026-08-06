@@ -85,6 +85,18 @@
   // completes the move; both halves came from the user, so
   // a unique fit is accepted the v92 way. Ply-guarded, so
   // it expires by itself when the position moves on.
+  //
+  // "BOTH HALVES CAME FROM THE USER" IS ALMOST TRUE (w54).
+  // Since w49 a repair may also be raised by a RIVAL reading -
+  // one the mic ranked second - and in that case the first
+  // half came from a guess, not from the user. The question
+  // is still the whole safeguard: the rival reading may only
+  // ASK, so nothing plays until the user has answered, and the
+  // answer is unambiguously theirs. The claim is left standing
+  // because it says what matters - a completed move has been
+  // confirmed by the person - but it is not literally the
+  // provenance of both halves, and the difference is worth
+  // knowing before widening this again.
   var partialAsk = null;     // { req, want, chk, mate, ply }
 
   var CONFIRMS = {
@@ -294,7 +306,15 @@
       log("DRY", "you play " + uci + " = " + c.san + " (not sent)");
       if (readBackMineNow())
         speak(sanToSpeech(c.san), colorWord(api.myColor || "w"));
-      setTimeout(dryOpponentReply, 1600);
+      // CALLED BY NAME, NOT BY REFERENCE (w54). Passing the
+      // function itself captures whatever it is bound to RIGHT
+      // NOW, so a reply already in flight could not be called
+      // off - the harness stubs dryOpponentReply out and the
+      // scheduled one ran the original anyway, which is why it
+      // then had to sleep 1.7 seconds to absorb it, once, in
+      // the middle of the suite. Late binding costs nothing and
+      // means the current definition is the one that runs.
+      setTimeout(function () { dryOpponentReply(); }, 1600);
       return;
     }
 
@@ -1197,6 +1217,20 @@
       speak("Memo recorded in log.");
       return;
     }
+    // COMMANDS ARE READ FROM THE PRIMARY TRANSCRIPT ONLY, and
+    // that is a decision, not an oversight (documented at w54).
+    // answerPieceOf and memoTranscript scan every rival
+    // reading; this does not, so a "yes" that appears only in
+    // Safari's second guess is missed and the question is
+    // asked again.
+    //
+    // That is the safe direction. w49 settled what a rival
+    // reading may do - raise a question, never play a move -
+    // and a command is further from a question than a move is:
+    // "resign", "yes" and "draw" all END something, some of
+    // them a game. A missed command costs one repetition; a
+    // command invented from a reading the mic ranked second
+    // could resign a game the user is winning.
     var cmd = classifyCommand(primary);
 
     if (confirmAction) {
@@ -1333,6 +1367,21 @@
       speak("Cancelled. Say the move again.");
       return;
     }
+    // YES, NO AND CANCEL WITH NOTHING OPEN ARE SILENT, ON
+    // PURPOSE (documented at w54; the behaviour is older). It
+    // looks like a constraint-5 violation and it is the
+    // stray-talk exemption: the mic is open the whole game, and
+    // CANCEL_WORDS includes "stop" and "forget", which land in
+    // ordinary speech at the board more often than as commands.
+    // Answering every one of them with "nothing to cancel"
+    // would be flat, repeated speech that carries no
+    // information - the exact thing the sound arc ended by
+    // deleting (see the chimes tombstone).
+    //
+    // The trade is only safe because it is narrow: a cancel
+    // that has something to cancel always speaks, four lines
+    // up and in the pending path, and those are the cases the
+    // user is actually waiting on an answer for.
     if (cmd === "yes" || cmd === "no" || cmd === "cancel") return;
 
     // Is there anything move-shaped in ANY reading. The mic
