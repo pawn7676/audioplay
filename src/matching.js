@@ -70,6 +70,13 @@
   }
 
   function findMoves(pos, req, ignoreStrict) {
+    // "IS THERE A MOVE IN THIS AT ALL" is a question about the
+    // UTTERANCE and it is asked here, once. movesFor used to ask
+    // it and that made a square-less constraint unusable - which
+    // is precisely what a repair means when it says "every
+    // capture the queen can make". The repairs each grew their
+    // own hand-written filter to get around it.
+    if (!req.castle && constraintIsEmpty(constraintOf(req))) return [];
     var rs = readingsOf(req), i, found;
     for (i = 0; i < rs.length; i++) {
       found = movesFor(pos, rs[i].c, ignoreStrict);
@@ -90,7 +97,6 @@
         return false;
       });
     }
-    if (constraintIsEmpty(c)) return [];
     var out = legal.filter(function (m) { return fitsConstraint(m, c); });
 
     // A PAWN MOVE WITHOUT "TAKES" IS A PUSH. "charlie five"

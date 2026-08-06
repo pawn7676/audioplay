@@ -429,6 +429,15 @@
    *  - and a single constraint cannot hold both. It becomes TWO
    *  READINGS instead, which is the section below.
    *================================================================*/
+  /* An unconstrained move: everything null, nothing ruled out.
+   * A repair starts here and adds only what it means. */
+  function anyMove() {
+    return { castle: null, piece: null, victim: null, mustCapture: false,
+             promotion: null, promoKw: false,
+             from: { file: null, rank: null },
+             to:   { file: null, rank: null } };
+  }
+
   function constraintOf(req) {
     var c = { castle: req.castle, piece: req.piece, victim: req.victim,
               mustCapture: !!req.capture, promotion: req.trailingPiece,

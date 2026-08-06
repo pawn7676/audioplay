@@ -952,19 +952,20 @@
       // case is untouched.
       var origin = originCapture(req);
       if (origin) {
-        var ocaps = api.pos.legalMoves().filter(function (m) {
-          if (!m.captured) return false;
-          var s = RULES.sqName(m.from);
-          if (origin.length === 2 ? s !== origin
-              : /[a-h]/.test(origin) ? s[0] !== origin
-                                     : s[1] !== origin) return false;
-          var t = RULES.sqName(m.to);
-          if (req.toFile && t[0] !== req.toFile) return false;
-          if (req.toRank && t[1] !== req.toRank) return false;
-          if (req.piece && m.piece !== req.piece) return false;
-          if (req.victim && m.captured !== req.victim) return false;
-          return true;
-        });
+        // WHAT THIS REPAIR MEANS, stated rather than filtered:
+        // a capture, from the origin that was named, honouring
+        // any mover, victim or target half that came with it.
+        var oc = anyMove();
+        oc.mustCapture = true;
+        oc.piece = req.piece;
+        oc.victim = req.victim;
+        oc.to.file = req.toFile;
+        oc.to.rank = req.toRank;
+        if (origin.length === 2) {
+          oc.from.file = origin[0]; oc.from.rank = origin[1];
+        } else if (/[a-h]/.test(origin)) { oc.from.file = origin; }
+        else { oc.from.rank = origin; }
+        var ocaps = movesFor(api.pos, oc);
         if (!ocaps.length) {
           // Silence is not an answer, and neither is "not a
           // legal move" when we know exactly what is wrong -
@@ -1049,14 +1050,16 @@
       if (!req.squares.length && !req.victim &&
           (req.fromFile || req.fromRank) &&
           (req.piece || req.capture)) {
-        var half = api.pos.legalMoves().filter(function (m) {
-          if (req.piece && m.piece !== req.piece) return false;
-          if (req.capture && !m.captured) return false;
-          var t = RULES.sqName(m.to);
-          if (req.fromFile && t[0] !== req.fromFile) return false;
-          if (req.fromRank && t[1] !== req.fromRank) return false;
-          return true;
-        });
+        // The dangling half read as the TARGET's - the v116
+        // reading, now said in one place instead of implied by
+        // a filter here and by askPartial's stored constraint
+        // over there.
+        var hc = anyMove();
+        hc.piece = req.piece;
+        hc.mustCapture = !!req.capture;
+        hc.to.file = req.fromFile;
+        hc.to.rank = req.fromRank;
+        var half = movesFor(api.pos, hc);
         if (half.length) {
           var narrowed = narrowBySaid(candidatesOf(half, req), transcripts);
           if (narrowed.length === 1) {
@@ -1150,9 +1153,12 @@
       // piece name itself was probably the misheard word.
       if (req.piece && req.capture && !req.squares.length &&
           !req.victim && !req.fromFile && !req.fromRank) {
-        var pcaps = api.pos.legalMoves().filter(function (m) {
-          return m.piece === req.piece && m.captured;
-        });
+        // every capture that piece can make, and nothing else
+        // was heard to narrow it
+        var cc = anyMove();
+        cc.piece = req.piece;
+        cc.mustCapture = true;
+        var pcaps = movesFor(api.pos, cc);
         if (!pcaps.length) {
           refuse(req, "It has nothing to take.");
           return;
@@ -1186,9 +1192,13 @@
       if (req.piece && !req.squares.length && !req.victim &&
           !req.fromFile && !req.fromRank && !req.capture &&
           transcripts.some(saysMate)) {
-        var pmates = api.pos.legalMoves().filter(function (m) {
-          return m.piece === req.piece &&
-                 api.pos.sanOf(m).slice(-1) === "#";
+        // MATE IS NOT A CONSTRAINT ON THE MOVE, it is a fact
+        // about the position after it, so only the piece half
+        // goes through movesFor and the mate test stays here.
+        var mc = anyMove();
+        mc.piece = req.piece;
+        var pmates = movesFor(api.pos, mc).filter(function (m) {
+          return api.pos.sanOf(m).slice(-1) === "#";
         });
         if (pmates.length) {
           var nmates = candidatesOf(pmates, req);
