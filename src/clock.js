@@ -21,6 +21,31 @@
   // In: the "clock" button, and ONLY the button (v98).
   // Out: tap anywhere on it.
   //
+  // THIS FILE PAINTS FROM CODE, AND THAT IS THE EXCEPTION,
+  // NOT THE RULE (w54). Rule 6 says the stylesheet owns what a
+  // state looks like and the code only says which state is
+  // current - and everywhere else it now does, including the
+  // two page buttons that were breaking it. Here the whole
+  // overlay is built from cssText and its colours are set on
+  // the elements: red under a minute, dim for the side not to
+  // move. It is left that way ON PURPOSE and the reason is
+  // worth stating, because an undocumented exception is
+  // indistinguishable from an oversight - which is how this
+  // one got reported in the first place.
+  //
+  //   - the overlay is a SECOND RENDERER. It shares no markup
+  //     with the page, sits outside .panel, and is created and
+  //     destroyed whole, so there is no stylesheet cascade
+  //     here to be the single source of anything.
+  //   - it is the screen the owner READS at a glance across a
+  //     room, and the sizes and colours in it were tuned on
+  //     the device by eye. Moving them into the stylesheet
+  //     cannot be verified by the harness and would need a
+  //     real game to confirm - a bad trade for tidiness.
+  //
+  // If this overlay is ever rebuilt, move it to classes then.
+  // Do not do it as a drive-by.
+  //
   // A screen wake lock is held while the overlay is up, so
   // the iPad does not sleep into the lock screen mid-game.
   // iOS silently drops the lock whenever the app is
@@ -192,11 +217,19 @@
     }
   }
 
-  // Is anything waiting on an answer? The three dialogue
+  // Is anything waiting on an answer? The FOUR dialogue
   // states, read live. This is the whole of the sticky
   // rule: no message is classified, the board state is.
+  //
+  // partialAsk was added to dialogue.js at v117 and never
+  // added here, so "say the rank" and "say the target" - the
+  // two questions that ask for the least and are easiest to
+  // lose track of - were the two whose message expired off the
+  // strip while they were still waiting to be answered. A list
+  // of states is only right until the next state is added;
+  // this one is now the same list dialogue.js keeps.
   function questionOpen() {
-    return !!(pending || confirmAction || pieceAsk);
+    return !!(pending || confirmAction || pieceAsk || partialAsk);
   }
 
   // SPOKEN TEXT IS WRITTEN FOR THE EAR (v134): lower case
@@ -258,11 +291,24 @@
   // OVERLAY_TICK_MS, so the overlay is never disturbed —
   // which matters, because it cannot be retaken without
   // another tap. CONFIRMED in use.
+  // AND IT SAYS WHICH SIDE (w54). This repainted and said
+  // nothing, which is fine while you are looking at the
+  // overlay and is silence everywhere else - and "flip clock"
+  // is a VOICE command, reachable with the overlay down, where
+  // the repaint is invisible and nothing else happens at all.
+  // That is constraint 5: silence reads as "not heard", so the
+  // user says it again, and flips it back.
+  //
+  // It answers with the new state rather than "flipped",
+  // because a confirmation has to carry information to earn
+  // its airtime - the rule the whole sound arc ended in (see
+  // the chimes tombstone in header.js).
   function flipClockSides() {
     PLAYER_ON_LEFT_OF_CLOCK = !PLAYER_ON_LEFT_OF_CLOCK;
     var side = PLAYER_ON_LEFT_OF_CLOCK ? "left" : "right";
     log("CLK", "my clock now on the " + side);
     renderClockMode();
+    speak("your clock on the " + side + ".");
   }
 
   function acquireClockLock() {

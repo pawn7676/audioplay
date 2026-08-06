@@ -18,7 +18,7 @@
    *  THE WEB DELTAS, and why each exists:
    *  1. The log panel has no "token" button: sign-in is PKCE
    *     (lichess.js) and Sign out lives on the page.
-   *  2. The round button no longer owns the connection - the
+   *  2. The voice button no longer owns the connection - the
    *     w19 site decided this and game 17 proved it: SIGN-IN
    *     OWNS THE CONNECTION, THE BUTTON OWNS THE VOICE. A game
    *     keeps streaming (and the board keeps drawing) with the
@@ -38,7 +38,7 @@
   var BUTTON_ON = "#3a5a2a";
 
   // A lit button means that thing is currently ON, matching
-  // the round button. Called from renderButton so every
+  // the voice button. Called from renderButton so every
   // control is repainted from one place.
   function paintButton(el, on, offColor) {
     if (!el) return;
@@ -75,7 +75,7 @@
       setTimeout(loadVoices, 300);
       if (dryRun) {
         dryRun = false; running = false;
-        pauseMic(); pending = null; confirmAction = null;
+        pauseMic(); clearDialogue();
         log("DRY", "practice mode OFF");
         // WEB (delta 3): dryStart took over the api state;
         // hand it back and pick up a live game if one exists
@@ -84,10 +84,13 @@
         uiGameChanged();
         rejoinCurrent();
       } else {
-        try { if (streamAbort) streamAbort.abort(); } catch (e) {}
-        clearInterval(pollTimer); clearTimeout(reconnectTimer);
+        // dryRun goes up FIRST so nothing in flight can
+        // reconnect behind us, then dryStart owns the whole
+        // teardown - game stream, account stream, seek, timers
+        // and the open questions. It used to be split between
+        // here and there, which is how the account stream came
+        // to be closed by neither (w50).
         dryRun = true; running = true;
-        pending = null; confirmAction = null;
         startKeepAlive();
         startListening();
         dryStart();
@@ -146,17 +149,17 @@
     settingsBtn = document.createElement("button");
     settingsBtn.textContent = "Settings";   /* WEB w30: capitalised */
     settingsBtn.style.cssText = logBtn.style.cssText;
+    // THIS LISTENER OWNS THE TOGGLE, AND ONLY THE TOGGLE (w54).
+    // It used to anchor the panel above the voice button as
+    // well, and that work was always thrown away: buildWebUI
+    // registers a SECOND listener on this same button which
+    // re-anchors to top/left within the same click dispatch,
+    // so the value computed here survived for no time at all
+    // and its correctness rested entirely on the order the two
+    // listeners happened to be registered in. One anchoring,
+    // in the file that knows where the button actually is.
     settingsBtn.addEventListener("click", function () {
       var open = setPanel.style.display !== "none";
-      if (!open) {
-        // anchor just above the tallest thing in the row -
-        // the round button
-        try {
-          var top = bigBtn.getBoundingClientRect().top;
-          setPanel.style.bottom =
-            Math.max(60, window.innerHeight - top + 8) + "px";
-        } catch (e) {}
-      }
       setPanel.style.display = open ? "none" : "block";
       renderButton();
     });
@@ -283,7 +286,11 @@
 
     logPanel = document.createElement("div");
     logPanel.style.cssText =
-      "position:fixed;left:8px;right:8px;top:8px;bottom:110px;z-index:99998;" +
+      /* bottom:110px until w54, reserving room for the floating
+         button row - which has lived inside the page since w21,
+         so the strip was blank. It is the log panel; the space
+         is better spent on log. */
+      "position:fixed;left:8px;right:8px;top:8px;bottom:8px;z-index:99998;" +
       "display:none;flex-direction:column;background:rgba(12,12,11,.97);" +
       "border:1px solid #3a3530;border-radius:12px;overflow:hidden;";
     var verLabel = document.createElement("div");
@@ -334,10 +341,10 @@
     logBtn.addEventListener("click", function () {
       var open = logPanel.style.display !== "none";
       logPanel.style.display = open ? "none" : "flex";
-      if (!open) {
-        logBody.textContent = LOG.join("\n");
-        logBody.scrollTop = logBody.scrollHeight;
-      }
+      // log.js repaints only while this is true (w53), so the
+      // toggle owns it and the open case paints once, here
+      logPanelVisible = !open;
+      if (!open) paintLog();
       renderButton();
     });
 
@@ -359,11 +366,23 @@
         // correctly everywhere it is READ.
         if (!storedToken()) speak("sign in with lee chess first.");
         else if (!api.gameId) speak("voice on. waiting for a game.");
+        // AND PICK THE GAME BACK UP (w50). Voice off leaves the
+        // stream alone by design, but the stream can still die
+        // on its own while voice is off - and scheduleReconnect
+        // used to refuse to act unless voice was on, so nothing
+        // was left to notice. Turning voice back on is the one
+        // moment we know the user expects to be connected, so
+        // it is the right place to make sure we are. startStream
+        // is a no-op in practice and on no game, and aborts its
+        // own predecessor, so calling it here cannot double up.
+        else if (api.gameId && api.gameId !== "PRACTICE" && !api.over) {
+          startStream();
+        }
       } else {
         dryRun = false;
         pauseMic();
         stopKeepAlive();
-        pending = null; confirmAction = null;
+        clearDialogue();
         // WEB (delta 2): no stream/poll teardown here.
         // nothing spoken, as with practice mode off: the
         // button's own state is the signal, and the user
@@ -422,22 +441,30 @@
   // happen if you press it, because nothing is happening
   // yet; on, the useful fact is whether the mic is live -
   // which "Stop" would hide.
-  var VOICE_BTN_BLUE = "#91bddf";
-
+  // THE CODE SAYS WHICH STATE, THE STYLESHEET SAYS WHAT IT
+  // LOOKS LIKE (w54). This wrote #91bddf and #3a5a2a into the
+  // element by hand - the same two values --accent and
+  // --button-on already hold, duplicated where nothing could
+  // see them drift apart, and set from a place that cannot see
+  // what colour the text ended up. That is the w21/w24/w36
+  // shape three times over, and the rule those cost was
+  // written down and then not followed here.
+  //
+  // The inline properties are CLEARED rather than overwritten,
+  // which is the same move adoptPageButtonLook makes just
+  // below and for the same reason: the stylesheet can only be
+  // the single source of the look if nothing inline is
+  // competing with it. buildUI sets a background on this
+  // button when it builds it, so there IS something to clear.
   function paintVoiceButton() {
     if (!bigBtn) return;
-    if (!running) {
-      bigBtn.textContent = "\u25B6 Start";
-      bigBtn.style.background = VOICE_BTN_BLUE;
-      bigBtn.style.color = "#15130f";
-      bigBtn.style.borderColor = VOICE_BTN_BLUE;
-    } else {
-      bigBtn.textContent = listening
-        ? "\u25CF Listening" : "\u25CB On";
-      bigBtn.style.background = BUTTON_ON;
-      bigBtn.style.color = "#e6efe0";
-      bigBtn.style.borderColor = BUTTON_ON;
-    }
+    bigBtn.textContent = !running ? "\u25B6 Start"
+      : (listening ? "\u25CF Listening" : "\u25CB On");
+    bigBtn.style.background = "";
+    bigBtn.style.color = "";
+    bigBtn.style.borderColor = "";
+    bigBtn.classList.toggle("primary", !running);
+    bigBtn.classList.toggle("on", !!running);
   }
 
   // THE VOICE BUTTONS LOOK LIKE THE PAGE'S BUTTONS (w32).
@@ -447,9 +474,15 @@
   // read as a smaller, different kind of control. The inline
   // sizing is CLEARED rather than overwritten, so the
   // stylesheet is the single place the look is decided; only
-  // what a stylesheet cannot know is set from here - the
-  // state colour, and a fixed width so the row does not
-  // twitch as the label changes.
+  // what a stylesheet cannot know is set from here - a fixed
+  // width so the row does not twitch as the label changes.
+  //
+  // THIS USED TO SAY "the state colour" TOO, and it was wrong
+  // (w54): the stylesheet knew that colour perfectly well, in
+  // --accent and --button-on, and the code was writing the
+  // same two hex values in by hand a few lines up. A comment
+  // that names an exception keeps the exception alive long
+  // after it has stopped being one.
   function adoptPageButtonLook(b) {
     if (!b || !b.style) return;
     ["fontSize", "padding", "borderRadius", "lineHeight",
@@ -528,7 +561,7 @@
   // challenge messages stand only while there is no game to
   // report. It also carries THE ONE THING A NEW PLAYER CANNOT
   // GUESS: iOS will not open a microphone without a real tap,
-  // so the round button must be pressed once per session - a
+  // so the voice button must be pressed once per session - a
   // rule of the platform, not a choice here (see mic.js).
   function renderStatus() {
     if (!api.gameId || api.gameId === "PRACTICE") {
@@ -538,7 +571,7 @@
     }
     if (api.over) { uiStatus("Game over."); return; }
     if (!running) {
-      uiStatus("Playing. Tap the round button to turn on voice.");
+      uiStatus("Playing. Tap the Start button to turn on voice.");
       return;
     }
     uiStatus("Playing.");
@@ -557,9 +590,9 @@
 
   // The signed-in green is the SAME green the buttons use for
   // "on", because it means the same thing: this is running.
-  var SIGNED_IN_BG = "#3a5a2a";
-  var SIGNED_IN_FG = "#e6efe0";
-
+  // It lives in the stylesheet as .panel button.on since w54 -
+  // it was a pair of hex constants here, which is how it came
+  // to be typed out twice.
   var signInBtn, signOutBtn, seekBtn, seekCancelBtn, challengeBtn;
 
   function renderAccount() {
@@ -572,18 +605,21 @@
       // a name should not do anything. Sign out is how you
       // leave. The name is not repeated in the status line:
       // that line says what is HAPPENING, this says WHO.
+      // BOTH STATES BY CLASS (w54). This element carried both
+      // idioms at once - an inline colour for signed IN, a
+      // class toggle for signed OUT - on the same button, so
+      // which one decided the look depended on which branch
+      // ran last. That is exactly the split ownership w36 was
+      // about. The green is the same green the voice button
+      // uses, because it means the same thing, and now they
+      // are the same rule rather than the same hex typed twice.
       signInBtn.textContent = api.myName || "Sign in with Lichess";
       signInBtn.style.cursor = api.myName ? "default" : "";
-      if (api.myName) {
-        signInBtn.style.background = SIGNED_IN_BG;
-        signInBtn.style.color = SIGNED_IN_FG;
-        signInBtn.style.borderColor = SIGNED_IN_BG;
-      } else {
-        signInBtn.style.background = "";
-        signInBtn.style.color = "";
-        signInBtn.style.borderColor = "";
-      }
+      signInBtn.style.background = "";
+      signInBtn.style.color = "";
+      signInBtn.style.borderColor = "";
       signInBtn.classList.toggle("primary", !api.myName);
+      signInBtn.classList.toggle("on", !!api.myName);
     }
     if (signOutBtn) signOutBtn.disabled = !signedIn;
     var inGame = !!api.gameId && api.gameId !== "PRACTICE" && !api.over;
@@ -800,7 +836,7 @@
     var host = el("panelControls");
     if (host && wrapEl) {
       // REVERSED (w27, fixed w28): the userscript builds the
-      // row with the buttons first and the round button last,
+      // row with the buttons first and the voice button last,
       // because there it sits in the bottom-right corner
       // where the button lands nearest the thumb. On the
       // page the row starts at the left margin and the

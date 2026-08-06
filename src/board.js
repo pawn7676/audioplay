@@ -40,6 +40,7 @@ function sqClass(i) {
 }
 
 var pieceArt = {};
+var bakeRepaint = null;    /* coalesces the twelve load repaints */
 function bakePieces() {
   var ser = new XMLSerializer();
   ["w", "b"].forEach(function (c) {
@@ -55,7 +56,14 @@ function bakePieces() {
         cv.width = MINI_CELL; cv.height = MINI_CELL;
         cv.getContext("2d").drawImage(img, 0, 0, MINI_CELL, MINI_CELL);
         pieceArt[id] = cv;
-        renderMiniBoard();
+        // ONE REPAINT FOR THE WHOLE SET, NOT ONE EACH (w53).
+        // Twelve images load within a frame or two of each
+        // other at boot and each redrew the entire board, so
+        // the first eleven were guaranteed to be replaced by
+        // the twelfth. Coalescing to the end of the turn draws
+        // once, with every piece present.
+        clearTimeout(bakeRepaint);
+        bakeRepaint = setTimeout(renderMiniBoard, 0);
       };
       img.src = "data:image/svg+xml;charset=utf-8," +
                 encodeURIComponent(svg);

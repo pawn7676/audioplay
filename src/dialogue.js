@@ -1,4 +1,53 @@
-  /*=========================== DIALOGUE ===========================*/
+  /*=========================== DIALOGUE ===========================\
+   *
+   *  WHAT THIS FILE IS. Everything between "some words arrived"
+   *  and "a move was sent, or a question was asked". matching.js
+   *  decides which moves a sentence COULD mean; this decides
+   *  what to do about it - play it, ask about it, repair it, or
+   *  refuse it - and it is the file that owes the user a
+   *  sentence on every path out.
+   *
+   *  It had no header at all until w54, which is the only file
+   *  of this size that did. The reasoning was all here, but as
+   *  fifty local comments with no map over them, so the shape
+   *  of the thing had to be reconstructed by reading it end to
+   *  end. This is the map.
+   *
+   *  THE FOUR QUESTIONS IT CAN HAVE OPEN, and they are the
+   *  file's real state:
+   *    pending     - a walk through candidate moves, yes/no
+   *    confirmAction - a yes/no on resign, draw, takeback
+   *    pieceAsk    - "no pawn can go there, say queen or rook"
+   *    partialAsk  - half a move heard, "say the rank"
+   *  The last two carry the ply they were asked at, so they
+   *  expire when the position moves on. None of them may
+   *  outlive their GAME - see clearDialogue, and w50, which is
+   *  what happens when they do.
+   *
+   *  THE ORDER OF handleTranscripts IS LOAD-BEARING, and every
+   *  step of it was paid for: memo first (a memo naming a move
+   *  must never be played), then an open question's answer,
+   *  then commands, then moves, then the repair chain. Moving
+   *  any of these changes the grammar.
+   *
+   *  SILENCE IS NOT AN ANSWER (constraint 5, header.js). Every
+   *  path out of here speaks, including the refusals, the
+   *  busy path and the failures. Two deliberate exceptions are
+   *  documented where they live: stray talk on the opponent's
+   *  clock, and a filler-only utterance.
+   *
+   *  THE REPAIR CHAIN is an ordered list of named repairs, each
+   *  stating its own constraint, tried in order until one can
+   *  ask something answerable. A repair may be fired by a RIVAL
+   *  transcription, but then it may only ask, never play (w49).
+   *
+   *  This file has grown three jobs - the dialogue proper,
+   *  practice mode, and the repair chain - and the review that
+   *  produced w50 to w54 recommends splitting the last two out.
+   *  That is deliberately NOT done yet: it is pure motion, and
+   *  pure motion belongs on its own, after the behaviour has
+   *  settled.
+   *================================================================*/
 
   // practice mode: nothing is ever sent to Lichess
   var dryRun = false;
@@ -36,6 +85,18 @@
   // completes the move; both halves came from the user, so
   // a unique fit is accepted the v92 way. Ply-guarded, so
   // it expires by itself when the position moves on.
+  //
+  // "BOTH HALVES CAME FROM THE USER" IS ALMOST TRUE (w54).
+  // Since w49 a repair may also be raised by a RIVAL reading -
+  // one the mic ranked second - and in that case the first
+  // half came from a guess, not from the user. The question
+  // is still the whole safeguard: the rival reading may only
+  // ASK, so nothing plays until the user has answered, and the
+  // answer is unambiguously theirs. The claim is left standing
+  // because it says what matters - a completed move has been
+  // confirmed by the person - but it is not literally the
+  // provenance of both halves, and the difference is worth
+  // knowing before widening this again.
   var partialAsk = null;     // { req, want, chk, mate, ply }
 
   var CONFIRMS = {
@@ -74,6 +135,36 @@
   var repairMayPlay = true;
   var busy = false;
 
+  /* NO QUESTION OUTLIVES THE GAME IT WAS ASKED IN (w50).
+   *
+   * There are four dialogue states and, until now, no single
+   * place that put them down. The two ply-guarded ones expire
+   * by themselves WHILE a game runs - that is what the ply is
+   * for - but joinGame resets api.moves to empty, so a question
+   * asked at ply 0 of one game is still "current" at ply 0 of
+   * the next. The two yes/no states had no expiry at all.
+   *
+   * The bad case is not hypothetical and it is not small: ask
+   * "resign", get "Resign the game? Yes or no.", have the
+   * opponent mate you or flag you before you answer, let the
+   * next game auto-join off the event stream - and the first
+   * "yes" of the new game resigns it. Nothing in the old code
+   * stood between those two events.
+   *
+   * Called from everywhere a game begins or ends: joinGame,
+   * the game-over branch, practice on and off, voice off. The
+   * armed read-back goes with them, since it refers to a move
+   * posted in a game that is no longer the current one.
+   */
+  function clearDialogue() {
+    pending = null;
+    confirmAction = null;
+    pieceAsk = null;
+    partialAsk = null;
+    armedUci = null;
+    repairMayPlay = true;
+  }
+
   /* ---- Practice Mode ---- 
    * Runs the whole pipeline locally: mic, NATO parsing, ambiguity
    * dialogue, speech, log. No token is used and nothing is
@@ -81,9 +172,25 @@
    * the list of legal moves. */
 
   function dryStart() {
+    // EVERYTHING THAT COULD DELIVER A REAL GAME IS PUT DOWN
+    // FIRST (w50). This used to close the game stream and the
+    // timers and stop there, leaving the ACCOUNT event stream
+    // open and any outstanding seek live. Both of those exist
+    // precisely to start a game without being asked, and
+    // dryRun then gagged the result: the join happened, the
+    // real position replaced the practice one, and every
+    // announcement was suppressed because practice mode was
+    // still on. A real game with a running clock, in silence,
+    // while the board in front of you says something else.
+    // Practice is a mode where nothing is sent to Lichess, so
+    // nothing may arrive from it either.
     try { if (streamAbort) streamAbort.abort(); } catch (e) {}
+    try { if (eventAbort) eventAbort.abort(); } catch (e) {}
+    clearTimeout(eventTimer);
+    cancelSeek();
     clearTimeout(reconnectTimer);
     clearInterval(pollTimer);
+    clearDialogue();
     api.gameId = "PRACTICE";
     api.myColor = "w";
     api.pos = new RULES.Position();
@@ -92,13 +199,17 @@
     api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
     api.wtime = 600000;
     api.btime = 600000;
-    api.mode = "practice";
     log("DRY", "practice mode ON - nothing will be sent to Lichess");
     speakWhenAudioSettled("Practice mode. You are white.");
   }
 
   function dryOpponentReply() {
-    if (!dryRun || api.over) return;
+    // it is scheduled 1.6s ahead, so it can land after
+    // practice has ended - including after a real game took
+    // the board. dryRun alone was the guard; the game id is
+    // added because this function APPLIES A MOVE, and the one
+    // thing it must never apply it to is a real position.
+    if (!dryRun || api.over || api.gameId !== "PRACTICE") return;
     var legal = api.pos.legalMoves();
     if (!legal.length) {
       api.over = true;
@@ -170,7 +281,19 @@
   }
 
   function acceptMove(c) {
-    if (busy) { log("DLG", "ignored, busy"); return; }
+    if (busy) {
+      // SILENCE IS NOT AN ANSWER, not even for "I am still
+      // working on the last one" (w50). This logged and
+      // returned, so a move dictated while the previous post
+      // was still in flight produced nothing at all - and
+      // nothing is the same sound as not heard, which is an
+      // invitation to say it again and to keep saying it. It
+      // is a short window normally; it was an unbounded one
+      // until postMove grew a timeout.
+      log("DLG", "ignored, busy");
+      speak("still sending the last move.");
+      return;
+    }
     busy = true;
     pending = null;
     var uci = api.pos.uciOf(c.m);
@@ -183,7 +306,15 @@
       log("DRY", "you play " + uci + " = " + c.san + " (not sent)");
       if (readBackMineNow())
         speak(sanToSpeech(c.san), colorWord(api.myColor || "w"));
-      setTimeout(dryOpponentReply, 1600);
+      // CALLED BY NAME, NOT BY REFERENCE (w54). Passing the
+      // function itself captures whatever it is bound to RIGHT
+      // NOW, so a reply already in flight could not be called
+      // off - the harness stubs dryOpponentReply out and the
+      // scheduled one ran the original anyway, which is why it
+      // then had to sleep 1.7 seconds to absorb it, once, in
+      // the middle of the suite. Late binding costs nothing and
+      // means the current definition is the one that runs.
+      setTimeout(function () { dryOpponentReply(); }, 1600);
       return;
     }
 
@@ -237,6 +368,19 @@
     });
   }
 
+  /* Send a confirmed yes/no action and report what actually
+   * happened (w50). In practice mode there is nothing to send
+   * and nothing to fail, so it just says the line. */
+  function confirmedAction(path, saidWhenSent) {
+    if (dryRun) { speak(saidWhenSent); return; }
+    postAction(path).then(function () {
+      speak(saidWhenSent);
+    }).catch(function (e) {
+      log("ERR", "action " + path + ": " + e.message);
+      speak("could not reach lee chess. that did not go through.");
+    });
+  }
+
   function askCandidate() {
     if (!pending || pending.idx >= pending.cands.length) {
       // "no" to a one-entry list deserves the truth: there
@@ -287,7 +431,7 @@
       var s = Math.max(0, Math.floor(ms / 1000));
       var m = Math.floor(s / 60);
       s = s % 60;
-      if (!m) return s + " seconds";
+      if (!m) return s + (s === 1 ? " second" : " seconds");
       if (!s) return m + (m === 1 ? " minute" : " minutes");
       return m + " " + (s < 10 ? "oh " + s : s);
     }
@@ -310,6 +454,19 @@
     if (!pieceAsk || !api.pos) return false;
     if (pieceAsk.ply !== api.moves.length) return false;
     if (req.squares.length || req.castle) return false;
+    // "A PIECE AND NOTHING ELSE" HAS TO MEAN IT (w51). The
+    // comment above said that and the code excluded only
+    // squares and castling, so a capture word, a named victim
+    // or a trailing piece all sailed through. With a push
+    // question open ("no pawn can go there. say queen, king or
+    // bishop.") an unrelated "queen takes rook" that finds no
+    // move of its own reached here FIRST - handleTranscripts
+    // tries the answer before the move - and was swallowed as
+    // the one-word answer "queen", offering, or with confirm
+    // off PLAYING, a quiet queen move nobody asked for. An
+    // answer is a word; this is a sentence.
+    if (req.capture && !pieceAsk.capture) return false;
+    if (req.victim || req.trailingPiece) return false;
     // a capture question can also be answered with a FILE,
     // because that is how it offers its pawn options
     // ("echo takes delta 5" -> "echo"). A bare file lands in
@@ -462,9 +619,21 @@
       // was asked for, in the position the first one held
       if (m.promotion === want) kept[at[key]] = m;
     });
+    var legal = api.pos.legalMoves();
     return kept.map(function (m) {
-      return { m: m, san: api.pos.sanOf(m) };
+      return { m: m, san: api.pos.sanOf(m, legal) };
     });
+  }
+
+  /* NAMING SEVERAL MOVES FROM ONE POSITION (w53). sanOf
+   * regenerates the legal move list whenever it is not handed
+   * one - it needs it for disambiguation - so a map or filter
+   * that names N moves generated the list N times, from a
+   * position that cannot have changed inside the loop. Every
+   * such place now generates it once and passes it down. */
+  function sansOf(moves) {
+    var legal = api.pos.legalMoves();
+    return moves.map(function (m) { return api.pos.sanOf(m, legal); });
   }
 
   function offer(cands, label) {
@@ -675,17 +844,20 @@
     });
     var chk = partialAsk.chk || transcripts.some(saysCheck);
     var mate = partialAsk.mate || transcripts.some(saysMate);
-    if (chk) {
-      var c2 = fits.filter(function (m) {
-        return /[+#]$/.test(api.pos.sanOf(m));
-      });
-      if (c2.length) fits = c2;
-    }
-    if (mate) {
-      var m2 = fits.filter(function (m) {
-        return api.pos.sanOf(m).slice(-1) === "#";
-      });
-      if (m2.length) fits = m2;
+    if (chk || mate) {
+      var legalNow = api.pos.legalMoves();
+      if (chk) {
+        var c2 = fits.filter(function (m) {
+          return /[+#]$/.test(api.pos.sanOf(m, legalNow));
+        });
+        if (c2.length) fits = c2;
+      }
+      if (mate) {
+        var m2 = fits.filter(function (m) {
+          return api.pos.sanOf(m, legalNow).slice(-1) === "#";
+        });
+        if (m2.length) fits = m2;
+      }
     }
     return fits;
   }
@@ -985,9 +1157,11 @@
       // goes through movesFor and the mate test stays here.
       var mc = anyMove();
       mc.piece = req.piece;
-      var pmates = movesFor(api.pos, mc).filter(function (m) {
-        return api.pos.sanOf(m).slice(-1) === "#";
-      });
+      var legalMate = api.pos.legalMoves();
+      var pmates = movesFor(api.pos, mc, false, legalMate)
+        .filter(function (m) {
+          return api.pos.sanOf(m, legalMate).slice(-1) === "#";
+        });
       if (pmates.length) {
         var nmates = candidatesOf(pmates, req);
         // one mate plays at once - every candidate here
@@ -1035,7 +1209,7 @@
     // "castles" was answered "that's not a legal move", and
     // one naming a currently legal move would have been
     // PLAYED. Any reading may carry the memo word, see
-    // memoTranscript in parsing.js. A pending yes/no
+    // memoTranscript in vocabulary.js. A pending yes/no
     // question survives a memo untouched.
     var memoText = memoTranscript(transcripts);
     if (memoText) {
@@ -1043,18 +1217,44 @@
       speak("Memo recorded in log.");
       return;
     }
+    // COMMANDS ARE READ FROM THE PRIMARY TRANSCRIPT ONLY, and
+    // that is a decision, not an oversight (documented at w54).
+    // answerPieceOf and memoTranscript scan every rival
+    // reading; this does not, so a "yes" that appears only in
+    // Safari's second guess is missed and the question is
+    // asked again.
+    //
+    // That is the safe direction. w49 settled what a rival
+    // reading may do - raise a question, never play a move -
+    // and a command is further from a question than a move is:
+    // "resign", "yes" and "draw" all END something, some of
+    // them a game. A missed command costs one repetition; a
+    // command invented from a reading the mic ranked second
+    // could resign a game the user is winning.
     var cmd = classifyCommand(primary);
 
     if (confirmAction) {
       var spec = CONFIRMS[confirmAction];
+      // THE ANSWER WAITS FOR THE POST (w50). These spoke
+      // "resigning." and "draw accepted." the instant the
+      // request left, and postAction has no catch of its own,
+      // so a failed send was an unhandled rejection and the
+      // user was told a game-ending action had happened when
+      // it had not. acceptMove has said "Could not reach
+      // Lichess." on the same shape of failure since the
+      // v-series; there is no reason the yes/no path should
+      // be the one that lies. The wording is unchanged when
+      // it works.
       if (cmd === "yes") {
         confirmAction = null;
-        postAction(spec.yes); speak(spec.yesSay); return;
+        confirmedAction(spec.yes, spec.yesSay);
+        return;
       }
       if (cmd === "no" || cmd === "cancel") {
         confirmAction = null;
-        if (spec.no) postAction(spec.no);
-        speak(spec.noSay); return;
+        if (spec.no) confirmedAction(spec.no, spec.noSay);
+        else speak(spec.noSay);      /* nothing to send: local */
+        return;
       }
       speak("Say yes or no.");
       return;
@@ -1101,12 +1301,33 @@
         askCandidate();
         return;
       }
+      // SAYING THE MOVE AGAIN REPLACES THE QUESTION, and does
+      // it by the same rules the move would get if no question
+      // were open (w51). This branch played a unique re-said
+      // move outright, ignoring confirmMyMove - so the one
+      // setting whose entire job is "ask me even when you are
+      // sure" was silently off for every move said over a
+      // question, which is exactly when the user is already
+      // being misheard. And a re-said AMBIGUOUS move was
+      // thrown away in favour of "Say yes or no.", re-asking
+      // about the OLD list while the new one went in the bin.
+      // Both now go where the main path sends them.
       var re = collectCandidates(api.pos, transcripts);
       if (re.length === 1) {
         var reGuard = bareGuardCands(re[0]);
         if (reGuard) { pending = { cands: reGuard, idx: 0 };
           askCandidate(); return; }
+        if (CFG.confirmMyMove) {
+          pending = { cands: re, idx: 0 };
+          askCandidate();
+          return;
+        }
         acceptMove(re[0]);
+        return;
+      }
+      if (re.length > 1) {
+        pending = { cands: re, idx: 0 };
+        askCandidate();
         return;
       }
       speak("Say yes or no.");
@@ -1146,6 +1367,21 @@
       speak("Cancelled. Say the move again.");
       return;
     }
+    // YES, NO AND CANCEL WITH NOTHING OPEN ARE SILENT, ON
+    // PURPOSE (documented at w54; the behaviour is older). It
+    // looks like a constraint-5 violation and it is the
+    // stray-talk exemption: the mic is open the whole game, and
+    // CANCEL_WORDS includes "stop" and "forget", which land in
+    // ordinary speech at the board more often than as commands.
+    // Answering every one of them with "nothing to cancel"
+    // would be flat, repeated speech that carries no
+    // information - the exact thing the sound arc ended by
+    // deleting (see the chimes tombstone).
+    //
+    // The trade is only safe because it is narrow: a cancel
+    // that has something to cancel always speaks, four lines
+    // up and in the pending path, and those are the cases the
+    // user is actually waiting on an answer for.
     if (cmd === "yes" || cmd === "no" || cmd === "cancel") return;
 
     // Is there anything move-shaped in ANY reading. The mic
@@ -1415,7 +1651,7 @@
         var caps = all.filter(function (m) { return m.captured; });
         if (!req.capture && caps.length) {
           log("CND", "push-only: capture available " +
-              caps.map(function (m) { return api.pos.sanOf(m); }).join(","));
+              sansOf(caps).join(","));
           // THE ANSWER MAY BE ONE WORD (v103). Through v102
           // this spoke and returned, leaving nothing behind,
           // so game14 answered "Bishop" — twice — and was
@@ -1435,7 +1671,7 @@
       }
       if (alt.length) {
         log("CND", "strict: pawn cannot, but " +
-            alt.map(function (m) { return api.pos.sanOf(m); }).join(",") +
+            sansOf(alt).join(",") +
             " could");
         // askPiece leaves the question open: see pieceAsk
         // in the state block at the top of this file for why

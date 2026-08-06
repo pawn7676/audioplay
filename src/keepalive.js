@@ -27,16 +27,22 @@
     dv.setUint16(32, 2, true);          // block align
     dv.setUint16(34, 16, true);         // bits per sample
     tag(36, "data"); dv.setUint32(40, bytes, true);
-    var bin = "", CH = 8192;            // chunked: avoid arg limits
-    for (var o = 0; o < buf.length; o += CH) {
-      bin += String.fromCharCode.apply(null, buf.subarray(o, o + CH));
-    }
     // Safari answered "operation is not supported" to the
     // same bytes as a data: URI, so hand it a Blob instead.
     try {
       var blob = new Blob([buf], { type: "audio/wav" });
       return URL.createObjectURL(blob);
     } catch (e) {
+      // ONLY NOW IS THE BASE64 NEEDED (w53). The chunked
+      // string was built unconditionally, above the try, so
+      // every start of the keep-alive assembled a ~22KB string
+      // one 8192-character slice at a time and then, on every
+      // browser that has Blob - which is all of them the page
+      // supports - threw it away unused.
+      var bin = "", CH = 8192;          // chunked: avoid arg limits
+      for (var o = 0; o < buf.length; o += CH) {
+        bin += String.fromCharCode.apply(null, buf.subarray(o, o + CH));
+      }
       return "data:audio/wav;base64," + btoa(bin);
     }
   }

@@ -12,9 +12,15 @@
    * Grouped, the first cannot happen and the second throws at
    * load. Both were routes to a quiet wrong move.
    *
-   * expand() must stay INSIDE this file: the parser test slices
-   * this file from the 3. VOCABULARY header to 6. DIALOGUE, and
-   * anything above the header is not in the slice. */
+   * expand() must stay INSIDE this file, because property_check.js
+   * loads a SLICE of the program - rules, vocabulary, parsing and
+   * matching, the four files that turn words into moves - and
+   * anything expand() needed from outside that set would not be
+   * there. (Through w53 this said the slice was taken "from the
+   * 3. VOCABULARY header to 6. DIALOGUE": that was true when the
+   * files were numbered sections of one scroll, and the numbers
+   * went away with the userscript. The rule it was justifying
+   * still holds; the mechanism it described stopped existing.) */
   function expand(groups) {
     var out = {};
     Object.keys(groups).forEach(function (val) {
@@ -119,6 +125,43 @@
     "ticks tick text texts cakes cake captures capture capturing");
   var CASTLE_WORDS = wordSet("castle castles castling cassel cattle " +
     "castel hassle");
+
+  /* AND NOW ACROSS THE TABLES, NOT JUST WITHIN THEM (w54).
+   *
+   * expand() throws when one word is given two values inside a
+   * single map - that is what the grouped shape above is for -
+   * and nothing checked the same word appearing in two
+   * DIFFERENT maps, where it is just as wrong and quieter.
+   * parseTranscript tries NATO, then NUMS, then PIECES, then
+   * the take words; a word in two of them is decided by that
+   * order, silently, and the loser's meaning simply never
+   * happens. These tables only ever grow, one real log at a
+   * time - "cakes" at w48, "text" at w44, the whole plant
+   * family - and a homophone landing in two of them is exactly
+   * the kind of thing that gets added twice by two different
+   * sessions reading two different game logs.
+   *
+   * Checked at load, throwing like expand() does, because a
+   * grammar that is wrong should refuse to start rather than
+   * quietly mean something else. FILLER is deliberately NOT in
+   * the set: it is consumed last on purpose, so a word in both
+   * FILLER and a value map reads as the value, which is how
+   * "a" works.
+   */
+  (function crossCheckVocabulary() {
+    var maps = { NATO: NATO, NUMS: NUMS, PIECES: PIECES,
+                 TAKE_WORDS: TAKE_WORDS, CASTLE_WORDS: CASTLE_WORDS };
+    var owner = {};
+    Object.keys(maps).forEach(function (name) {
+      Object.keys(maps[name]).forEach(function (w) {
+        if (owner[w] && owner[w] !== name) {
+          throw new Error("vocab: \"" + w + "\" is in both " +
+                          owner[w] + " and " + name);
+        }
+        owner[w] = name;
+      });
+    });
+  })();
   // whose/whos/who/which joined in v65 so that "whose time
   // is it" reaches the clock and "whose turn" the turn
   // answer, instead of counting as unknown words. Filler is
@@ -235,10 +278,10 @@
   // in fuzzyToken, in parsing.js.
   var FUZZY_NEVER = wordSet(
     "lord load word ward cord form good goods gone going cold " +
-    "hold told sold bold fold food wood hood mood door does " +
+    "hold told sold bold fold food wood hood mood door " +
     "done some same come time like make made more most that " +
-    "this than them they then what when were well will with " +
-    "here hear near year your yeah have give live love over " +
-    "only just must back been best nice mine name note wait " +
+    "this than them they what when were well will with " +
+    "here hear near year your yeah give live love over " +
+    "only just must back been best nice mine name wait " +
     "want damn hell crap oops");
 

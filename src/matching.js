@@ -48,7 +48,21 @@
     // A LONE SQUARE BEFORE THE TAKE WORD: origin first, target
     // second. "echo five takes" is the e5 piece capturing; but
     // if e5 is theirs and ours can take it, they meant that.
-    if (req.squares.length === 1 && req.takeAt === 1) {
+    //
+    // NOT WHEN A TARGET WAS ALSO SPOKEN (w51). This reading
+    // rebuilds the constraint and then overwrites `to` whole,
+    // which is only a REHEARING while the target end is silent.
+    // Say "echo five takes delta" - origin e5, target the
+    // d-file, both out loud - and constraintOf gets it exactly
+    // right, and then this threw the d away and went looking
+    // for anything that could capture ON e5. On
+    // 4k3/8/8/4p3/3P4/8/8/4K3 that is dxe5: a single candidate,
+    // named=false, so nothing asks and it is PLAYED - with the
+    // mover and the target roughly swapped round from the
+    // words. A salvage may turn nothing into something; it may
+    // not contradict a half the user actually said.
+    if (req.squares.length === 1 && req.takeAt === 1 &&
+        !req.toFile && !req.toRank) {
       var asTarget = constraintOf(req);
       asTarget.from = { file: null, rank: null };
       asTarget.to = { file: req.squares[0][0], rank: req.squares[0][1] };
@@ -69,7 +83,13 @@
     return rs;
   }
 
-  function findMoves(pos, req, ignoreStrict) {
+  /* `legal` is optional and is passed by anything that has one
+   * already (w53). Without it every call regenerated the legal
+   * moves for a position that cannot have changed: up to eight
+   * transcripts, each with two or three readings, plus the
+   * fuzzy retry and the bare-square guard, all asking the same
+   * board the same question. */
+  function findMoves(pos, req, ignoreStrict, legal) {
     // "IS THERE A MOVE IN THIS AT ALL" is a question about the
     // UTTERANCE and it is asked here, once. movesFor used to ask
     // it and that made a square-less constraint unusable - which
@@ -79,7 +99,7 @@
     if (!req.castle && constraintIsEmpty(constraintOf(req))) return [];
     var rs = readingsOf(req), i, found;
     for (i = 0; i < rs.length; i++) {
-      found = movesFor(pos, rs[i].c, ignoreStrict);
+      found = movesFor(pos, rs[i].c, ignoreStrict, legal);
       if (found.length) {
         if (i) log("CND", "reading: " + rs[i].why);
         return found;
@@ -88,8 +108,8 @@
     return [];
   }
 
-  function movesFor(pos, c, ignoreStrict) {
-    var legal = pos.legalMoves();
+  function movesFor(pos, c, ignoreStrict, legalList) {
+    var legal = legalList || pos.legalMoves();
     if (c.castle) {
       return legal.filter(function (m) {
         if (m.flags.indexOf("k") >= 0) return c.castle !== "q";
@@ -216,11 +236,21 @@
       // no candidates into candidates, never rewrite a
       // reading that already worked - and it costs one
       // extra parse of one transcript, only on failure.
-      var found = findMoves(pos, req);
+      // ASKED BEFORE THE WORK, NOT AFTER IT (w53). This test
+      // sat below, so a request the repair chain owns - "queen
+      // takes delta", "rook delta", anything with a constraint
+      // but no square, victim or castle - ran findMoves in
+      // full, up to two readings and a fuzzy retry, and then
+      // had every result thrown away by this line. Safe to
+      // hoist because fuzzy parsing only ever ADDS symbols: an
+      // empty fuzzy request implies an empty plain one, so the
+      // retry below could never have rescued it either.
+      if (reqIsEmpty(req)) return;
+      var found = findMoves(pos, req, false, legal);
       if (!found.length && req.usedFuzzy) {
         var plain = parseTranscript(raw, true);
         if (!reqIsEmpty(plain)) {
-          var pf = findMoves(pos, plain);
+          var pf = findMoves(pos, plain, false, legal);
           if (pf.length) {
             log("PRS", "near-miss poisoned the reading, " +
                 "retrying without it");
@@ -229,7 +259,6 @@
           }
         }
       }
-      if (reqIsEmpty(req)) return;
       var namedPiece = !!req.piece;
       found.forEach(function (m) {
         // An explicit promotion ("g1 equals knight", or any
@@ -340,11 +369,40 @@
         }
         continue;
       }
+      // BARE "a" IS AN ARTICLE UNLESS A RANK OR A TAKE WORD
+      // FOLLOWS IT - the parser's rule, which this did not
+      // have (w51). "a" fell through to the lone-letter branch
+      // below and always keyed as the a-file, so "a bravo
+      // four" and "alpha bravo four" produced the SAME key
+      // while parsing differently ("- - b4 - -" against
+      // "- - b4 a -"). dedupeTranscripts keeps the first of a
+      // matching pair, so one of two genuinely different
+      // readings was thrown away before collectCandidates ever
+      // saw it - and which one survived was down to the order
+      // Safari happened to return them in. This file's whole
+      // claim is "same rules as parsing"; here it was not.
+      if (tk === "a") {
+        var nx = toks[i + 1];
+        if (nx && (NUMS[nx] || /^[1-8]$/.test(nx) || TAKE_WORDS[nx])) {
+          out.push("fa");
+        }
+        continue;
+      }
       if (NATO[tk]) { out.push("f" + NATO[tk]); continue; }
       if (NUMS[tk]) { out.push("r" + NUMS[tk]); continue; }
       if (PIECES[tk]) { out.push("p" + PIECES[tk]); continue; }
       if (TAKE_WORDS[tk]) { out.push("x"); continue; }
       if (CASTLE_WORDS[tk]) { out.push("castle"); continue; }
+      // the glued double square, split as the parser splits it
+      // ("e2e4" -> e2, e4). Without this the whole token fell
+      // through to the fuzzy branch and keyed as itself, so
+      // "e2e4" never collapsed with "e2 e4" and evidenceKey
+      // could not see it as a move at all.
+      m = /^([a-h][1-8])([a-h][1-8])$/.exec(tk);
+      if (m) {
+        out.push("f" + m[1][0], "r" + m[1][1], "f" + m[2][0], "r" + m[2][1]);
+        continue;
+      }
       m = /^([a-h])([1-8])$/.exec(tk);
       if (m) { out.push("f" + m[1], "r" + m[2]); continue; }
       if (/^[a-h]$/.test(tk)) { out.push("f" + tk); continue; }

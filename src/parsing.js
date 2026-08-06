@@ -141,6 +141,27 @@
 
   var FUZZY_SETS = [[NATO, "file"], [NUMS, "rank"], [PIECES, "piece"]];
 
+  /* THE CANDIDATE LIST IS BUILT ONCE (w53). fuzzyToken ran
+   * Object.keys over all three tables and re-applied the same
+   * two filters on EVERY unknown word - and an utterance is
+   * parsed several times over (the move-like scan,
+   * collectCandidates, the repair chain, semanticKey), across
+   * up to eight rival readings, each with its own unknown
+   * words. The tables are constants; the eligible spellings
+   * cannot change, so they are flattened here at load. */
+  var FUZZY_TARGETS = (function () {
+    var out = [];
+    FUZZY_SETS.forEach(function (pair) {
+      var dict = pair[0], kind = pair[1];
+      Object.keys(dict).forEach(function (w) {
+        if (w.length < 4) return;
+        if (FUZZY_EXACT_ONLY[w]) return;
+        out.push({ t: kind, v: dict[w], w: w });
+      });
+    });
+    return out;
+  })();
+
   function fuzzyToken(tk) {
     if (tk.length < 4) return null;
     if (FUZZY_NEVER[tk]) return null;
@@ -152,14 +173,10 @@
     /* short words are dense with collisions, long ones are not */
     var tol = tk.length >= 6 ? 2 : 1;
     var hits = [];
-    FUZZY_SETS.forEach(function (pair) {
-      var dict = pair[0], kind = pair[1];
-      Object.keys(dict).forEach(function (w) {
-        if (w.length < 4) return;
-        if (FUZZY_EXACT_ONLY[w]) return;
-        if (editDistance(tk, w, tol) <= tol) hits.push({ t: kind, v: dict[w], w: w });
-      });
-    });
+    for (var fi = 0; fi < FUZZY_TARGETS.length; fi++) {
+      var cand = FUZZY_TARGETS[fi];
+      if (editDistance(tk, cand.w, tol) <= tol) hits.push(cand);
+    }
     if (!hits.length) return null;
     var distinct = {};
     hits.forEach(function (h) { distinct[h.t + h.v] = h; });
@@ -671,8 +688,24 @@
       return null;
     }
 
+    // "WHAT IS ON DELTA FIVE" - but not every sentence with a
+    // question word and a square in it (w51). This had no gate
+    // at all, and "which" and "what" are FILLER precisely
+    // because Safari sprays them into ordinary utterances. So
+    // "which knight takes delta five" - a complete, legal,
+    // unambiguous move - was answered "d5 has a white pawn" and
+    // the move was never looked for. classifyQuery is consulted
+    // BEFORE moves in handleTranscripts, so anything it claims
+    // is a question is lost as a move.
+    //
+    // The turn branch above learned this at v65 and grew its
+    // content-word test; this branch is the same lesson one
+    // block down. A capture word, a named piece or a second
+    // square all say the sentence is describing a MOVE, and a
+    // move is never a question about a square.
     if (has("what") || has("whats") || has("which") || has("occupies")) {
       var req = parseTranscript(raw);
+      if (req.capture || req.piece || req.squares.length > 1) return null;
       if (req.squares.length) return { kind: "square", sq: req.squares[0] };
     }
     return null;

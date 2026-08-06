@@ -14,21 +14,28 @@
    *      this page's seek/challenge, the Lichess app, or a
    *      friend's challenge
    *    - seek and challenge, from BoardEye via w1
-   *  Everything between the transplants - syncMoves (with
-   *  v134's stream-side readBackMine call), offers, clocks,
-   *  results, gameFull/gameState, the stream and the polling
-   *  fallback - is the userscript's VERBATIM. When the
-   *  userscript moves, re-copy those parts; only the
-   *  transplants are ours. This file was regenerated exactly
-   *  that way when v134 landed (the read-back race fix and
-   *  its pollOnce twin arrived by re-copy, untouched).
+   *  Everything between the transplants - syncMoves, offers,
+   *  clocks, results, gameFull/gameState, the stream and the
+   *  polling fallback - CAME FROM the v134 userscript
+   *  verbatim, and that is now history rather than a rule.
    *
-   *  VERSION is reassigned here, not in settings.js (shared,
-   *  and byte-frozen until the next joint bump): the w-series
-   *  continues so no log dump ever collides with a v-number.
+   *  IT USED TO SAY "when the userscript moves, re-copy those
+   *  parts". The userscript froze at v137 and will not move
+   *  again, so there is nothing to re-copy from and no reason
+   *  to keep these parts copy-shaped (w54). w50 and w52 both
+   *  edited this region on their own merits - the AbortError
+   *  filter, the reconnect ladder, the whole poll repair - and
+   *  the old instruction would have argued against every one
+   *  of them. Read the provenance above for WHY something
+   *  looks the way it does; do not treat it as a constraint.
+   *
+   *  VERSION is assigned here rather than where it is
+   *  declared: the w-series is the only version line, and
+   *  keeping the number next to the note explaining the series
+   *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w49";
+  VERSION = "w56";
 
   var RULES = makeRules();
 
@@ -41,8 +48,7 @@
     moves: [],            // uci list already applied
     lastSan: "", lastSanW: "", lastSanB: "",
     wtime: null, btime: null,
-    over: false,
-    mode: "none"          // "stream" | "poll"
+    over: false
   };
 
   var LICHESS_BASE = "https://lichess.org";
@@ -224,14 +230,38 @@
     });
   }
 
+  /* A POST THAT NEVER SETTLES MUST STILL SETTLE (w50). The
+   * caller sets busy = true and clears it in this promise's
+   * handlers, so a fetch that hangs - a dead cell, a captive
+   * wifi portal, the radio asleep - leaves busy stuck true
+   * forever, and from then on EVERY accepted move is dropped
+   * with nothing said. That is a mode the user cannot see, and
+   * the only way out is the button. Twelve seconds is long
+   * enough that a slow-but-alive request still wins the race,
+   * and short enough to be inside the time a person waits
+   * before assuming they were not heard. */
+  var MOVE_POST_TIMEOUT_MS = 12000;
+
   function postMove(uci) {
     var url = "https://lichess.org/api/board/game/" + api.gameId + "/move/" + uci;
     log("PST", "move " + uci);
-    return fetch(url, { method: "POST", headers: authHeaders() })
+    var timer = null;
+    var live = fetch(url, { method: "POST", headers: authHeaders() })
       .then(function (r) {
         return r.json().catch(function () { return { ok: r.ok }; })
           .then(function (j) { return { status: r.status, body: j }; });
       });
+    var timeout = new Promise(function (_, reject) {
+      timer = setTimeout(function () {
+        reject(new Error("no reply from Lichess in " +
+                         (MOVE_POST_TIMEOUT_MS / 1000) + " seconds"));
+      }, MOVE_POST_TIMEOUT_MS);
+    });
+    // whichever wins, the timer is done with - otherwise every
+    // move leaves one armed for the full timeout behind it
+    function done(v) { clearTimeout(timer); return v; }
+    return Promise.race([live, timeout])
+      .then(done, function (e) { done(); throw e; });
   }
 
   function postAction(action) {
@@ -247,10 +277,29 @@
    * tail */
   function syncMoves(uciString, announce) {
     var list = (uciString || "").trim() ? uciString.trim().split(/\s+/) : [];
-    if (list.length < api.moves.length) {
+    /* A TAKEBACK IS NOT ALWAYS SHORTER (w50). This asked only
+     * whether the list had got shorter, which misses the case
+     * where a takeback and its replacement move arrive in one
+     * event, or where a takeback lands while a reconnect is in
+     * flight: same length, different tail. The loop then began
+     * at api.moves.length, applied nothing, and left the local
+     * position quietly describing a game that is no longer on
+     * the board - with no illegal uci to trip the resync
+     * below, because no uci was ever applied. What we hold has
+     * to be a PREFIX of what the server sent; anything else is
+     * a rebuild. The list is a few hundred entries at most and
+     * this runs once per event. */
+    var diverged = list.length < api.moves.length;
+    for (var k = 0; !diverged && k < api.moves.length; k++) {
+      if (list[k] !== api.moves[k]) diverged = true;
+    }
+    if (diverged) {
       /* takeback or new game: rebuild from scratch, silently */
+      log("MOV", "move list diverged - rebuilding");
       api.pos = new RULES.Position();
       api.moves = [];
+      api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+      armedUci = null;      /* it named a move in the old list */
       announce = false;
     }
     for (var i = api.moves.length; i < list.length; i++) {
@@ -259,8 +308,20 @@
         log("ERR", "illegal uci from stream: " + list[i] + " (resyncing)");
         api.pos = new RULES.Position();
         api.moves = [];
+        /* REPLAY, KEEPING WHAT THE REPLAY SAYS (w50). The old
+         * version threw the sans away, so after a resync the
+         * clock overlay's move rows kept showing whatever was
+         * last announced before it - and the arm survived,
+         * pointing at a move in a position that no longer
+         * exists, ready to read back against the wrong one. */
+        api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+        armedUci = null;
         for (var j = 0; j < list.length; j++) {
-          if (!api.pos.applyUci(list[j])) { log("ERR", "resync failed at " + list[j]); break; }
+          var rr = api.pos.applyUci(list[j]);
+          if (!rr) { log("ERR", "resync failed at " + list[j]); break; }
+          api.lastSan = rr.san;
+          if (rr.move.color === "w") api.lastSanW = rr.san;
+          else api.lastSanB = rr.san;
         }
         api.moves = list.slice();
         return;
@@ -290,21 +351,69 @@
    * looking at the screen, so it has to be spoken and answerable. */
   var offerState = { draw: false, takeback: false };
 
+  /* AN OFFER MAY NOT QUIETLY INHERIT SOMEBODY ELSE'S "YES"
+   * (w50). This set confirmAction unconditionally, so an offer
+   * arriving while a question was already open replaced it
+   * without a word - ask "resign", hear "Resign the game? Yes
+   * or no.", have the opponent offer a draw in the gap, say
+   * "yes" meaning resign, and accept a draw instead. Both are
+   * game-ending and they are not the same game-ending.
+   *
+   * The offer still has to be heard: it is invisible from
+   * across the room and it expires. So it takes the slot and
+   * SAYS it is doing so, naming what it displaced. The user
+   * hears one sentence instead of two and answers the question
+   * they were actually asked last.
+   *
+   * And an offer that goes away takes its question with it.
+   * Nothing cleared confirmAction when the opponent withdrew,
+   * so a "yes" arriving later posted an acceptance for an
+   * offer that no longer existed and was told it had worked.
+   */
   function checkOffers(s) {
     if (!api.myColor) return;
     var oppDraw = api.myColor === "w" ? !!s.bdraw : !!s.wdraw;
     var oppTake = api.myColor === "w" ? !!s.btakeback : !!s.wtakeback;
+    var them = colorWord(api.myColor === "w" ? "b" : "w");
+
+    function displaced() {
+      // only a question the user is mid-way through needs
+      // naming; an earlier offer being replaced by a later one
+      // is the same kind of thing and needs no apology.
+      if (confirmAction === "resign") return "that cancels the resign question. ";
+      if (confirmAction === "offerdraw") return "that cancels your draw offer question. ";
+      if (pending) return "that cancels the move question. ";
+      return "";
+    }
+
     if (oppDraw && !offerState.draw && !api.over) {
+      var wasD = displaced();
+      pending = null;
       confirmAction = "drawoffer";
-      log("API", "opponent offers a draw");
-      speak(colorWord(api.myColor === "w" ? "b" : "w") +
-            " offers a draw. Say yes to accept, no to decline.");
+      log("API", "opponent offers a draw" + (wasD ? " (displacing a question)" : ""));
+      speak(them + " offers a draw. " + wasD +
+            "Say yes to accept, no to decline.");
     }
     if (oppTake && !offerState.takeback && !api.over) {
+      var wasT = displaced();
+      pending = null;
       confirmAction = "takebackoffer";
-      log("API", "opponent asks for a takeback");
-      speak(colorWord(api.myColor === "w" ? "b" : "w") +
-            " asks to take back a move. Say yes to accept, no to decline.");
+      log("API", "opponent asks for a takeback" +
+          (wasT ? " (displacing a question)" : ""));
+      speak(them + " asks to take back a move. " + wasT +
+            "Say yes to accept, no to decline.");
+    }
+    // WITHDRAWN: the question goes with the offer, and says so,
+    // because the user may be holding a "yes" ready for it.
+    if (!oppDraw && offerState.draw && confirmAction === "drawoffer") {
+      confirmAction = null;
+      log("API", "draw offer withdrawn");
+      speak(them + " withdrew the draw offer.");
+    }
+    if (!oppTake && offerState.takeback && confirmAction === "takebackoffer") {
+      confirmAction = null;
+      log("API", "takeback request withdrawn");
+      speak(them + " withdrew the takeback request.");
     }
     offerState.draw = oppDraw;
     offerState.takeback = oppTake;
@@ -384,6 +493,11 @@
       if (!api.over) {
         api.over = true;
         log("API", "game over: " + s.status + " " + (s.winner || ""));
+        // every open question dies with the game (w50). A
+        // "yes" held over from a finished game had nothing
+        // good to do: post to a game Lichess has closed and
+        // hear "draw accepted." for a draw that was not.
+        clearDialogue();
         speak(resultSpoken(s));
       }
       return;
@@ -396,7 +510,6 @@
 
   function startStream() {
     if (!api.gameId || dryRun || api.gameId === "PRACTICE") return;
-    api.mode = "stream";
     log("NET", "opening stream for " + api.gameId);
     try { if (streamAbort) streamAbort.abort(); } catch (e) {}
     streamAbort = (typeof AbortController !== "undefined") ? new AbortController() : null;
@@ -407,6 +520,7 @@
       .then(function (r) {
         if (!r.ok) throw new Error("stream HTTP " + r.status);
         if (!r.body || !r.body.getReader) throw new Error("no streaming body");
+        streamFails = 0;          /* it opened: the ladder resets */
         var reader = r.body.getReader();
         var dec = new TextDecoder();
         var buf = "";
@@ -432,28 +546,111 @@
         return pump();
       })
       .catch(function (e) {
+        // AN ABORT IS OUR OWN DOING, NOT A DROPPED STREAM
+        // (w50). watchEvents has filtered this since it was
+        // written; this catch never did, and the omission
+        // built a loop that fed itself. startStream aborts the
+        // previous stream on its way in, that abort rejects
+        // the old reader, the rejection landed HERE, and
+        // scheduleReconnect opened another stream two seconds
+        // later - which aborted the one just opened. Every
+        // turn of it re-delivered gameFull, so the page said
+        // "reconnected. you are white. white to move." every
+        // two seconds, for as long as the game lasted.
+        if (String(e.name) === "AbortError") return;
         log("ERR", "stream: " + e.message);
         if (String(e.message).indexOf("no streaming body") >= 0) startPolling();
-        else scheduleReconnect();
+        else if (!noteAuthFailure(e)) scheduleReconnect();
       });
   }
 
-  var reconnectTimer = null;
-  function scheduleReconnect() {
-    if (api.over || !running || dryRun) return;
-    clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(startStream, 2000);
+  /* A TOKEN THAT LICHESS NO LONGER ACCEPTS IS NOT A NETWORK
+   * BLIP (w52). Every retry path here treated all failures the
+   * same, so a revoked or expired token meant an HTTP 401 every
+   * two seconds, forever, filling the log and telling the user
+   * nothing - and the one thing they could actually DO about it
+   * is the one thing nobody told them to do. Said once, and the
+   * retrying stops, because retrying cannot fix it.
+   */
+  var authGone = false;
+  function noteAuthFailure(e) {
+    if (!/HTTP 40[13]/.test(String(e.message))) return false;
+    if (authGone) return true;
+    authGone = true;
+    log("ERR", "lichess refused the token - signed out");
+    uiStatus("Lichess refused the sign-in. Sign in again.");
+    speak("lee chess signed you out. sign in again.");
+    return true;
   }
 
-  /* ---- polling fallback (if fetch streaming is unavailable) ---- */
+  var reconnectTimer = null;
+  var streamFails = 0;
+  function scheduleReconnect() {
+    // NOT GATED ON THE MIC (w50). This used to return unless
+    // `running` - the voice loop's flag - was true, which tied
+    // the game connection to the microphone. Turn voice off
+    // (or let the mic give up after eight failures), have the
+    // stream drop for any ordinary network reason, turn voice
+    // back on: the mic restarts, nothing restarts the stream,
+    // and the opponent's moves are never announced again.
+    // Listening and being connected are different things. The
+    // stream is cheap, every speaking path gates on its own
+    // state, and being connected while silent costs nothing -
+    // whereas being disconnected while listening is the
+    // failure the keep-alive exists to prevent.
+    if (api.over || dryRun || !api.gameId || api.gameId === "PRACTICE") return;
+    if (authGone) return;
+    // AND IT BACKS OFF (w52). A flat two seconds forever is
+    // fine for the case this was written for - a stream that
+    // drops once and comes straight back - and wrong for a
+    // network that is simply gone, where it becomes a request
+    // every two seconds for as long as the page is open,
+    // draining a battery the owner is not looking at. Doubling
+    // to a thirty-second ceiling keeps the first few retries
+    // as quick as they ever were, which is the case that
+    // actually matters.
+    streamFails++;
+    var wait = Math.min(2000 * Math.pow(2, streamFails - 1), 30000);
+    log("NET", "reconnecting in " + (wait / 1000) + "s (try " + streamFails + ")");
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(startStream, wait);
+  }
+
+  /* ---- polling fallback (if fetch streaming is unavailable) ----
+   *
+   * THIS PATH HAD NEVER SEEN A REAL GAME (w52). It exists for a
+   * browser that cannot hold a streaming body open, which the
+   * tested device can, so nothing here was ever exercised by
+   * playing - and it showed. It reported the wrong player's
+   * clock, it never noticed a game ending, and one bad move
+   * put it in a reload loop until the next move arrived. The
+   * review offered deleting it instead; the owner chose to
+   * repair it, on the header's own rule that the page is
+   * opened by whoever finds it, on whatever they own.
+   *
+   * WHAT THIS ENDPOINT CAN AND CANNOT SAY. /api/account/playing
+   * is a list of the account's ONGOING games, so it carries
+   * neither a status nor a result nor the opponent's clock, and
+   * its `secondsLeft` is the account holder's. Everything below
+   * is written to that limit rather than around it: what cannot
+   * be known is left null and spoken as "unknown", and the end
+   * of a game is inferred from the game leaving the list.
+   */
 
   var pollTimer = null;
+  var pollSeen = false;      // has this game ever appeared in the list?
+
   function startPolling() {
-    api.mode = "poll";
     log("NET", "falling back to polling /api/account/playing");
     clearInterval(pollTimer);
+    pollSeen = false;
     pollTimer = setInterval(pollOnce, 1500);
     pollOnce();
+  }
+
+  function stopPolling() {
+    clearInterval(pollTimer);
+    pollTimer = null;
   }
 
   function pollOnce() {
@@ -462,7 +659,31 @@
       var g = (d.nowPlaying || []).filter(function (x) {
         return x.gameId === api.gameId || (x.fullId || "").indexOf(api.gameId) === 0;
       })[0];
-      if (!g) return;
+      if (!g) {
+        /* THE GAME LEFT THE LIST OF ONGOING GAMES, so it is
+         * over - and this used to `return` here, silently,
+         * every 1.5 seconds, forever. In poll mode the game
+         * simply ended and the page never said so: no result,
+         * no "game over", no end to the polling. The account
+         * event stream cannot rescue it either, because a
+         * browser with no streaming body fails watchEvents for
+         * exactly the same reason it fell back to polling.
+         *
+         * The endpoint gives no status, so the result cannot be
+         * named and the sentence says so rather than guessing.
+         * pollSeen guards the first tick, where the game may
+         * not have appeared yet. */
+        if (pollSeen && !api.over) {
+          api.over = true;
+          stopPolling();
+          clearDialogue();
+          log("API", "game gone from nowPlaying - treating it as over");
+          speak("game over. check lichess for the result.");
+          uiGameChanged();
+        }
+        return;
+      }
+      pollSeen = true;
       if (!api.myColor) {
         api.myColor = g.color === "white" ? "w" : "b";
         api.pos = new RULES.Position();
@@ -487,13 +708,47 @@
             readBackMine(res.san, g.lastMove, true);
           log("MOV", "poll " + g.lastMove + " = " + res.san);
         } else {
-          log("ERR", "poll desync on " + g.lastMove + "; reloading from fen");
+          /* RELOAD, THEN REMEMBER THAT WE DID. The reload alone
+           * left api.moves untouched, so the very next tick
+           * compared the same stale tail against the same
+           * lastMove, failed to apply it again - it is already
+           * inside the fen we just loaded - and reloaded once
+           * more, every 1.5 seconds until a new move arrived.
+           * The uci is pushed so the comparison moves on and
+           * the ply guards keep counting; the list is a
+           * position marker in poll mode, not a game record.
+           *
+           * The castling field is a FABRICATION and is the one
+           * thing here that cannot be got right: rights depend
+           * on history this endpoint does not send. KQkq is the
+           * permissive choice on purpose - if it grants a
+           * castle that is no longer legal, the move is offered,
+           * said, and REFUSED BY LICHESS out loud, which the
+           * user hears and can act on. The strict choice would
+           * silently refuse a castle that is perfectly legal,
+           * with nothing to explain it. */
+          log("ERR", "poll desync on " + g.lastMove +
+              "; reloading from fen (castling rights are a guess)");
           api.pos.load(g.fen + " " + (g.isMyTurn
             ? (api.myColor === "w" ? "w" : "b")
             : (api.myColor === "w" ? "b" : "w")) + " KQkq - 0 1");
+          api.moves.push(g.lastMove);
+          armedUci = null;          /* it named the old position */
         }
       }
-      api.wtime = g.secondsLeft != null ? g.secondsLeft * 1000 : null;
+      /* secondsLeft IS THE ACCOUNT HOLDER'S CLOCK, not white's.
+       * This assigned it to api.wtime whatever colour we were,
+       * so playing black you were shown the opponent's time as
+       * your own - and api.btime was never set at all, so the
+       * other side read "--" on the overlay and "unknown" when
+       * you asked. Half of that is unavoidable: the endpoint
+       * does not carry the opponent's clock. Putting our own on
+       * the right side is not. */
+      if (g.secondsLeft != null) {
+        if (api.myColor === "w") api.wtime = g.secondsLeft * 1000;
+        else api.btime = g.secondsLeft * 1000;
+        api.clockAt = Date.now();
+      }
     }).catch(function (e) { log("ERR", "poll: " + e.message); });
   }
 
@@ -516,6 +771,7 @@
     fetch(LICHESS_BASE + "/api/stream/event", opts)
       .then(function (r) {
         if (!r.ok) throw new Error("event stream HTTP " + r.status);
+        eventFails = 0;           /* it opened: the ladder resets */
         if (!r.body || !r.body.getReader) {
           throw new Error("no streaming body");
         }
@@ -546,20 +802,41 @@
       .catch(function (e) {
         if (String(e.name) === "AbortError") return;
         log("ERR", "event stream: " + e.message);
-        scheduleEventReconnect();
+        if (!noteAuthFailure(e)) scheduleEventReconnect();
       });
   }
 
+  var eventFails = 0;
   function scheduleEventReconnect() {
-    if (!storedToken()) return;
+    if (!storedToken() || authGone) return;
+    /* same ladder as the game stream, same reason (w52) */
+    eventFails++;
+    var wait = Math.min(3000 * Math.pow(2, eventFails - 1), 30000);
     clearTimeout(eventTimer);
-    eventTimer = setTimeout(watchEvents, 3000);
+    eventTimer = setTimeout(watchEvents, wait);
   }
 
   function handleAccountEvent(ev) {
     if (ev.type === "gameStart" && ev.game && ev.game.id) {
       log("EVT", "gameStart " + ev.game.id);
       cancelSeek();
+      // A REAL GAME OUTRANKS PRACTICE, AND SAYS SO (w50).
+      // dryStart now closes this stream and cancels any seek,
+      // so reaching here in practice means an event that was
+      // already in flight, or an account reconnect after
+      // practice began. Rare - and the old behaviour was to
+      // join anyway with dryRun still true, which suppressed
+      // every announcement the join would have made. A live
+      // clock and no voice is the worst state this program
+      // has, so practice loses, out loud. The mic is left as
+      // it was: the user was speaking moves a moment ago and
+      // is about to need to again.
+      if (dryRun) {
+        log("DRY", "real game " + ev.game.id + " started - leaving practice");
+        dryRun = false;
+        speak("a real game has started. leaving practice.");
+        renderButton();
+      }
       joinGame(ev.game.id);
     } else if (ev.type === "gameFinish") {
       log("EVT", "gameFinish");
@@ -592,6 +869,12 @@
     api.moves = [];
     api.over = false;
     offerState = { draw: false, takeback: false };
+    // and the questions from whatever game came before this
+    // one. api.moves going empty makes every ply guard read
+    // "current" again, so the two ply-guarded asks would
+    // survive into the new game rather than expire; the two
+    // yes/no states never expired at all. See clearDialogue.
+    clearDialogue();
     (api.myId ? Promise.resolve(api.myId) : fetchMyId())
       .then(startStream)
       .catch(function (e) {
@@ -638,26 +921,47 @@
     var body = "rated=" + (rated ? "true" : "false") +
       "&time=" + minutes + "&increment=" + increment +
       "&variant=standard";
-    seekAbort = new AbortController();
+    // GUARDED LIKE EVERY OTHER AbortController HERE (w52).
+    // startStream and watchEvents both test for it; this one
+    // assumed it, which would throw on the very browsers the
+    // polling fallback exists for - and the throw landed in
+    // the catch below as "Seek failed", blaming the seek for a
+    // missing browser feature.
+    seekAbort = (typeof AbortController !== "undefined")
+      ? new AbortController() : null;
     uiStatus("Seeking " + minutes + "+" + increment +
       (rated ? " rated" : " casual") + "...");
     log("API", "seek " + body);
-    fetch(LICHESS_BASE + "/api/board/seek", {
+    var seekOpts = {
       method: "POST",
       headers: {
         Authorization: "Bearer " + storedToken(),
         "Content-Type": "application/x-www-form-urlencoded"
       },
-      body: body,
-      signal: seekAbort.signal
-    }).then(function (r) {
+      body: body
+    };
+    if (seekAbort) seekOpts.signal = seekAbort.signal;
+    fetch(LICHESS_BASE + "/api/board/seek", seekOpts).then(function (r) {
       if (!r.ok) {
         seekAbort = null;
         log("ERR", "seek refused (HTTP " + r.status + ")");
         uiStatus("Seek refused (HTTP " + r.status + ").");
         return;
       }
-      // The seek lives as long as this request streams.
+      // The seek lives as long as this request streams - where
+      // there IS a stream. Without one the seek is still
+      // LODGED (Lichess has the POST); we simply cannot hold it
+      // open or watch it, so say what is true rather than
+      // throwing on r.body and reporting "Seek failed" for a
+      // seek that is sitting in the pool right now. The game
+      // arrives on the event stream either way.
+      if (!r.body || !r.body.getReader) {
+        seekAbort = null;
+        log("NET", "seek posted, but this browser cannot hold it open");
+        uiStatus("Seek sent. Waiting for a game.");
+        uiGameChanged();
+        return;
+      }
       var reader = r.body.getReader();
       function drain() {
         return reader.read().then(function (c) {
@@ -722,8 +1026,14 @@
     });
   }
 
-  // Everything that holds a connection, stopped in one
-  // place: sign-out and the voice-off path both use it.
+  // Everything that holds a connection, stopped in one place.
+  // ONLY signOut CALLS THIS, and that is deliberate: voice off
+  // deliberately tears down no network (web delta 2 in ui.js -
+  // sign-in owns the connection, the button owns the voice),
+  // and w50 leaned on that when it stopped gating the
+  // reconnect on the mic. The comment here used to claim the
+  // voice-off path used it too, which would have made those
+  // two decisions contradict each other; it never did (w54).
   function stopEverything() {
     try { if (eventAbort) eventAbort.abort(); } catch (e) {}
     try { if (streamAbort) streamAbort.abort(); } catch (e) {}

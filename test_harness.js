@@ -242,7 +242,24 @@ function heard() {
 }
 
 heard(); // drop the practice greeting
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* THE WAITS ARE A MARGIN, AND THE MARGIN WAS 100x (w54).
+ * Nearly every sleep here is waiting for a speech chain to
+ * settle, and the TTS stub fires onend after ONE millisecond -
+ * so a 120ms wait was two orders of magnitude more than the
+ * thing it waits for needs. Across 57 of them that is most of
+ * the suite's wall time, and a suite that takes twenty seconds
+ * is one that gets run less often than the rule says it must.
+ *
+ * Scaled rather than rewritten: virtualising the clock would
+ * be the real fix and it would mean the harness no longer
+ * drives the product's own timers, which is a bigger change
+ * than this batch should carry. HARNESS_SLEEP=1 restores the
+ * old margins if anything ever looks timing-flaky - and if it
+ * does, that is worth knowing rather than papering over.
+ */
+const SLEEP_SCALE = Number(process.env.HARNESS_SLEEP || 0.35);
+const sleep = ms =>
+  new Promise(r => setTimeout(r, Math.max(15, Math.round(ms * SLEEP_SCALE))));
 
 (async () => {
   let pass = 0, fail = 0;
@@ -291,11 +308,22 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   vm.runInContext("enterClockMode();", sandbox);
   check("clock mode reports on",
         vm.runInContext("clockModeOn()", sandbox) === true);
+  // FLIP CLOCK ANSWERS (w54). This used to assert only that a
+  // string was absent from the log - which a throw inside
+  // speak() would have crashed the harness over anyway, so it
+  // proved almost nothing, and it never checked the flip
+  // happened. It is a VOICE command reachable with the overlay
+  // down, where the repaint is invisible: the spoken answer is
+  // the only thing that reaches the user at all.
+  heard();
+  const sideBefore = vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox);
   say("flip clock");
   await sleep(120);
-  check("flip clock handled without throwing",
-        !vm.runInContext("LOG.slice(-5).join(' ')", sandbox)
-          .includes("flipClockSides"));
+  const flipSaid = heard().join(" | ");
+  check("flip clock actually flips the sides",
+        vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox) !== sideBefore);
+  check("and says which side is yours now (" + flipSaid + ")",
+        /your clock on the (left|right)/i.test(flipSaid));
   vm.runInContext("exitClockMode(true);", sandbox);
   check("tap leaves clock mode",
         vm.runInContext("clockModeOn()", sandbox) === false);
@@ -368,7 +396,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     renderStatus();
   `, sandbox);
   check("game start replaces the challenge message (" + status() + ")",
-        /Tap the round button/.test(status()));
+        /Tap the Start button/.test(status()));
   vm.runInContext('running = true; renderStatus();', sandbox);
   check("voice on: plain playing state (" + status() + ")",
         status() === "Playing.");
@@ -566,13 +594,34 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         /lee chess/.test(startSaid) && !/lichess/.test(startSaid));
   vm.runInContext("running = false; renderButton();", sandbox);
   const tmpl = fs.readFileSync("src/index.html", "utf8");
+  // w56: the page must declare standards mode, and a doctype
+  // anywhere but the FIRST line does nothing at all - so the
+  // position is the assertion, not just the presence.
+  //
+  // Asked of the template rather than the built file on
+  // purpose: CI runs this harness BEFORE build.js (the build
+  // is the last step of checks.yml) and the root index.html is
+  // gitignored, so reading the built page here passes locally
+  // and fails on every clean checkout. build.js maps the
+  // template line by line and replaces only the AUDIOPLAY_JS
+  // line, so line one of the template IS line one of the page.
+  check("the template opens with a doctype, on line one",
+        /^<!doctype html>/i.test(tmpl.split("\n")[0].trim()));
   check("page button CSS is scoped to .panel",
         !/\n  button \{/.test(tmpl) && /\.panel button \{/.test(tmpl));
   check("the Voice panel hosts the buttons",
         tmpl.includes('id="panelControls"'));
+  // ASK THE BUILT TREE (w54). This grepped ui.js for the
+  // string 'el("panelControls")', which would pass on a page
+  // that never called it, and is answered properly ten lines
+  // down anyway - where the row's children are counted.
   check("the button row is re-parented into it",
-        fs.readFileSync("src/ui.js", "utf8")
-          .includes('el("panelControls")'));
+        vm.runInContext(`
+          (function () {
+            var host = document.getElementById("panelControls");
+            return !!host && host.children.indexOf(wrapEl) >= 0;
+          })()
+        `, sandbox) === true);
 
   // ---- w19: panel open/closed survives a reload ----
   vm.runInContext("savePanels();", sandbox);
@@ -586,31 +635,55 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         fakePanels[0].open === true && fakePanels[2].open === true);
 
   // ---- w25: no double-tap zoom on the overlays ----
-  check("overlays and their buttons get touch-action",
-        /touchAction = "manipulation"/.test(
-          fs.readFileSync("src/ui.js", "utf8")));
+  // The built panels, not the source (w54). The old grep
+  // matched the assignment wherever it appeared - including
+  // inside the comment above it explaining why the viewport
+  // meta cannot do this job.
+  check("the overlays themselves get touch-action",
+        vm.runInContext(`
+          (function () {
+            return [setPanel, logPanel].filter(Boolean).length === 2 &&
+              [setPanel, logPanel].every(function (p) {
+                return p.style.touchAction === "manipulation";
+              });
+          })()
+        `, sandbox) === true);
 
   // ---- w29: the voice button is a labelled pill ----
   const btnState = () => vm.runInContext(`
     (function () {
       return { text: bigBtn.textContent,
                bg: bigBtn.style.background,
-               css: bigBtn.style.cssText || "" };
+               primary: bigBtn.classList.contains("primary"),
+               on: bigBtn.classList.contains("on") };
     })()
   `, sandbox);
+  // THE STATE IS A CLASS, THE COLOUR IS THE STYLESHEET'S (w54).
+  // These asserted the inline background, which is the thing
+  // rule 6 says code must not be setting - so the test was
+  // pinning the very habit that caused w21, w24 and w36. What
+  // must hold is that the code says which state is current and
+  // that the stylesheet gives that state its colour: both
+  // halves are checked, on the built button and in the real
+  // template (tmpl is read further up).
   vm.runInContext("running = false; renderButton();", sandbox);
   const offBtn = btnState();
   check("off: says what to do (" + offBtn.text + ")",
         /^\u25B6 Start$/.test(offBtn.text));
-  check("off: wears the page's primary blue",
-        offBtn.bg.toLowerCase() === "#91bddf");
+  check("off: marked as the page's primary control",
+        offBtn.primary === true && offBtn.on === false);
   vm.runInContext("running = true; listening = true; renderButton();",
                   sandbox);
   const onBtn = btnState();
   check("on: says it is listening (" + onBtn.text + ")",
         /^\u25CF Listening$/.test(onBtn.text));
-  check("on: wears the same green as a lit button",
-        onBtn.bg.toLowerCase() === "#3a5a2a");
+  check("on: marked as lit, not primary",
+        onBtn.on === true && onBtn.primary === false);
+  check("neither state paints a colour inline",
+        !offBtn.bg && !onBtn.bg);
+  check("and the stylesheet is what gives those two states colour",
+        /\.panel button\.primary[^}]*var\(--accent\)/.test(tmpl) &&
+        /\.panel button\.on\b[^}]*var\(--button-on\)/.test(tmpl));
   vm.runInContext("listening = false; renderButton();", sandbox);
   check("running but mic paused reads as on, not off",
         /^\u25CB On$/.test(btnState().text));
@@ -909,14 +982,50 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // ---- w20: the web deltas themselves ----
   // delta 2: sign-in owns the connection - the voice-off path
   // must not abort the game stream
-  const srcUiOff = fs.readFileSync("src/ui.js", "utf8");
-  const offPath = srcUiOff.slice(srcUiOff.indexOf("voice play off") - 800,
-                              srcUiOff.indexOf("voice play off"));
-  check("voice off tears down no network",
-        !/streamAbort|pollTimer|reconnectTimer/.test(offPath));
+  // DRIVEN, NOT REGEXED (w54). This read an 800-character
+  // window of ui.js ending at the string "voice play off" and
+  // asserted three identifiers were absent from it - a test
+  // whose result changes if someone adds a paragraph of
+  // comment above the function, and which says nothing at all
+  // about what happens when the button is actually pressed.
+  // Press it, and watch what gets called.
+  const offBehaviour = vm.runInContext(`
+    (function () {
+      var calls = [];
+      var realStop = stopPolling, realRe = scheduleReconnect;
+      var realAbort = streamAbort;
+      stopPolling = function () { calls.push("stopPolling"); };
+      scheduleReconnect = function () { calls.push("scheduleReconnect"); };
+      streamAbort = { abort: function () { calls.push("streamAbort"); } };
+      api.gameId = "G9"; api.over = false; dryRun = false;
+      running = true;
+      bigBtn.on_click();                 // turn voice OFF
+      var out = { calls: calls, running: running };
+      stopPolling = realStop; scheduleReconnect = realRe;
+      streamAbort = realAbort;
+      return out;
+    })()
+  `, sandbox);
+  check("the button turns voice off", offBehaviour.running === false);
+  check("and voice off tears down no network (" +
+        (offBehaviour.calls.join(",") || "nothing") + ")",
+        offBehaviour.calls.length === 0);
+
   // delta 3: leaving practice rejoins through the account API
-  check("practice off rejoins a live game",
-        /rejoinCurrent\(\)/.test(srcUiOff));
+  const practiceOff = vm.runInContext(`
+    (function () {
+      var called = 0;
+      var real = rejoinCurrent;
+      rejoinCurrent = function () { called++; };
+      dryRun = true;
+      practiceBtn.on_click();            // leave practice
+      rejoinCurrent = real;
+      return { called: called, dry: dryRun };
+    })()
+  `, sandbox);
+  check("leaving practice actually leaves it", practiceOff.dry === false);
+  check("and rejoins a live game through the account API",
+        practiceOff.called === 1);
   // THE USERSCRIPT IS FROZEN AT v137 (Aug 5 2026): its
   // identity is the canon FILE, not continued buildability.
   // The numbered section files now serve the website and may
@@ -952,11 +1061,19 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // Sleeping it off was the first attempt and it is the wrong
   // shape: it makes every helper wait 1.7s and it still races.
   // These tests set their own position, so the random opponent
-  // has no part in them at all - absorb the one already in
-  // flight, then stop scheduling more.
-  await sleep(1700);
-  heard();
+  // has no part in them at all - so it is switched off, and
+  // that now calls off the one already in flight too.
+  //
+  // It could not, until w54. acceptMove scheduled the reply as
+  // setTimeout(dryOpponentReply, 1600), which captures the
+  // function REFERENCE, so this stub only affected replies
+  // scheduled afterwards and the in-flight one still ran the
+  // original - hence the 1.7-second sleep that used to sit
+  // here, absorbing it. dialogue.js now schedules a call by
+  // name, so the stub takes effect immediately and the wait is
+  // gone along with the race the old comment admits to.
   vm.runInContext("dryOpponentReply = function () {};", sandbox);
+  heard();
 
   async function setBoard(fen) {
     heard();
@@ -1256,6 +1373,19 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       await sleep(60);
       const out = heard().join(" | ");
       if (!out) { silences++; worst = worst || ("silent on: " + utt); continue; }
+      // NOTHING SPOKEN MAY CONTAIN "undefined" (w54). One
+      // hand-picked utterance was checked for this and the
+      // whole generated battery was not - and this is the
+      // cheapest possible check on a class of bug that is
+      // pure embarrassment out loud: a missing table entry,
+      // a renamed field, a piece with no spoken name. The
+      // owner hears "I heard queen undefined" across a room
+      // and has no idea what the program thinks it heard.
+      if (/undefined|\[object|NaN/i.test(out)) {
+        lies++;
+        worst = worst || ('said "' + utt + '" -> spoke a placeholder: "' +
+                          out + '"');
+      }
       // A REFUSAL MUST CARRY THE READING. Checking only the
       // sentences that already say "I heard" leaves the way
       // out wide open: delete the clause and the property
@@ -1542,6 +1672,594 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await onBoard("4k3/8/8/1n6/8/1P6/8/4K3 w - - 0 1", "b4",
                 /bravo 4|nothing|say again|which/i,
                 'a bare "b4" never becomes the capture on b5');
+
+  // ---- w54: the version is a w-number, at RUNTIME ----
+  // settings.js declared VERSION = "v137" and lichess.js
+  // reassigned it, so the value was only ever right because
+  // one file happens to load after the other. Reordering the
+  // manifest would have shipped logs claiming a version this
+  // project stopped using - and a pasted log naming the wrong
+  // build is worse than one naming none. Asked of the loaded
+  // program, not of either file.
+  const ver = vm.runInContext("VERSION", sandbox);
+  check("VERSION is a w-number at runtime (" + ver + ")",
+        /^w\d+$/.test(ver));
+
+  // ============== w53: THE SAME ANSWER, FASTER =============
+  // Every change in w53 is meant to be invisible. The risk is
+  // not that it gets slower, it is that a list passed in to
+  // save regenerating it is the WRONG list - and the thing it
+  // is used for is disambiguation, which is silent when wrong:
+  // "knight f3" instead of "knight b-f3" names a different
+  // move than the one being played.
+  const sanSame = vm.runInContext(`
+    (function () {
+      // two knights both able to reach d2: SAN must disambiguate
+      var p = new RULES.Position("4k3/8/8/8/8/8/8/1N1K1N2 w - - 0 1");
+      var legal = p.legalMoves();
+      var out = { withList: [], without: [] };
+      legal.forEach(function (m) {
+        out.withList.push(p.sanOf(m, legal));
+        out.without.push(p.sanOf(m));
+      });
+      return { same: out.withList.join(",") === out.without.join(","),
+               sans: out.withList.join(","),
+               disambiguated: out.withList.filter(function (s) {
+                 return /^N[a-h]d2$/.test(s);
+               }).length };
+    })()
+  `, sandbox);
+  check("a passed legal list names moves identically",
+        sanSame.same === true);
+  check("and disambiguation still happens (" + sanSame.disambiguated +
+        " of the Nd2 pair)", sanSame.disambiguated === 2);
+
+  // findMoves given the list must answer as it does without
+  const findSame = vm.runInContext(`
+    (function () {
+      var p = new RULES.Position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+      var legal = p.legalMoves();
+      var req = parseTranscript("echo four");
+      var a = findMoves(p, req).map(function (m) { return p.uciOf(m); }).join(",");
+      var b = findMoves(p, req, false, legal)
+                .map(function (m) { return p.uciOf(m); }).join(",");
+      return { a: a, b: b };
+    })()
+  `, sandbox);
+  check("findMoves answers the same with the list as without (" +
+        findSame.a + ")", findSame.a === findSame.b && findSame.a.length > 0);
+
+  // applyUci names the move the same way after sharing its list
+  check("applyUci still names its move",
+        vm.runInContext(`
+          (function () {
+            var p = new RULES.Position();
+            return p.applyUci("g1f3").san;
+          })()
+        `, sandbox) === "Nf3");
+
+  // the flattened fuzzy table finds what the loop found
+  check("a near-miss still resolves (brooke -> rook)",
+        vm.runInContext('JSON.stringify(fuzzyToken("brooke"))', sandbox)
+          .indexOf('"v":"r"') >= 0);
+  check("and an ambiguous near-miss still refuses to guess",
+        vm.runInContext('fuzzyToken("zzzzzz")', sandbox) === null);
+
+  // the log panel is not repainted while it cannot be seen
+  const logPaint = vm.runInContext(`
+    (function () {
+      var before = logBody ? logBody.textContent : "";
+      logPanelVisible = false;
+      log("TST", "a line nobody can see");
+      var hidden = logBody ? logBody.textContent : "";
+      logPanelVisible = true;
+      paintLog();
+      var shown = logBody ? logBody.textContent : "";
+      logPanelVisible = false;
+      return { unchanged: hidden === before,
+               painted: shown.indexOf("a line nobody can see") >= 0 };
+    })()
+  `, sandbox);
+  check("a hidden log panel is not repainted", logPaint.unchanged === true);
+  check("and opening it paints what was missed", logPaint.painted === true);
+
+  // ============ w52: THE POLL FALLBACK, AT LAST ============
+  // This path had no test at all, which is most of why it had
+  // three faults. The device can stream, so none of it was ever
+  // reached by playing; it is driven directly here instead.
+  //
+  // A stub for /api/account/playing. `rows` is what the
+  // endpoint returns this tick.
+  function pollWith(rows) {
+    vm.runInContext(`
+      __pollRows = ${JSON.stringify(rows)};
+      fetch = function (url) {
+        if (String(url).indexOf("/api/account/playing") < 0) {
+          return Promise.reject(new Error("unexpected url " + url));
+        }
+        return Promise.resolve({
+          ok: true, status: 200,
+          json: function () {
+            return Promise.resolve({ nowPlaying: __pollRows });
+          }
+        });
+      };
+    `, sandbox);
+  }
+  vm.runInContext("__realFetch3 = fetch;", sandbox);
+
+  // PLAYING BLACK, secondsLeft IS OURS - not white's.
+  vm.runInContext(`
+    dryRun = false; running = true; api.over = false;
+    api.gameId = "PG"; api.myColor = "b";
+    api.pos = new RULES.Position(); api.moves = [];
+    api.wtime = null; api.btime = null;
+  `, sandbox);
+  pollWith([{ gameId: "PG", color: "black", fen: "", lastMove: "",
+              isMyTurn: true, secondsLeft: 90 }]);
+  vm.runInContext("pollSeen = false; pollOnce();", sandbox);
+  await sleep(80); heard();
+  const pollClocks = vm.runInContext(
+    "JSON.stringify({ w: api.wtime, b: api.btime })", sandbox);
+  check("playing black, our clock lands on black (" + pollClocks + ")",
+        vm.runInContext("api.btime", sandbox) === 90000);
+  // the endpoint does not carry the opponent's clock, so the
+  // honest answer is "unknown" - which speakClocks already says
+  check("and the clock it cannot know stays unset, not wrong",
+        vm.runInContext("api.wtime", sandbox) === null);
+
+  // THE GAME LEAVING THE LIST IS THE GAME ENDING, and it must
+  // be said and it must stop the polling.
+  heard();
+  vm.runInContext(`
+    api.over = false; pollSeen = true; api.gameId = "PG";
+    pollTimer = setInterval(function () {}, 100000);
+  `, sandbox);
+  pollWith([]);                       // the game is gone
+  vm.runInContext("pollOnce();", sandbox);
+  await sleep(80);
+  const ended = heard().join(" | ");
+  check("a game vanishing from the list is announced (" + ended + ")",
+        /game over/i.test(ended));
+  check("and the game is marked over",
+        vm.runInContext("api.over", sandbox) === true);
+  check("and the polling stops",
+        vm.runInContext("pollTimer === null", sandbox) === true);
+
+  // ...but not on the very first tick, before it has appeared
+  heard();
+  vm.runInContext("api.over = false; pollSeen = false;", sandbox);
+  vm.runInContext("pollOnce();", sandbox);
+  await sleep(80);
+  check("but a game not seen yet is not declared over",
+        vm.runInContext("api.over", sandbox) === false &&
+        !/game over/i.test(heard().join(" | ")));
+
+  // A DESYNC RELOADS ONCE, NOT EVERY TICK.
+  vm.runInContext(`
+    api.over = false; api.gameId = "PG"; api.myColor = "w";
+    api.pos = new RULES.Position(); api.moves = []; pollSeen = true;
+    armedUci = "STALEARM";
+  `, sandbox);
+  // a lastMove that cannot be applied to the start position
+  pollWith([{ gameId: "PG", color: "white",
+              fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR",
+              lastMove: "h7h6", isMyTurn: true, secondsLeft: 60 }]);
+  vm.runInContext("pollOnce();", sandbox);
+  await sleep(80);
+  const firstReload = vm.runInContext(
+    "LOG.filter(function (l) { return l.indexOf('reloading from fen') >= 0; }).length",
+    sandbox);
+  vm.runInContext("pollOnce();", sandbox);
+  await sleep(80);
+  const secondReload = vm.runInContext(
+    "LOG.filter(function (l) { return l.indexOf('reloading from fen') >= 0; }).length",
+    sandbox);
+  check("a desync reloads (" + firstReload + ")", firstReload === 1);
+  check("and does NOT reload again on the next tick (" + secondReload + ")",
+        secondReload === 1);
+  check("and the stale arm is dropped",
+        !vm.runInContext("armedUci", sandbox));
+
+  // A REFUSED TOKEN IS SAID ONCE AND STOPS THE RETRYING.
+  heard();
+  const authOut = vm.runInContext(`
+    (function () {
+      authGone = false; streamFails = 0; reconnectTimer = null;
+      api.gameId = "G"; api.over = false; dryRun = false;
+      var first = noteAuthFailure(new Error("stream HTTP 401"));
+      var second = noteAuthFailure(new Error("stream HTTP 401"));
+      scheduleReconnect();
+      var scheduled = reconnectTimer !== null;
+      clearTimeout(reconnectTimer); reconnectTimer = null;
+      authGone = false;
+      return { first: first, second: second, scheduled: scheduled };
+    })()
+  `, sandbox);
+  await sleep(40);
+  const authSaid = heard().join(" | ");
+  check("a refused token is recognised", authOut.first === true);
+  check("and said out loud, not just logged (" + authSaid + ")",
+        /signed you out|sign in again/i.test(authSaid));
+  check("and it does not keep retrying what cannot work",
+        authOut.scheduled === false);
+
+  // AND THE RECONNECT LADDER BACKS OFF.
+  const ladder = vm.runInContext(`
+    (function () {
+      var real = startStream, waits = [];
+      startStream = function () {};
+      var realSet = setTimeout;
+      authGone = false; streamFails = 0;
+      api.gameId = "G"; api.over = false; dryRun = false;
+      setTimeout = function (fn, ms) { waits.push(ms); return realSet(function(){}, 0); };
+      scheduleReconnect(); scheduleReconnect(); scheduleReconnect();
+      scheduleReconnect(); scheduleReconnect(); scheduleReconnect();
+      setTimeout = realSet;
+      startStream = real;
+      streamFails = 0; reconnectTimer = null;
+      return waits;
+    })()
+  `, sandbox);
+  check("the reconnect ladder doubles (" + ladder.join(",") + ")",
+        ladder[0] === 2000 && ladder[1] === 4000 && ladder[2] === 8000);
+  check("and is capped, not unbounded (" + ladder[5] + ")",
+        ladder[ladder.length - 1] === 30000);
+
+  vm.runInContext("fetch = __realFetch3; api.gameId = null; api.over = false;",
+                  sandbox);
+
+  // ================= w51: THE GRAMMAR GATES ================
+  // Four ways a sentence could be taken for a different
+  // sentence. Each is a wrong-move or a lost-move.
+
+  // A SALVAGE MAY NOT CONTRADICT A SPOKEN HALF. Origin e5 and
+  // target d-file are BOTH said; the only capture that fits is
+  // none, and the square-as-target reading used to answer dxe5
+  // - mover and target swapped - with one candidate, so nothing
+  // asked and it played.
+  await setBoard("4k3/8/8/4p3/3P4/8/8/4K3 w - - 0 1");
+  say("echo five takes delta");
+  await sleep(120);
+  const salvage = heard().join(" | ");
+  // dxe5 is the move the old salvage produced, and it played
+  // unasked. Nothing may offer or play it here.
+  check("a spoken target is not overwritten by the salvage (" +
+        salvage + ")", !/delta takes echo 5/i.test(salvage));
+  check("and the refusal names both halves that were said",
+        /echo 5/.test(salvage) && /delta file/i.test(salvage));
+  check("no move was played",
+        vm.runInContext("api.moves.length", sandbox) === 0);
+  // the salvage still works when the target end is SILENT
+  await onBoard("4k3/8/8/4p3/3P4/8/8/4K3 w - - 0 1", "echo five takes",
+                /delta takes echo 5|takes echo 5/i,
+                'the salvage still fires when only the square was said');
+
+  // A MOVE IS NOT A QUESTION ABOUT A SQUARE.
+  const qMove = vm.runInContext(
+    'JSON.stringify(classifyQuery("which knight takes delta five"))', sandbox);
+  check("a capture with a question word is not a square query (" +
+        qMove + ")", qMove === "null");
+  const qPiece = vm.runInContext(
+    'JSON.stringify(classifyQuery("what knight delta five"))', sandbox);
+  check("nor is a named piece with a square", qPiece === "null");
+  const qReal = vm.runInContext(
+    'JSON.stringify(classifyQuery("what is on delta five"))', sandbox);
+  check("but the real question still asks (" + qReal + ")",
+        /"kind":"square"/.test(qReal) && /"sq":"d5"/.test(qReal));
+
+  // A PIECE ANSWER IS A WORD, NOT A SENTENCE. With a push
+  // question open, an unrelated capture must not be eaten as
+  // the answer "queen".
+  await setBoard("4k3/8/8/8/8/8/4r3/3QK3 w - - 0 1");
+  const askShape = vm.runInContext(`
+    (function () {
+      pieceAsk = { ply: api.moves.length, capture: false, sq: "e2",
+                   moves: [] };
+      var out = {};
+      out.bareQueen  = pieceAskOpen(parseTranscript("queen"));
+      out.queenTakes = pieceAskOpen(parseTranscript("queen takes rook"));
+      out.takesRook  = pieceAskOpen(parseTranscript("takes rook"));
+      pieceAsk = null;
+      return out;
+    })()
+  `, sandbox);
+  check("a bare piece still answers the question", askShape.bareQueen === true);
+  check("a whole capture sentence does not", askShape.queenTakes === false);
+  check("nor does a named victim", askShape.takesRook === false);
+
+  // THE DEDUPE KEY FOLLOWS THE PARSER'S RULES, OR IT THROWS
+  // AWAY A READING THAT MEANT SOMETHING ELSE.
+  const keyA = vm.runInContext('semanticKey("a bravo four")', sandbox);
+  const keyAlpha = vm.runInContext('semanticKey("alpha bravo four")', sandbox);
+  check('bare "a" as an article keys apart from the a-file (' +
+        keyA + " vs " + keyAlpha + ")", keyA !== keyAlpha);
+  check('and "a takes" still keys as the a-file',
+        vm.runInContext('semanticKey("a takes bravo five")', sandbox) ===
+        vm.runInContext('semanticKey("alpha takes bravo five")', sandbox));
+  check("a glued double square splits like the parser's",
+        vm.runInContext('semanticKey("e2e4")', sandbox) ===
+        vm.runInContext('semanticKey("echo two echo four")', sandbox));
+
+  // A RE-SAID MOVE OBEYS confirmMyMove LIKE ANY OTHER.
+  await setBoard("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1");
+  vm.runInContext(`
+    CFG.confirmMyMove = true;
+    pending = { cands: [{ m: api.pos.legalMoves()[0], san: "Kd1" }], idx: 0 };
+  `, sandbox);
+  heard();
+  say("echo four");
+  await sleep(120);
+  const resaid = heard().join(" | ");
+  check("a move re-said over a question still asks when told to (" +
+        resaid + ")", /did you mean/i.test(resaid));
+  vm.runInContext("CFG.confirmMyMove = false; pending = null;", sandbox);
+
+  // ================== w50: THE LIFECYCLE ==================
+  // Every check below is a state that used to outlive the game
+  // it belonged to, or a path that used to end in silence.
+
+  // ---- castling is a move like any other when it checks ----
+  check("castling that gives check says so",
+        vm.runInContext('sanToSpeech("O-O+")', sandbox) ===
+          "castles kingside, check");
+  check("and castling that mates says that",
+        vm.runInContext('sanToSpeech("O-O-O#")', sandbox) ===
+          "castles queenside, checkmate");
+  check("plain castling is unchanged",
+        vm.runInContext('sanToSpeech("O-O")', sandbox) === "castles kingside");
+
+  // ---- the clock strip knows every question, not three ----
+  const qStates = vm.runInContext(`
+    (function () {
+      var out = {};
+      clearDialogue(); out.none = questionOpen();
+      clearDialogue(); pending = { cands: [], idx: 0 };  out.pending = questionOpen();
+      clearDialogue(); confirmAction = "resign";         out.confirm = questionOpen();
+      clearDialogue(); pieceAsk = { ply: 0, moves: [] }; out.piece = questionOpen();
+      clearDialogue(); partialAsk = { ply: 0 };          out.partial = questionOpen();
+      clearDialogue();
+      return out;
+    })()
+  `, sandbox);
+  check("nothing open reads as no question", qStates.none === false);
+  check("the strip sees all FOUR dialogue states",
+        qStates.pending && qStates.confirm && qStates.piece && qStates.partial);
+
+  // ---- a question does not survive into the next game ----
+  const survived = vm.runInContext(`
+    (function () {
+      dryRun = false;
+      api.gameId = "OLDGAME"; api.over = false;
+      confirmAction = "resign"; pending = { cands: [], idx: 0 };
+      pieceAsk = { ply: 0, moves: [] }; partialAsk = { ply: 0 };
+      armedUci = "e2e4";
+      joinGame("NEWGAME");
+      return { confirm: confirmAction, piece: pieceAsk, partial: partialAsk,
+               pending: pending, armed: armedUci };
+    })()
+  `, sandbox);
+  check("a new game clears every open question",
+        !survived.confirm && !survived.piece && !survived.partial &&
+        !survived.pending && !survived.armed);
+
+  const afterOver = vm.runInContext(`
+    (function () {
+      api.gameId = "G"; api.over = false; api.myColor = "w";
+      api.pos = new RULES.Position(); api.moves = [];
+      confirmAction = "drawoffer"; pending = { cands: [], idx: 0 };
+      handleGameState({ moves: "", status: "mate", winner: "black" }, false);
+      return { confirm: confirmAction, pending: pending, over: api.over };
+    })()
+  `, sandbox);
+  check("game over clears the open question too",
+        afterOver.over === true && !afterOver.confirm && !afterOver.pending);
+
+  // ---- an offer may take the slot, but must say it did ----
+  heard();
+  const stomp = vm.runInContext(`
+    (function () {
+      api.myColor = "w"; api.over = false;
+      offerState = { draw: false, takeback: false };
+      confirmAction = "resign";
+      checkOffers({ bdraw: true });
+      return confirmAction;
+    })()
+  `, sandbox);
+  await sleep(40);
+  const stompSaid = heard().join(" | ");
+  check("an incoming offer takes the yes/no slot (" + stomp + ")",
+        stomp === "drawoffer");
+  check("and names the question it cancelled (" + stompSaid + ")",
+        /cancels the resign question/i.test(stompSaid));
+
+  heard();
+  const withdrew = vm.runInContext(`
+    (function () {
+      api.myColor = "w"; api.over = false;
+      offerState = { draw: true, takeback: false };
+      confirmAction = "drawoffer";
+      checkOffers({ bdraw: false });
+      return confirmAction;
+    })()
+  `, sandbox);
+  await sleep(40);
+  check("a withdrawn offer takes its question with it", withdrew === null);
+  check("and says so, since a yes was being held ready",
+        /withdrew the draw offer/i.test(heard().join(" | ")));
+
+  // ---- a confirmed action reports what really happened ----
+  vm.runInContext("__realPostAction = postAction;", sandbox);
+  heard();
+  vm.runInContext(`
+    dryRun = false; api.gameId = "G"; api.over = false;
+    api.pos = new RULES.Position(); api.myColor = "w"; api.moves = [];
+    __release = null;
+    postAction = function () {
+      return new Promise(function (res) { __release = res; });
+    };
+    confirmAction = "resign";
+  `, sandbox);
+  say("yes");
+  await sleep(60);
+  check("nothing is claimed while the action is still in flight",
+        !/resigning/i.test(heard().join(" | ")));
+  vm.runInContext("__release();", sandbox);
+  await sleep(60);
+  check("and it is claimed once the post lands",
+        /resigning/i.test(heard().join(" | ")));
+
+  heard();
+  vm.runInContext(`
+    postAction = function () { return Promise.reject(new Error("no network")); };
+    confirmAction = "resign";
+  `, sandbox);
+  say("yes");
+  await sleep(80);
+  const failSaid = heard().join(" | ");
+  check("an action that failed says it failed (" + failSaid + ")",
+        /did not go through/i.test(failSaid) && !/^resigning/i.test(failSaid));
+  vm.runInContext("postAction = __realPostAction;", sandbox);
+
+  // ---- the move list is a prefix, or it is a rebuild ----
+  const sync = vm.runInContext(`
+    (function () {
+      api.pos = new RULES.Position(); api.moves = []; api.myColor = "w";
+      api.over = false; armedUci = null;
+      syncMoves("e2e4 e7e5", false);
+      // SAME LENGTH, different tail: a takeback and its
+      // replacement arriving in one event
+      syncMoves("e2e4 c7c5", false);
+      return { moves: api.moves.join(" "), last: api.lastSan,
+               turn: api.pos.turn };
+    })()
+  `, sandbox);
+  check("a same-length different tail rebuilds (" + sync.moves + ")",
+        sync.moves === "e2e4 c7c5");
+  check("and the position really is the new one (last " + sync.last + ")",
+        sync.last === "c5" && sync.turn === "w");
+
+  const resync = vm.runInContext(`
+    (function () {
+      api.pos = new RULES.Position(); api.moves = []; api.myColor = "w";
+      api.over = false; armedUci = "STALEARM";
+      api.lastSan = "STALE"; api.lastSanW = "STALE"; api.lastSanB = "STALE";
+      syncMoves("e2e4 e7e5 a1a8", false);      // a1a8 is not legal
+      return { last: api.lastSan, w: api.lastSanW, b: api.lastSanB,
+               armed: armedUci };
+    })()
+  `, sandbox);
+  check("a resync refreshes the move rows (" + resync.w + "/" + resync.b + ")",
+        resync.last !== "STALE" && resync.w !== "STALE" &&
+        resync.b !== "STALE");
+  check("and drops an arm that named the old position", !resync.armed);
+
+  // ---- being connected is not the same as listening ----
+  const recon = vm.runInContext(`
+    (function () {
+      var real = startStream, out = {};
+      startStream = function () {};
+      api.gameId = "G1"; api.over = false; dryRun = false;
+      running = false;                       // voice OFF
+      reconnectTimer = null; scheduleReconnect();
+      out.voiceOff = reconnectTimer !== null;
+      clearTimeout(reconnectTimer);
+      dryRun = true;
+      reconnectTimer = null; scheduleReconnect();
+      out.practice = reconnectTimer !== null;
+      clearTimeout(reconnectTimer);
+      dryRun = false; api.over = true;
+      reconnectTimer = null; scheduleReconnect();
+      out.gameOver = reconnectTimer !== null;
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null; api.over = false;
+      startStream = real;
+      return out;
+    })()
+  `, sandbox);
+  check("a dropped stream reconnects even with voice off",
+        recon.voiceOff === true);
+  check("but not in practice", recon.practice === false);
+  check("and not after the game is over", recon.gameOver === false);
+
+  // ---- practice puts down everything that could deliver a game ----
+  const teardown = vm.runInContext(`
+    (function () {
+      __evAborted = 0; __seekCancelled = 0;
+      eventAbort = { abort: function () { __evAborted++; } };
+      var realCancel = cancelSeek;
+      cancelSeek = function () { __seekCancelled++; };
+      confirmAction = "resign"; pending = { cands: [], idx: 0 };
+      dryRun = true;
+      dryStart();
+      cancelSeek = realCancel;
+      return { ev: __evAborted, seek: __seekCancelled,
+               confirm: confirmAction, pending: pending };
+    })()
+  `, sandbox);
+  await sleep(40); heard();
+  check("practice closes the account event stream", teardown.ev === 1);
+  check("practice cancels any outstanding seek", teardown.seek === 1);
+  check("and clears the questions with it",
+        !teardown.confirm && !teardown.pending);
+
+  // ---- a real game beats practice, out loud ----
+  heard();
+  const takeover = vm.runInContext(`
+    (function () {
+      dryRun = true; api.gameId = "PRACTICE"; api.over = false;
+      var realJoin = joinGame;
+      __joined = null;
+      joinGame = function (id) { __joined = id; };
+      handleAccountEvent({ type: "gameStart", game: { id: "REAL1" } });
+      joinGame = realJoin;
+      return { joined: __joined, dry: dryRun };
+    })()
+  `, sandbox);
+  await sleep(40);
+  check("a real game starting in practice is joined", takeover.joined === "REAL1");
+  check("and practice is left, not kept silently", takeover.dry === false);
+  check("and the user is told (" + "spoken" + ")",
+        /real game has started/i.test(heard().join(" | ")));
+
+  const dryGuard = vm.runInContext(`
+    (function () {
+      dryRun = true; api.gameId = "REALGAME"; api.over = false;
+      api.pos = new RULES.Position(); api.moves = [];
+      dryOpponentReply();          // scheduled before practice ended
+      return api.moves.length;
+    })()
+  `, sandbox);
+  check("the practice opponent never moves in a real game", dryGuard === 0);
+
+  // ---- a post that never answers must still answer ----
+  heard();
+  vm.runInContext(`
+    __realFetch2 = fetch;
+    MOVE_POST_TIMEOUT_MS = 60;       // the test's patience, not the user's
+    dryRun = false; api.gameId = "G"; api.over = false; busy = false;
+    api.pos = new RULES.Position(); api.myColor = "w"; api.moves = [];
+    fetch = function () { return new Promise(function () {}); };   // hangs
+    acceptMove({ m: api.pos.legalMoves()[0], san: "e4" });
+  `, sandbox);
+  await sleep(250);
+  const stalled = heard().join(" | ");
+  check("a post that never answers stops blocking the next move",
+        vm.runInContext("busy", sandbox) === false);
+  check("and says so rather than going quiet (" + stalled + ")",
+        /could not reach/i.test(stalled));
+
+  // and the busy refusal itself is audible
+  heard();
+  vm.runInContext(`
+    fetch = __realFetch2; MOVE_POST_TIMEOUT_MS = 12000;
+    busy = true;
+    acceptMove({ m: api.pos.legalMoves()[0], san: "e4" });
+  `, sandbox);
+  await sleep(40);
+  check("a move dictated while busy is answered, not swallowed",
+        /still sending/i.test(heard().join(" | ")));
+  vm.runInContext("busy = false; dryRun = true;", sandbox);
 
   // ---- HARD CONSTRAINT 4: NEVER EXPOSE OR LOG A TOKEN ----
   // header.js lists four constraints. This is the only one

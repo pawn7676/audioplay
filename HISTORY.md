@@ -800,3 +800,502 @@ for the origin repair and the bar every widening since has had to clear.
 Two test positions in this entry were wrong before the code was: a queen on
 d1 cannot reach c6, which is worth remembering the next time a FEN is
 written by eye rather than by asking the move generator.
+
+### w50
+
+THE STATES THAT OUTLIVED THEIR GAME. A review of the whole tree, file by
+file, and this is the first of what it found: a family of faults that all
+have the same shape. Something is set while a game is running - a question,
+an arm, a connection, a mode - and nothing puts it down when that game
+ends. Every one of them was invisible to the harness because the harness
+had never played two games in a row.
+
+THE WORST OF THEM COULD RESIGN THE WRONG GAME. There are four dialogue
+states and there was no single place that cleared them. The two ply-guarded
+ones expire by themselves while a game runs, which is what the ply is for -
+but joinGame resets api.moves to empty, so a question asked at ply 0 of one
+game is still "current" at ply 0 of the next. The two yes/no states never
+expired at all. So: ask "resign", hear "Resign the game? Yes or no.", get
+mated or flagged before answering, let the next game auto-join off the event
+stream, and the first "yes" of the new game resigns it. clearDialogue is one
+function called from every place a game begins or ends, which is the answer
+to a list of things to remember - the previous answer was to remember them,
+in three of the five places.
+
+PRACTICE LEFT THE FRONT DOOR OPEN. dryStart closed the game stream and the
+timers and stopped there, leaving the ACCOUNT event stream open and any
+outstanding seek live. Both of those exist precisely to start a game without
+being asked, and dryRun then gagged the result: the join happened, the real
+position replaced the practice one, every announcement was suppressed
+because practice was still on. A real game, a running clock, and silence,
+while the board in front of you says something else - the exact case the
+keep-alive tombstone is about, reached from the other side. Practice is a
+mode where nothing is sent to Lichess, so nothing may arrive from it either.
+The one judgement call in this entry sits next to it: if a gameStart does
+arrive during practice - an event already in flight, an account reconnect -
+practice LOSES and says so. A live clock outranks a practice game, and being
+told is the whole point.
+
+AND THE RECONNECT LOOP THAT TALKED OVER ITSELF. watchEvents has filtered
+AbortError since it was written; startStream's catch never did. startStream
+aborts the previous stream on its way in, that abort rejected the old reader,
+the rejection reached the catch, and scheduleReconnect opened another stream
+two seconds later - which aborted the one just opened. Each turn re-delivered
+gameFull, so the page said "reconnected. you are white. white to move." every
+two seconds for as long as the game lasted. One line, and the line already
+existed twenty lines away.
+
+THE SAME FUNCTION WAS GATED ON THE MICROPHONE, which is a different thing
+from being connected. Voice off (or a mic that gave up after eight failures),
+then a stream that drops for any ordinary reason: nothing reschedules it, and
+turning voice back on only restarted the mic. Mic alive, stream dead, the
+opponent's moves never announced again. Listening and being connected are
+not the same state and must not share a flag.
+
+THE REST, EACH SMALL AND EACH ITS OWN WAY OF SAYING NOTHING OR SAYING THE
+WRONG THING. A confirmed yes/no spoke "resigning." the instant the request
+left, and postAction has no catch, so a failed send was an unhandled
+rejection and the user was told a game-ending action had happened when it had
+not - acceptMove has said "Could not reach Lichess." on that same failure
+since the v-series, so the yes/no path was the only one that lied. postMove
+had no timeout, and its caller sets busy = true, so a fetch that hung left
+EVERY later move dropped in silence with no way out but the button. The busy
+refusal itself was silent, which reads as not-heard and invites saying it
+again. An incoming draw offer overwrote whatever question was already open
+without a word, so a "yes" meaning resign accepted a draw; a withdrawn offer
+left its question standing, so a "yes" was spent on an offer that no longer
+existed and was told it worked. syncMoves detected a takeback by list LENGTH
+only, so a takeback and its replacement arriving in one event left the local
+position quietly describing a game that was no longer on the board - and with
+no uci applied, the illegal-uci resync never fired either. The resync path
+threw the sans away, leaving the clock overlay's move rows stale and an arm
+pointing into a position that no longer existed. questionOpen in clock.js
+listed three dialogue states and partialAsk was added at v117, so "say the
+rank" and "say the target" - the two questions that ask for the least - were
+the two whose message expired off the strip while they waited. And castling
+returned before the check suffix, so O-O+ was announced as a bare "castles
+kingside": the one move that could give check without saying so, and the
+opponent's castling is exactly the move being listened to rather than seen.
+
+WHAT THIS ENTRY IS REALLY ABOUT, and the rule worth keeping: none of these
+were hard, and none were found by the tests. They were found by reading two
+files side by side and asking what happens when the game changes underneath
+them. The harness now plays a second game - joins one, ends one, starts a
+real one during practice - because that transition is where all of this
+lived. Ten of the fixes were mutation-tested: the fix was reverted, the test
+was confirmed to fail, the fix was put back.
+
+
+### w51
+
+FOUR WAYS A SENTENCE COULD BE TAKEN FOR A DIFFERENT SENTENCE, from the same
+review as w50. Where w50 was about state outliving its game, this is about
+the grammar quietly disagreeing with itself. Every one is a wrong move or a
+lost move, and every fix is a gate of one or two lines.
+
+A SALVAGE MAY NOT CONTRADICT A HALF THAT WAS SPOKEN. readingsOf offers the
+literal reading first and salvages after it, and the rule that makes that
+safe is that a salvage can only turn nothing into something. The lone-square
+salvage broke it: it rebuilt the constraint and then overwrote the target end
+WHOLE, which is a rehearing only while the target is silent. "Echo five takes
+delta" says both ends out loud - origin e5, target the d-file - and
+constraintOf gets it exactly right; the salvage then threw the d away and
+went looking for anything that could capture ON e5. On a board with a white
+pawn on d4 and a black pawn on e5 that is dxe5: ONE candidate, so nothing
+asks, so it plays - with the mover and the target roughly swapped round from
+the words. Verified by reverting the gate: the harness plays "delta takes
+echo 5" for those words. This is the game6 shape, which is the most expensive
+class this program has, and it had been sitting in the salvage since w40.
+
+A MOVE IS NOT A QUESTION ABOUT A SQUARE. The square branch of classifyQuery
+had no content gate, and "which" and "what" are FILLER precisely because
+Safari sprays them into ordinary utterances. So "which knight takes delta
+five" - complete, legal, unambiguous - was answered "d5 has a white pawn" and
+the move was never looked for at all, because classifyQuery is consulted
+before moves. The turn branch directly above learned this at v65 and grew a
+content-word test; this branch is the same lesson one block down, five
+versions later. A capture word, a named piece or a second square all say the
+sentence is a move.
+
+AN ANSWER IS A WORD, NOT A SENTENCE. pieceAskOpen's own comment says the
+answer must be "a piece and nothing else" and the code excluded only squares
+and castling, so a capture word, a named victim and a trailing promotion
+piece all sailed through. With a push question open - "no pawn can go there,
+say queen, king or bishop" - an unrelated "queen takes rook" that finds no
+move of its own reached the answer path FIRST and was swallowed as the answer
+"queen", offering, or with confirm off playing, a queen move nobody said.
+
+THE DEDUPE KEY HAS TO FOLLOW THE PARSER, and twice it did not. semanticKey
+exists to reduce a reading to what it MEANS so two spellings of one sentence
+collapse; its header says "same rules as parsing". Bare "a" is an article
+unless a rank or a take word follows it - the parser's rule since the capture
+case was added - and semanticKey never had it, so "a bravo four" and "alpha
+bravo four" keyed identically while parsing differently. dedupeTranscripts
+keeps the first of a matching pair, so one of two genuinely different
+readings was binned before collectCandidates ever saw it, and which one
+survived came down to the order Safari happened to return them in. The glued
+double square was missing the same way: "e2e4" never collapsed with "e2 e4",
+and evidenceKey could not see it as a move at all.
+
+AND confirmMyMove WAS OFF FOR EVERY MOVE SAID OVER A QUESTION. The re-said
+branch played a unique move outright, ignoring the setting whose entire job
+is "ask me even when you are sure" - and it was off in exactly the situation
+where the user is already being misheard, which is the situation the setting
+is for. Worse, a re-said AMBIGUOUS move was discarded in favour of "Say yes
+or no." and a re-ask about the OLD list, so the new reading went in the bin
+while the stale question stood. Both now go where the main path sends them.
+
+THE RULE THIS EARNS, and it is the same one w48 wrote down: a rule proved in
+one place and left there is a rule that will be broken in the place next to
+it. The parser's "a" rule, the turn branch's content gate, and the main
+path's confirmMyMove were each correct where they were written and absent one
+function away. Five of the six fixes were mutation-tested.
+
+
+### w52
+
+THE POLL FALLBACK, WHICH HAD NEVER SEEN A REAL GAME. It exists for a browser
+that cannot hold a streaming body open. The tested device can, so nothing in
+it was ever reached by playing - and it showed: three faults, none subtle,
+all sitting in about forty lines. The review offered deleting it instead and
+the owner chose repair, on the header's own rule that the page is opened by
+whoever finds it, on whatever they own. A fallback that is wrong is worse
+than no fallback, because it is trusted in exactly the situation where
+nothing else is left.
+
+IT REPORTED THE WRONG PLAYER'S CLOCK. /api/account/playing sends
+`secondsLeft`, which is the ACCOUNT HOLDER'S remaining time, and this
+assigned it to api.wtime whatever colour we were. Playing black you were
+shown your opponent's clock as your own, and api.btime was never set at all,
+so the other side read "--" on the overlay and "unknown" when you asked.
+Half of that is unavoidable - the endpoint does not carry the opponent's
+clock - and half of it was a one-line mistake. What cannot be known is now
+left unset and speakClocks says "unknown", which it already knew how to do.
+
+IT NEVER NOTICED A GAME ENDING. The list is of ONGOING games, so a finished
+game simply leaves it - and the code said `if (!g) return;` and went round
+again, silently, every 1.5 seconds, forever. No result, no "game over", no
+end to the polling. The event stream cannot rescue it either: a browser with
+no streaming body fails watchEvents for precisely the reason it fell back to
+polling in the first place. So in the fallback mode the game ended and the
+page said NOTHING, which is the rule-5 failure in its purest form. The
+endpoint carries no status, so the sentence does not guess one: "game over.
+check lichess for the result."
+
+AND A DESYNC LOOPED. On a lastMove that would not apply, it reloaded the
+position from the fen and left api.moves untouched - so the next tick
+compared the same stale tail to the same lastMove, failed to apply it again
+because it was already inside the fen just loaded, and reloaded once more.
+Every 1.5 seconds until a new move arrived. The uci is pushed now so the
+comparison moves on.
+
+THE CASTLING RIGHTS IN THAT RELOAD ARE A FABRICATION and cannot be anything
+else: rights depend on history the endpoint does not send. KQkq is kept, and
+it is the permissive choice ON PURPOSE. Granting a castle that is no longer
+legal means the move is offered, said, and REFUSED BY LICHESS out loud -
+audible, and recoverable. The strict choice would silently refuse a castle
+that is perfectly legal, with nothing said to explain it, which is the worse
+failure for someone who cannot see the board state we are guessing at.
+
+TWO THINGS THAT ARE NOT ABOUT POLLING came with it, because they are the
+same shape: a retry that cannot work. Every reconnect path retried flat
+forever, so a network that is simply gone meant a request every two seconds
+for as long as the page stayed open, draining a battery nobody is watching;
+the ladder now doubles to a thirty-second ceiling, leaving the first few
+retries as quick as they ever were, which is the case that actually happens.
+And a REVOKED OR EXPIRED TOKEN was retried identically - an HTTP 401 every
+two seconds, forever, telling the user nothing, when the one thing they
+could actually do about it is the one thing nobody told them to do. It is
+said once now, and the retrying stops, because retrying cannot fix it.
+
+startSeek also assumed AbortController exists, which would throw on exactly
+the browsers this fallback is for, and reported it as "Seek failed" - the
+seek blamed for a missing browser feature. It is guarded like every other
+one here, and a seek that cannot be held open now says the true thing: it
+was sent, and the game will arrive on the event stream anyway.
+
+WHAT MAKES THIS ENTRY WORTH READING LATER: none of this was hard, and all of
+it survived the whole v-series and half the w-series, because the one device
+it would have shown up on cannot reach the code. Untested does not mean
+low-risk; it means the bugs are still there. The harness now drives this
+path directly with a stubbed endpoint - the first tests it has ever had -
+and five of the fixes were mutation-tested.
+
+
+### w53
+
+THE SAME ANSWER, FASTER. Every change here is meant to be invisible: not one
+of them may alter which moves are found or what they are called. That is
+also what makes the batch worth being careful about, because the failure
+mode is silent. The efficiency items from the review, in one pass, with
+perft and the property check as the gate on either side.
+
+THE HOTTEST FUNCTION IN THE PROGRAM WAS PARSING A FEN. clone() is called
+once per pseudo-move by legalMoves, to test whether the king is left in
+check - about thirty-five times per position, and a million times in a
+single perft - and every one of those went through new Position(START),
+which fills a 128-slot array and then splits and regexes the starting FEN
+character by character, before the next six lines overwrite every field it
+had just set. Object.create skips the constructor; every field is assigned
+anyway. Perft went from 7.0 seconds to 1.6.
+
+AND attacked() DECLARED A FUNCTION INSIDE ITSELF. The slider scan was a
+closure written in the body of the most-called predicate in the file, so a
+function object was allocated on every call, and two array literals with it.
+Lifted out, given parameters instead of closed-over variables - which is
+also the first time it can be read on its own terms.
+
+THE LEGAL MOVE LIST WAS GENERATED OVER AND OVER FOR A POSITION THAT COULD
+NOT CHANGE. findMoves regenerated it per reading, per transcript - up to
+eight of those - plus the fuzzy retry; sanOf regenerates it whenever it is
+not handed one, because it needs it for disambiguation, so any map or filter
+naming N moves generated it N times; and applyUci made the list in findUci,
+threw it away, and made it again inside sanOf. All of these now pass the one
+they already have. Nothing changed about what they compute, and the harness
+proves it move by move: the same position named with the list and without it
+must produce identical SAN, disambiguation included. That test earns its
+keep - reverting sanOf to ignore the list leaves every check green EXCEPT
+the disambiguation count, which is exactly the shape of the bug this could
+have introduced.
+
+collectCandidates ALSO DID WORK IT ALWAYS THREW AWAY. The reqIsEmpty test
+sat below findMoves, so every request the repair chain owns - "queen takes
+delta", "rook delta", anything with a constraint but no square, victim or
+castle - ran the full search, both readings and the fuzzy retry, and then
+had the results discarded by the next line. Hoisting it is safe for a reason
+worth writing down: fuzzy parsing only ever ADDS symbols, so an empty fuzzy
+request implies an empty plain one, and the retry could never have rescued
+it either.
+
+THE REST ARE SMALL AND WERE FREE. fuzzyToken re-enumerated all three word
+tables and re-applied the same two filters on every unknown word, several
+times per utterance; the tables are constants, so the eligible spellings are
+flattened once at load. log() joined up to three thousand lines and
+reassigned textContent on EVERY line whether or not the panel was open -
+several hundred kilobytes built and discarded per move, on a device also
+running recognition and synthesis - and now paints only when the panel can
+be seen, which is a thing the toggle already knew. The keep-alive assembled
+a 22KB base64 string on every start and threw it away unused on every
+browser that has Blob. And bakePieces redrew the whole board once per piece
+image, twelve times at boot, each guaranteed to be replaced by the next.
+
+WHAT THIS DOES NOT DO: nothing here changes rules.js's answers, and nothing
+here evaluates anything. The perft numbers are the proof of the first, and
+they are unchanged across all four positions - which is also why w50's
+perft work had to come first. A speed change to a move generator with no
+promotion coverage would have been a gamble.
+
+
+### w54
+
+WHERE THE LOOK IS DECIDED, WHAT THE COMMENTS CLAIM, AND WHAT NOBODY WAS
+USING. Three review phases in one pass, because none of them changes what the
+program does and separating them would have cost more merges than it saved.
+
+RULE 6 WAS BEING BROKEN BY THE TWO CONTROLS THAT MATTER MOST. The stylesheet
+owns what a state LOOKS like and the code owns which state IS current - the
+rule w21, w24 and w36 each paid for - and paintVoiceButton was writing
+#91bddf and #3a5a2a into the element by hand, the same two values --accent
+and --button-on already hold. renderAccount was worse: it set the signed-in
+green inline AND toggled a class on the same button, so which idiom decided
+the look depended on which branch ran last. Both are classes now, sharing
+one .panel button.on rule with the picked time controls, because "this is
+running" means the same thing in all four places. The inline properties are
+CLEARED rather than overwritten, which is the move adoptPageButtonLook was
+already making next door and for the same reason.
+
+The comment above it claimed the exception: "only what a stylesheet cannot
+know is set from here - the state colour". The stylesheet knew it perfectly
+well. A comment that names an exception keeps the exception alive long after
+it has stopped being one, which is the general form of most of this entry.
+
+clock.js STILL PAINTS FROM CODE AND NOW SAYS SO. It was reported as the same
+fault and it is not: the overlay is a second renderer, built whole from
+cssText, sharing no markup with the page and no cascade to be the source of
+anything - and it is the screen the owner READS across a room, tuned by eye
+on the device. Moving it to classes cannot be verified by the harness. It is
+left alone, with the reason written in its header, because an undocumented
+exception is indistinguishable from an oversight - which is exactly how it
+came to be reported.
+
+THE COMMENTS THAT HAD STOPPED BEING TRUE. settings.js declared VERSION =
+"v137" and lichess.js reassigned it, so the value was right only because one
+file loads after the other: reordering the manifest would have shipped logs
+naming a version this project stopped using, and a pasted log naming the
+wrong build is worse than one naming none. It is declared empty and set in
+one place now, and the harness asserts at RUNTIME that VERSION is a
+w-number. lichess.js told every reader "when the userscript moves, re-copy
+those parts" - the userscript froze at v137 and will not move, and that
+instruction would have argued against every fix in w50 and w52. settings.js
+described a "token" button in the log panel that this page deliberately does
+not have. vocabulary.js justified a real rule with a slicing mechanism that
+stopped existing when the numbered filenames did. dialogue.js pointed at the
+wrong file for memoTranscript. stopEverything claimed the voice-off path
+called it, which would have contradicted web delta 2 and the w50 reconnect
+work; only signOut ever called it. speakWhenAudioSettled promised "a further
+gap for the route to settle" and the setTimeout after the primer has no
+delay - the primer IS the settling, and the comment would have sent anyone
+debugging a clipped first word hunting a timing bug. rules.js advertised
+".san", which has never been the name, and ".isGameOver", which has no
+caller. And the page told the user to "tap the round button", which has been
+a pill labelled Start since w29.
+
+dialogue.js GOT A HEADER. It is the only file of its size that had none: the
+reasoning was all there, as fifty local comments with no map over them, so
+the shape had to be reconstructed by reading it end to end. The header names
+the four dialogue states, says the order of handleTranscripts is
+load-bearing, and records that the file has grown three jobs and that
+splitting it is deliberately NOT done yet - pure motion belongs on its own,
+after the behaviour has settled.
+
+AND WHAT NOBODY WAS USING. api.mode was assigned in three places and read in
+none; the log lines already say "opening stream" and "falling back to
+polling", which is the same fact somewhere better. A noSpeech counter was
+incremented and never read. rules.js had a `var self` its function stopped
+needing. The template carried four selectors matching nothing - #logBody
+(the live log body has no id), #modeRow, input.numin, and .stats .ok/.bad -
+while input.whoin, #clockLine .mine and .low, which look equally suspicious,
+are all live and stayed. The log panel reserved a 110px strip along the
+bottom for a floating button row that moved into the page at w21, so the
+blank strip was costing the log a tenth of the screen. Four FUZZY_NEVER
+entries - does, then, have, note - are consumed as FILLER or PIECES before
+the fuzzy matcher can ever see them, and "note" being listed as never-guess
+while ALSO being a live knight spelling reads as a contradiction in a table
+whose whole job is to be read. A cross-check over all the word maps found
+those four and no others, and no collisions between the maps at all.
+
+TWO SMALLER THINGS. build.js joins byte-for-byte, so a source file whose
+last line is a // comment without a trailing newline would have swallowed
+the next file's first line into that comment - silently, with a page that
+still builds. It now ends every part's last line. And the viewport dropped
+maximum-scale/user-scalable: iOS has ignored them since iOS 10 (the w25
+note), so they never did the job they were added for, and everywhere else
+they take pinch-zoom away from someone who may need it.
+
+WHAT IS DELIBERATELY LEFT. pieceAskNamed's `return "that"` is unreachable
+given the gate above it and stays: removing a defensive default so a
+dead-code audit comes out clean would leave the function returning undefined
+in the case nobody predicted. That is the trade this whole entry is about,
+pointing the other way, and it is worth having both directions on record.
+
+
+### w55
+
+THE TESTS, AND THE LAST OF THE STRAGGLERS. Mostly work on the things that
+check the program rather than the program itself - which is where this whole
+review started, and a fitting place for it to end up again.
+
+THE VOCABULARY NOW REFUSES TO START IF IT CONTRADICTS ITSELF. expand() has
+always thrown when one word is given two values inside a single map; nothing
+checked a word appearing in two DIFFERENT maps, where it is just as wrong and
+much quieter - parseTranscript tries NATO, then NUMS, then PIECES, then the
+take words, so the collision is resolved by that order, silently, and the
+loser's meaning simply never happens. These tables only ever grow, one real
+game log at a time - "cakes" at w48, "text" at w44, the whole plant family -
+and a homophone landing in two of them is exactly what two sessions reading
+two different logs would do. Checked at load and thrown, like expand() does,
+because a grammar that is wrong should refuse to start rather than quietly
+mean something else. Current data is clean; adding "rook" to the NATO g-line
+now fails with the two map names.
+
+THE PROPERTY GENERATOR NEVER SAID "CASTLES", NEVER PROMOTED A PAWN, AND
+NEVER USED A BARE LETTER. Three whole branches of the grammar with no
+generated coverage at all - and the letter forms are two lines in parsing.js
+that the harness itself notes could be refactored away with every test still
+green, and they are the owner's natural English under time. Added, along with
+piece+file, "pawn takes" and "piece takes".
+
+IT FOUND SOMETHING IMMEDIATELY, and the finding was that the PROPERTY was
+wrong. "pawn hotel" - a piece and a lone file - failed rule 3 five times on
+clean source. matching.js applies the strict no-capture-without-a-take-word
+filter only when a WHOLE destination square was named and the origin was not,
+and says so in its own comment: a lone file pins no destination, so the
+bare-square reading is not on the table to be confused with. Rule 3 was
+written against req.squares and could not see that distinction. Restated in
+the same terms the code uses, it holds - and the game6 mutants (delete the
+pawn-capture filter, delete the piece filter) are still caught, by rule 2 and
+by rule 3 both, which was checked rather than assumed. That is now the SECOND
+time this file's own comment has been right: the first thing a property test
+finds is usually the author's misunderstanding of the invariant.
+
+The seed is an argument too. The position count has been tunable since this
+file was written and the seed was not, so every soak run re-tested the same
+games, only more of them.
+
+THE HARNESS RUNS IN A THIRD OF THE TIME: 19.5 seconds to 6.5. Two causes,
+and the interesting one is a product bug. acceptMove scheduled the practice
+opponent as setTimeout(dryOpponentReply, 1600), which captures the function
+REFERENCE - so the harness stubbing dryOpponentReply out only affected
+replies scheduled afterwards, and the one already in flight ran the original
+regardless. That is why a 1.7-second sleep sat in the middle of the suite
+absorbing it, with a comment admitting it "still races". Scheduling a call by
+name instead is late binding, costs nothing, and means the current definition
+is the one that runs - the wait and the race both go. The other cause was
+plain margin: the TTS stub fires onend after ONE millisecond and the waits
+were 120, so they are scaled, with HARNESS_SLEEP=1 to put them back if
+anything ever looks flaky. Five consecutive runs, all 250 passing.
+
+AND THE LAST BEHAVIOUR-BY-GREP TESTS ARE GONE. "Voice off tears down no
+network" read an 800-character window of ui.js ending at a string and
+asserted three identifiers were absent from it - a test whose result changes
+if someone adds a paragraph of comment above the function, and which says
+nothing about what happens when the button is pressed. It presses the button
+now and watches what gets called; adding an abort to that path fails it.
+Same for leaving practice, the re-parented button row, and the overlay
+touch-action, where the old grep would have matched the assignment inside the
+comment explaining why the viewport meta cannot do that job.
+
+TWO SMALL THINGS FROM THE REVIEW'S TAIL. "flip clock" repainted and said
+nothing, which is fine while you are looking at the overlay and is silence
+everywhere else - and it is a VOICE command, reachable with the overlay down,
+where the repaint is invisible and nothing else happens at all. It answers
+with the new state rather than "flipped", because a confirmation has to carry
+information to earn its airtime. And loadSettings read and parsed the same
+localStorage key twice, with two catch blocks disagreeing about what to say
+when it failed.
+
+WHAT IS DELIBERATELY DOCUMENTED RATHER THAN CHANGED. "Yes", "no" and "cancel"
+with nothing open stay silent: CANCEL_WORDS contains "stop" and "forget",
+which land in ordinary speech at the board more often than as commands, and
+answering every one with "nothing to cancel" is the flat repeated speech the
+sound arc ended by deleting. Commands are still read from the primary
+transcript only: a missed command costs one repetition, while a command
+invented from a reading the mic ranked second could resign a game. And
+partialAsk's "both halves came from the user" is not literally true since w49
+- a rival reading may raise the question - but the question is the safeguard,
+because nothing plays until the user has answered.
+
+
+### w56
+
+THE DOCTYPE, WHICH THIS PAGE HAS NEVER HAD. One line, and without it every
+browser has parsed the page in QUIRKS MODE - the compatibility mode for pages
+written before the standards existed - since w1. It works, which is exactly
+why nobody noticed: quirks mode is not broken, it is DIFFERENT, and the
+differences are almost all about size.
+
+That is the whole risk here, and it is worth stating plainly rather than
+burying: percentage heights resolve differently in standards mode, and line
+height and font inheritance behave properly. Everything on this page was
+tuned BY EYE ON THE DEVICE while the page was in quirks mode - the clock
+digits, the panel heights, CLOCK_BARE_MAX_VH and the rest of the vh budgets
+in settings.js. So of every change in this review, this is the one that can
+move what the owner actually sees.
+
+It is its own version and its own commit for that reason. If anything reads
+wrong at arm's length, revert THIS and nothing else, and everything from w50
+to w55 stays. And do not retune the sizes in the same change: measure on the
+device first, then decide whether anything needs moving at all. A number
+adjusted to compensate for a mode that has already been fixed is a number
+nobody will be able to explain later.
+
+THE TEST ASKS THE TEMPLATE, NOT THE BUILT PAGE, and the reason is worth
+recording because the first version of it was wrong. Reading the built
+index.html passes locally and fails on every clean checkout: checks.yml runs
+the harness BEFORE build.js, and the root index.html is gitignored, so there
+is nothing there to read. build.js maps the template line by line and
+replaces only the AUDIOPLAY_JS line, so line one of the template is line one
+of the page. The position is asserted, not just the presence - a doctype
+anywhere but first does nothing at all, which is a thing that would otherwise
+look fixed and not be.
+
