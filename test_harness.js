@@ -1432,6 +1432,18 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   check("and yes then plays it",
         /queen takes delta 6/i.test(heard().join(" | ")));
 
+  // "push" is a pawn word everywhere, not only on a push -
+  // the owner's point after game w47-1, where "pawn" would
+  // not transcribe. Odd English, and the parser does not care.
+  await onBoard("4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1", "push takes",
+                /bravo takes charlie 6/i,
+                '"push takes" is heard as "pawn takes"');
+  // and naming the pawn by its FILE needs no pawn word at all,
+  // which in that position would have played first time
+  await onBoard("4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1", "bravo takes",
+                /bravo takes charlie 6/i,
+                '"bravo takes" plays the b-pawn capture outright');
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();
