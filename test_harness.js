@@ -1375,6 +1375,63 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 /bravo takes charlie 6/i,
                 '"cakes" is heard as takes');
 
+  // ---- w49: three from game w47-1 ----
+
+  // 20:14:26. "queen takes pawn" with no queen-takes-pawn on
+  // the board got the generic "That is not a legal move" three
+  // times. The VICTIM ruled it out, and w45 settled that a
+  // refusal names the half that did.
+  await onBoard("4k3/8/3n4/8/8/8/8/3QK3 w - - 0 1", "queen takes pawn",
+                /no pawn for it to take/i,
+                "a named victim that rules everything out is named");
+  await onBoard("4k3/8/3n4/8/8/8/8/3QK3 w - - 0 1", "takes bishop",
+                /no bishop for it to take/i,
+                "and with no mover named either");
+  // a victim that IS available still just plays
+  await onBoard("4k3/8/3n4/8/8/8/8/3QK3 w - - 0 1", "queen takes knight",
+                /queen takes delta 6/i,
+                "a victim that is there is still played");
+
+  // 19:15:14. "Nate takes pawn" put an unrecognised word where
+  // the piece belongs, so the knight-less reading ranked level
+  // with the real one and contributed three non-knight moves.
+  // "It takes pawn" - the word DROPPED rather than mutated -
+  // was demoted correctly. Same evidence, one caught.
+  const demoted = vm.runInContext(
+    'JSON.stringify(clippedIndexes(["Night takes pawn","Nate takes pawn"]))',
+    sandbox);
+  check("a MIS-HEARD first word demotes like a dropped one (" +
+        demoted + ")", demoted === '{"1":true}');
+  check("and unrelated readings are left alone",
+        vm.runInContext(
+          'JSON.stringify(clippedIndexes(["Echo four","Delta four"]))',
+          sandbox) === "{}");
+
+  // 20:09:06. Six readings arrived; the SECOND was "Pond
+  // takes", which parses and would have played. The primary
+  // was "Plants" and the move was lost. A rival reading may
+  // now raise the question - but only ask, never play.
+  await setGame(["e2e4","b7b6","d2d4","h7h5","c2c4","b6b5","a2a4","g7g5"]);
+  vm.runInContext(
+    'handleTranscripts(["Plants","Pond takes","Takes","Plant takes"]);',
+    sandbox);
+  await sleep(90);
+  const rival = heard().join(" | ");
+  check("a rival reading is heard at all now (" + rival + ")",
+        !/say again/i.test(rival) && rival.length > 0);
+  // and the ask-only rule: a unique fit from a rival asks
+  await setBoard("4k3/8/3n4/8/8/8/8/3QK3 w - - 0 1");
+  vm.runInContext('handleTranscripts(["Wobble","Queen takes"]);', sandbox);
+  await sleep(90);
+  const onlyAsks = heard().join(" | ");
+  check("a unique fit from a RIVAL reading asks, never plays (" +
+        onlyAsks + ")",
+        /did you mean/i.test(onlyAsks) && !/^white /i.test(onlyAsks));
+  say("yes");
+  await sleep(90);
+  check("and yes then plays it",
+        /queen takes delta 6/i.test(heard().join(" | ")));
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();

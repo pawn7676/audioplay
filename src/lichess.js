@@ -28,7 +28,7 @@
    *  continues so no log dump ever collides with a v-number.
    *================================================================*/
 
-  VERSION = "w48";
+  VERSION = "w49";
 
   var RULES = makeRules();
 

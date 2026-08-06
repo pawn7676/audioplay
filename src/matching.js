@@ -376,8 +376,36 @@
   // discarded: if the guess is wrong the other move is
   // still offered, and either way a question is asked
   // before anything is sent.
+  /* AN UNRECOGNISED WORD IS NOT EVIDENCE (w49).
+   *
+   *  semanticKey passes a word it does not know straight
+   *  through, so "Nate takes pawn" keys as "nate x pp" while
+   *  "Night takes pawn" keys as "pn x pp". Those are not in a
+   *  suffix relation, so the rule below never fired and the
+   *  weaker reading ranked level with the stronger one.
+   *
+   *  Game w47-1, 19:15:14: exactly that pair arrived together
+   *  and the knight-less reading contributed cxb7, Bxh6 and
+   *  Qxd6 - three moves that are not knight moves - to a
+   *  question about "night takes pawn". The owner noticed
+   *  mid-game and left a memo saying only Nxd6 was available.
+   *  His second attempt proves the point: there Safari said
+   *  "It takes pawn", the word vanished rather than mutated,
+   *  and the demotion worked perfectly.
+   *
+   *  Dropping what is not vocabulary before comparing makes
+   *  the two cases one case. It can only ever demote MORE,
+   *  never less, and demoted still means KEPT - ranked below
+   *  everything complete, reachable by answering "no".
+   */
+  function evidenceKey(text) {
+    return semanticKey(text).split(" ").filter(function (t) {
+      return /^(f[a-h]|r[1-8]|p[pnbrqk]|x|castle)$/.test(t);
+    }).join(" ");
+  }
+
   function clippedIndexes(list) {
-    var keys = list.map(semanticKey), out = {};
+    var keys = list.map(evidenceKey), out = {};
     keys.forEach(function (shortKey, i) {
       keys.forEach(function (longKey, j) {
         if (i === j || out[i]) return;
