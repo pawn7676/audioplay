@@ -535,8 +535,24 @@
     speak("I heard " + heardSoFar(req) + ". " + because + " Say again.");
   }
 
+  /* The question remembers the CONSTRAINT it was asked about,
+   * with the hole still in it, not the raw request. What comes
+   * back then merges instead of being reconstructed field by
+   * field - see partialAnswer, which used to do exactly that
+   * and could not be pointed at an origin-shaped question
+   * because it read the stored fromFile as the target's.
+   *
+   * The half a question is about is always the TARGET's here:
+   * every caller is the half-square repair or the capture
+   * repair, and both read a dangling half as the destination's,
+   * on the v116 evidence that it is the destination rank that
+   * vanishes. That reading is now stated once, where the
+   * question is stored, rather than implied by each filter. */
   function askPartial(req, want, chk, mate) {
-    partialAsk = { req: req, want: want, chk: !!chk, mate: !!mate,
+    var c = constraintOf(req);
+    c.from = { file: null, rank: null };
+    c.to = { file: req.fromFile || null, rank: req.fromRank || null };
+    partialAsk = { req: req, c: c, want: want, chk: !!chk, mate: !!mate,
                    ply: api.moves.length };
     speak("I heard " + heardSoFar(req) + ". Say the " +
           (want === "target" ? "target"
@@ -556,62 +572,47 @@
   // tell the truth (v96) instead of "I didn't hear you".
   function partialAnswer(req2, transcripts) {
     if (!partialAsk || partialAsk.ply !== api.moves.length) return null;
-    var st = partialAsk.req;
-    var f = st.fromFile || req2.fromFile;
-    var r = st.fromRank || req2.fromRank;
-    var toSq = null, destF = null, destR = null, victim = null,
-        mover = null;
-    if (req2.squares.length) {
-      toSq = req2.squares[req2.squares.length - 1];
-    } else if (f && r) {
-      toSq = f + r;
-    } else if (req2.victim) {
-      victim = req2.victim;
-    } else if (partialAsk.want === "target" && req2.piece) {
-      // a bare piece name answers a capture question as
-      // the VICTIM, the v111 shorthand: "say the target"
-      // answered "rook" is queen takes rook
-      victim = req2.piece;
-    } else if (partialAsk.want === "target" && f) {
-      // a lone file names the destination file of the
-      // capture: "say the target" answered "alpha" keeps
-      // only captures landing on the a-file
-      destF = f;
-    } else if (req2.piece) {
-      // A BARE PIECE NAME NARROWS THE MOVER (w43), whatever
-      // was asked. Game w42-1 said "knight" into an open rank
-      // question at 16:52:21 and got nothing back at all - not
-      // even "that does not fit" - because a piece name only
-      // counted as an answer to "say the target", where it is
-      // the VICTIM. Everywhere else it fell out of this
-      // function as "not an answer", and a bare piece name has
-      // no move in it, so the utterance died at "Say again."
-      //
-      // v116 settled this for the yes/no question and v117 for
-      // the target question: two questions of the same kind
-      // must take the same answers. A rank question is one of
-      // them. The half the question already knows is carried
-      // in, or narrowing by mover would throw away the file
-      // that was asked about.
-      mover = req2.piece;
-      destF = st.fromFile;
-      destR = st.fromRank;
+    var st = partialAsk.c, want = partialAsk.want;
+    var ans = constraintOf(req2);
+    var c = { castle: null, piece: st.piece, victim: st.victim,
+              mustCapture: st.mustCapture || ans.mustCapture,
+              promotion: null, promoKw: false,
+              from: { file: st.from.file, rank: st.from.rank },
+              to:   { file: st.to.file,   rank: st.to.rank } };
+
+    // WHAT THE ANSWER SUPPLIES, in one place instead of six
+    // mutually exclusive branches. A whole square is the
+    // target; a lone half fills the hole the question left; a
+    // bare piece name is the VICTIM when the target is what was
+    // asked for (the v111 shorthand, "say the target" answered
+    // "rook") and the MOVER otherwise (w43). Anything with no
+    // usable content is not an answer at all and leaves the
+    // question standing, so stray noise cannot resolve it.
+    if (ans.to.file && ans.to.rank) {
+      c.to = { file: ans.to.file, rank: ans.to.rank };
+    } else if (ans.from.file && ans.from.rank) {
+      c.to = { file: ans.from.file, rank: ans.from.rank };
+    } else if (st.to.file && ans.from.rank) {
+      c.to.rank = ans.from.rank;                 // "say the rank"
+    } else if (st.to.rank && ans.from.file) {
+      c.to.file = ans.from.file;                 // "say the file"
+    } else if (ans.victim) {
+      c.victim = ans.victim;
+    } else if (want === "target" && ans.piece) {
+      c.victim = ans.piece;
+    } else if (want === "target" && ans.from.file) {
+      c.to.file = ans.from.file;
+    } else if (ans.piece) {
+      c.piece = ans.piece;
     } else {
       return null;
     }
+
+    var fits = api.pos.legalMoves().filter(function (m) {
+      return fitsConstraint(m, c);
+    });
     var chk = partialAsk.chk || transcripts.some(saysCheck);
     var mate = partialAsk.mate || transcripts.some(saysMate);
-    var legal = api.pos.legalMoves();
-    var fits = legal.filter(function (m) {
-      if (st.piece && m.piece !== st.piece) return false;
-      if ((st.capture || req2.capture) && !m.captured) return false;
-      if (victim && m.captured !== victim) return false;
-      if (mover && m.piece !== mover) return false;
-      if (toSq && RULES.sqName(m.to) !== toSq) return false;
-      if (destF && RULES.sqName(m.to)[0] !== destF) return false;
-      if (destR && RULES.sqName(m.to)[1] !== destR) return false;
-      return true;
-    });
     if (chk) {
       var c2 = fits.filter(function (m) {
         return /[+#]$/.test(api.pos.sanOf(m));
