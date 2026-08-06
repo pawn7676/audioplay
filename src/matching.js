@@ -1,96 +1,130 @@
   /*===================== MATCHING AND RANKING =====================*/
 
+  /* ONE FILTER, NO SPECIAL CASES. Every constraint is the same
+   * kind of thing: a half of a square, or a fact about a piece.
+   * Constraining where the mover came FROM is not a different
+   * sort of question from constraining where it went TO, which
+   * is the distinction w40 and w41 each had to be taught by
+   * hand, one capture form at a time. */
+  function fitsConstraint(m, c) {
+    var f = RULES.sqName(m.from), t = RULES.sqName(m.to);
+    if (c.piece && m.piece !== c.piece) return false;
+    if (c.victim && m.captured !== c.victim) return false;
+    if (c.mustCapture && !m.captured) return false;
+    if (c.from.file && f[0] !== c.from.file) return false;
+    if (c.from.rank && f[1] !== c.from.rank) return false;
+    if (c.to.file && t[0] !== c.to.file) return false;
+    if (c.to.rank && t[1] !== c.to.rank) return false;
+    return true;
+  }
+
+  /*======================== READINGS ==============================
+   *
+   *  ONE UTTERANCE, SEVERAL WAYS TO TAKE IT, in order of how
+   *  literally each follows the words. The first that finds a
+   *  move wins; every later one is a salvage that can only ever
+   *  turn nothing into something.
+   *
+   *  This exists because a constraint cannot hold an ambiguity
+   *  and the ambiguities are real. "echo five takes" means the
+   *  piece ON e5 takes - word order says so, and w40 made that
+   *  the rule. But if nothing on e5 can capture and something
+   *  can capture ONTO e5, the other reading is almost certainly
+   *  what was meant, and refusing it would be pedantry with a
+   *  cost. Before this, findMoves read a lone square as the
+   *  destination whatever the order, and the repair chain in
+   *  dialogue.js recovered the origin reading afterwards; the
+   *  two readings existed, but as a literal order of if-blocks
+   *  in a 600-line function, where nothing recorded which came
+   *  first or why, and moving one silently changed the grammar.
+   *
+   *  ORDER IS DATA HERE. It is this list, it is short, and the
+   *  reason for each entry is written beside it.
+   */
+  function readingsOf(req) {
+    var spoken = constraintOf(req);
+    var rs = [{ c: spoken, why: "as spoken" }];
+
+    // A LONE SQUARE BEFORE THE TAKE WORD: origin first, target
+    // second. "echo five takes" is the e5 piece capturing; but
+    // if e5 is theirs and ours can take it, they meant that.
+    if (req.squares.length === 1 && req.takeAt === 1) {
+      var asTarget = constraintOf(req);
+      asTarget.from = { file: null, rank: null };
+      asTarget.to = { file: req.squares[0][0], rank: req.squares[0][1] };
+      rs.push({ c: asTarget, why: "square read as the target" });
+    }
+
+    // A DANGLING HALF AFTER THE TAKE WORD is the target's -
+    // "queen takes delta" is a capture landing on the d-file.
+    // If none does, the queen being ON the d-file is the other
+    // way to hear it.
+    if (!req.squares.length && req.capture && req.fromFile &&
+        !req.fromBeforeTake) {
+      var asOrigin = constraintOf(req);
+      asOrigin.to = { file: null, rank: null };
+      asOrigin.from = { file: req.fromFile, rank: req.fromRank };
+      rs.push({ c: asOrigin, why: "file read as the origin" });
+    }
+    return rs;
+  }
+
   function findMoves(pos, req, ignoreStrict) {
+    var rs = readingsOf(req), i, found;
+    for (i = 0; i < rs.length; i++) {
+      found = movesFor(pos, rs[i].c, ignoreStrict);
+      if (found.length) {
+        if (i) log("CND", "reading: " + rs[i].why);
+        return found;
+      }
+    }
+    return [];
+  }
+
+  function movesFor(pos, c, ignoreStrict) {
     var legal = pos.legalMoves();
-    var out;
-    if (req.castle) {
+    if (c.castle) {
       return legal.filter(function (m) {
-        if (m.flags.indexOf("k") >= 0) return req.castle !== "q";
-        if (m.flags.indexOf("q") >= 0) return req.castle !== "k";
+        if (m.flags.indexOf("k") >= 0) return c.castle !== "q";
+        if (m.flags.indexOf("q") >= 0) return c.castle !== "k";
         return false;
       });
     }
-    // NAMING THE VICTIM INSTEAD OF THE SQUARE (v111):
-    // "queen takes queen", when there is only one way to do
-    // it, PLAYS AT ONCE. A yes/no on the unique case would
-    // cost more breath than saying the square, which is the
-    // whole point of the shorthand.
-    //
-    // Safe because it can only fire where nothing could be
-    // played before: a request with no square never reached
-    // past the line below, so no utterance that means
-    // something today changes meaning. It only converts
-    // "Say again" into a move.
-    //
-    // The filter is on m.captured, not on what stands on the
-    // destination, so en passant is included for free — the
-    // generator sets captured "p" on a move to an empty
-    // square.
-    //
-    // Ambiguity needs no special handling: two takeable
-    // queens, or two knights able to take the same rook,
-    // simply return two moves and reach the ordinary
-    // question. Uniqueness is counted over EVERY legal
-    // capture of that piece, so a mover lost off the front
-    // of the utterance cannot move the wrong piece — it can
-    // only turn one candidate into several, which asks.
-    //
-    // THE COST, ACCEPTED KNOWINGLY: this is the first form
-    // in the grammar that is also ordinary English. Thinking
-    // out loud on your own turn — "if queen takes queen,
-    // then..." — is now a move. The mover must be named to
-    // fire, which excludes "that takes the queen" and most
-    // conversational shapes, but not this one. Watch for it
-    // in the logs; if it ever fires unasked, requiring a
-    // check word or dropping the form entirely are both
-    // cheaper than a wrong move.
-    if (!req.squares.length && req.victim) {
-      return legal.filter(function (m) {
-        if (m.captured !== req.victim) return false;
-        if (req.piece && m.piece !== req.piece) return false;
-        if (req.fromFile && RULES.sqName(m.from)[0] !== req.fromFile) return false;
-        if (req.fromRank && RULES.sqName(m.from)[1] !== req.fromRank) return false;
-        return true;
-      });
-    }
-    if (!req.squares.length) return [];
-    var to = req.squares[req.squares.length - 1];
-    var from = req.squares.length > 1 ? req.squares[0] : null;
-    out = legal.filter(function (m) {
-      if (RULES.sqName(m.to) !== to) return false;
-      if (from && RULES.sqName(m.from) !== from) return false;
-      if (!from && req.fromFile && RULES.sqName(m.from)[0] !== req.fromFile) return false;
-      if (!from && req.fromRank && RULES.sqName(m.from)[1] !== req.fromRank) return false;
-      if (req.piece && m.piece !== req.piece) return false;
-      if (req.capture && !m.captured) return false;
-      return true;
-    });
+    if (constraintIsEmpty(c)) return [];
+    var out = legal.filter(function (m) { return fitsConstraint(m, c); });
+
     // A PAWN MOVE WITHOUT "TAKES" IS A PUSH. "charlie five"
     // and "pawn charlie five" mean exactly the same thing: a
-    // pawn stepping forward onto c5, never a diagonal
-    // capture onto it. To capture, say so: "bravo takes
-    // charlie five", naming the file when two pawns could.
+    // pawn stepping forward onto c5, never a diagonal capture
+    // onto it. To capture, say so: "bravo takes charlie five",
+    // naming the file when two pawns could. A bare square
+    // additionally rules out every piece, so "charlie five"
+    // can never be Nc5 either. This is the game6 rule and
+    // property_check.js generates it on every push.
     //
-    // A bare square additionally rules out every piece, so
-    // "charlie five" can never be Nc5 either.
-    //
-    // An explicit from-square ("bravo one charlie three") is
-    // a separate, fully spelled out form and stays exempt.
-    // ignoreStrict only works out what to suggest after a
-    // rejection.
-    if (!ignoreStrict && !from) {
-      if (!req.piece) {
+    // WHEN IT APPLIES, stated in the constraint's own terms: a
+    // whole DESTINATION square was given and the origin was
+    // not. "bravo one charlie three" names both ends and is a
+    // separate, fully spelled out form that stays exempt; so
+    // does anything that never pinned a destination at all -
+    // "takes queen", "queen takes delta", "echo five takes" -
+    // because there the bare-square reading is not on the
+    // table to be confused with. ignoreStrict only works out
+    // what to suggest after a rejection.
+    var toPinned = !!(c.to.file && c.to.rank);
+    var fromPinned = !!(c.from.file && c.from.rank);
+    if (!ignoreStrict && toPinned && !fromPinned) {
+      if (!c.piece) {
         out = out.filter(function (m) { return m.piece === "p"; });
       }
-      if (!req.capture) {
+      if (!c.mustCapture) {
         out = out.filter(function (m) {
           return m.piece !== "p" || !m.captured;
         });
       }
     }
     if (out.length && out.every(function (m) { return m.promotion; })) {
-      var want = (req.trailingPiece && req.trailingPiece !== "p")
-               ? req.trailingPiece : "q";
+      var want = (c.promotion && c.promotion !== "p") ? c.promotion : "q";
       var chosen = out.filter(function (m) { return m.promotion === want; });
       if (chosen.length) out = chosen;
     }
