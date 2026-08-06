@@ -520,3 +520,48 @@ the sentences that named the pawn and left out the victim. This one names
 the victim and leaves out the pawn. Both were refused for the same reason -
 a repair gated on the word most likely to be missing. When a repair exists
 BECAUSE the mic drops words, it must not require the word it drops.
+
+### w43
+
+ASK ABOUT THE HALF THAT ACTUALLY NARROWS. Game w42-1, 16:51:44: "takes
+delta" with Nxd5 and cxd5 on the board was answered "I heard takes delta.
+Say the rank." Both fits land on d5. The rank was never the missing half -
+the question had exactly one possible answer and could not tell the two
+moves apart. So "three" fit nothing, "four" fit nothing, "five" got back to
+where it started, and "knight" - said in the middle of it, and the actual
+answer - was ignored without a word. Four answers to a question that could
+not be answered.
+
+The missing half was the MOVER, and the question for that already existed:
+askPiece offers pieces by name and pawns by their file ("knight, or
+charlie") and takes either as the answer. It just was not reachable from
+here. The repair now counts before it asks - if every fit lands on the same
+square, it asks which piece; if the fits span squares, the rank still
+narrows and it still asks for the rank. One line of counting, and the
+question is the one with more than one answer.
+
+It improves w42's own case on the way past. "takes charlie" there had Qxc6
+and Rxc6, both on c6, and cost a rank, then a yes, then a no, then a yes.
+It is now one question and one word. The w42 test that asserted the old
+wording was rewritten rather than kept: the feature changed, so the test
+changed with it.
+
+Second hole from the same log, same incident: a bare piece name only
+counted as an answer to "say the target", where it means the VICTIM.
+Answering any other question with one fell out of partialAnswer as "not an
+answer", and a bare piece name has no move in it, so it died silently. v116
+settled this for the yes/no question and v117 for the target question; the
+rank question never got the same treatment. It does now, carrying the half
+already known so narrowing by mover does not throw away the file that was
+asked about.
+
+The rule this earned is about tests, not voice. Three of these tests failed
+on the first run for a reason that had nothing to do with the fix: a move
+played by an earlier test leaves practice's random reply on a 1600ms timer,
+and installing a position before it fires lets it land in the NEW one,
+bumping the ply and making every open question stale - both question types
+are ply-guarded. The first attempt was to sleep it off, which is the wrong
+shape: it makes every helper wait 1.7 seconds and still races. These tests
+set their own position, so the random opponent has no part in them; it is
+now switched off for the whole block. A test that shares mutable state with
+a timer is not slow, it is wrong.

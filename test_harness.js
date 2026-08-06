@@ -856,7 +856,28 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // actually spoken on. setBoard is used everywhere below
   // because practice's own random reply moves a piece and
   // flips the turn - see the note at the bishop test above.
-  function setBoard(fen) {
+  // PRACTICE'S RANDOM REPLY IS NOISE IN EVERY TEST BELOW, AND
+  // IT WAS CORRUPTING THEM. A test that plays a move leaves an
+  // opponent reply on a 1600ms timer (dialogue.js). Install a
+  // position before it fires and it lands in the NEW one: it
+  // moves a piece, bumps api.moves.length, and every open
+  // question goes instantly stale, because pieceAsk and
+  // partialAsk are both ply-guarded. The answer then comes back
+  // "ignored, not a move" and the test fails for a reason that
+  // has nothing to do with what it is testing. The comment on
+  // the bishop test above learned this the same way.
+  //
+  // Sleeping it off was the first attempt and it is the wrong
+  // shape: it makes every helper wait 1.7s and it still races.
+  // These tests set their own position, so the random opponent
+  // has no part in them at all - absorb the one already in
+  // flight, then stop scheduling more.
+  await sleep(1700);
+  heard();
+  vm.runInContext("dryOpponentReply = function () {};", sandbox);
+
+  async function setBoard(fen) {
+    heard();
     vm.runInContext(`
       dryRun = true; running = true;
       pending = null; confirmAction = null;
@@ -867,7 +888,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     heard();
   }
   async function onBoard(fen, utt, want, name) {
-    setBoard(fen);
+    await setBoard(fen);
     say(utt);
     await sleep(120);
     const out = heard().join(" | ");
@@ -892,7 +913,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 /no capture from the echo file/i);
 
   // TWO victims from one origin: ask, never guess
-  setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
+  await setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
   say("echo five takes");
   await sleep(120);
   const twoWays = heard().join(" | ");
@@ -935,7 +956,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // be the e-pawn or a piece on the e-file whose name the mic
   // ate, so both must be counted before anything is played.
   // Here Rxe7 and exf3 are both captures from the e-file.
-  setBoard("4k3/4p3/8/4R3/8/5n2/4P3/K7 w - - 0 1");
+  await setBoard("4k3/4p3/8/4R3/8/5n2/4P3/K7 w - - 0 1");
   say("echo takes");
   await sleep(120);
   const eFile = heard().join(" | ");
@@ -979,7 +1000,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // the half-square repair just refused to run without a
   // piece. Replayed as the game actually went, rather than
   // from a FEN, so the position is checkable against the log.
-  function setGame(ucis) {
+  async function setGame(ucis) {
+    heard();
     vm.runInContext(`
       dryRun = true; running = true;
       pending = null; confirmAction = null;
@@ -995,7 +1017,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                     "d1a4","c8a6","b4a5","g7g5","f4g5","c7c6","a1b1","f7f5",
                     "b1b6","f8h6","g5h6","h7f7"];
 
-  setGame(W41_GAME);
+  await setGame(W41_GAME);
   say("takes charlie");
   await sleep(120);
   const takesC = heard().join(" | ");
@@ -1005,22 +1027,22 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // there, and the rook is what was meant.
   check('"takes charlie" is heard at all now (' + takesC + ")",
         !/say again/i.test(takesC));
-  check("it asks for the missing half, naming what survived",
-        /I heard takes charlie\. Say the rank/i.test(takesC));
+  // w43 improved this case as well: Qxc6 and Rxc6 both land on
+  // c6, so the rank is not the missing half here either and it
+  // asks which piece. In the log this cost rank, then yes/no,
+  // then no, then yes. It is now one question and one word.
+  check("it names the movers, since both land on c6",
+        /I heard takes charlie 6/i.test(takesC) &&
+        /queen takes charlie 6/i.test(takesC) &&
+        /rook takes charlie 6/i.test(takesC));
   check("the lead is never \"undefined\"", !/undefined/i.test(takesC));
-  say("six");
+  say("rook");
   await sleep(120);
-  const six = heard().join(" | ");
-  check("the rank completes it (" + six + ")", /did you mean/i.test(six));
-  say("no");
-  await sleep(120);
-  say("yes");
-  await sleep(120);
-  check("and the rook capture from the log is reachable",
+  check("and one word plays the rook capture from the log",
         /rook takes charlie 6/i.test(heard().join(" | ")));
 
   // the form that DID work in the log still works, unchanged
-  setGame(W41_GAME);
+  await setGame(W41_GAME);
   say("rook takes charlie");
   await sleep(120);
   check("\"rook takes charlie\" still plays Rxc6 at once",
@@ -1038,13 +1060,63 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 "a named piece still leads with the piece");
   // and a dangling file with NO take word must stay inert: a
   // square with no piece named is a push, never a piece move
-  setGame(W41_GAME);
+  await setGame(W41_GAME);
   say("charlie");
   await sleep(120);
   const bareFile = heard().join(" | ");
   check("a bare file without \"takes\" is still not a move (" +
         bareFile + ")",
         !/did you mean/i.test(bareFile) && !/takes/i.test(bareFile));
+
+  // ---- w43: ask about the half that actually narrows ----
+  // Game w42-1, 16:51:44. "takes delta" with Nxd5 and cxd5 on
+  // the board asked for the RANK - and both fits land on d5,
+  // so the question had exactly one possible answer and could
+  // not discriminate. "three" and "four" fit nothing, "five"
+  // got back to where it started, and "knight" said in the
+  // middle of it was ignored entirely.
+  const W42_GAME = ["d2d4","b8a6","c2c4","d7d5","b1c3","e7e6"];
+
+  await setGame(W42_GAME);
+  say("takes delta");
+  await sleep(120);
+  const takesD = heard().join(" | ");
+  check("it no longer asks for a rank it already knows (" +
+        takesD + ")", !/say the rank/i.test(takesD));
+  check("it asks WHICH PIECE, offering the knight and the pawn",
+        /knight takes delta 5/i.test(takesD) &&
+        /charlie takes delta 5/i.test(takesD));
+  say("night");
+  await sleep(120);
+  check("and the piece answers it in one word",
+        /knight takes delta 5/i.test(heard().join(" | ")));
+
+  // the pawn is offered by its FILE, and answers by its file
+  await setGame(W42_GAME);
+  say("takes delta");
+  await sleep(120); heard();
+  say("charlie");
+  await sleep(120);
+  check("a file answers for the pawn that stands on it",
+        /charlie takes delta 5/i.test(heard().join(" | ")));
+
+  // REGRESSION: when the fits really do span ranks, the rank
+  // question is still the right one. Rxd7 and Nxd5 differ in
+  // destination, so "say the rank" narrows for real.
+  await onBoard("4k3/8/8/3n4/8/2Nb4/2P5/4K3 w - - 0 1", "takes delta",
+                /say the rank/i,
+                "fits spanning ranks still ask for the rank");
+  // and a piece name now answers THAT question too, instead of
+  // falling silently through it
+  say("night");
+  await sleep(120);
+  check("a piece name answers a rank question (w43)",
+        /knight takes delta 5/i.test(heard().join(" | ")));
+
+  // REGRESSION: a named piece with half a square is untouched
+  await onBoard("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1", "queen alpha",
+                /I heard queen alpha\. Say the rank/i,
+                "a named piece with half a square still asks the rank");
 
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);

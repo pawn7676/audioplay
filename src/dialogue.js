@@ -422,7 +422,8 @@
     var st = partialAsk.req;
     var f = st.fromFile || req2.fromFile;
     var r = st.fromRank || req2.fromRank;
-    var toSq = null, destF = null, destR = null, victim = null;
+    var toSq = null, destF = null, destR = null, victim = null,
+        mover = null;
     if (req2.squares.length) {
       toSq = req2.squares[req2.squares.length - 1];
     } else if (f && r) {
@@ -439,6 +440,25 @@
       // capture: "say the target" answered "alpha" keeps
       // only captures landing on the a-file
       destF = f;
+    } else if (req2.piece) {
+      // A BARE PIECE NAME NARROWS THE MOVER (w43), whatever
+      // was asked. Game w42-1 said "knight" into an open rank
+      // question at 16:52:21 and got nothing back at all - not
+      // even "that does not fit" - because a piece name only
+      // counted as an answer to "say the target", where it is
+      // the VICTIM. Everywhere else it fell out of this
+      // function as "not an answer", and a bare piece name has
+      // no move in it, so the utterance died at "Say again."
+      //
+      // v116 settled this for the yes/no question and v117 for
+      // the target question: two questions of the same kind
+      // must take the same answers. A rank question is one of
+      // them. The half the question already knows is carried
+      // in, or narrowing by mover would throw away the file
+      // that was asked about.
+      mover = req2.piece;
+      destF = st.fromFile;
+      destR = st.fromRank;
     } else {
       return null;
     }
@@ -449,6 +469,7 @@
       if (st.piece && m.piece !== st.piece) return false;
       if ((st.capture || req2.capture) && !m.captured) return false;
       if (victim && m.captured !== victim) return false;
+      if (mover && m.piece !== mover) return false;
       if (toSq && RULES.sqName(m.to) !== toSq) return false;
       if (destF && RULES.sqName(m.to)[0] !== destF) return false;
       if (destR && RULES.sqName(m.to)[1] !== destR) return false;
@@ -931,6 +952,52 @@
             }
             log("CND", "half-square repair: only " +
                 narrowed[0].san + " fits, asking");
+            pending = { cands: narrowed, idx: 0 };
+            askCandidate();
+            return;
+          }
+          // ASK FOR THE HALF THAT ACTUALLY NARROWS (w43).
+          // Game w42-1, 16:51:44: "takes delta" with Nxd5 and
+          // cxd5 on the board was answered "I heard takes
+          // delta. Say the rank." - and the rank was never
+          // the missing half. BOTH fits land on d5. The
+          // question could not discriminate, so "three" and
+          // "four" fit nothing, "five" only got back to where
+          // it started, and the owner said "knight" in the
+          // middle of it and was ignored. Three wasted
+          // answers to a question with one possible answer.
+          //
+          // What was missing was the MOVER, and there is
+          // already a question for that: askPiece offers the
+          // pieces by name and the pawns by their file
+          // ("knight, or charlie"), and takes either as the
+          // answer. So count first, and ask about whichever
+          // half still has more than one value.
+          var dests = {}, movers = {};
+          narrowed.forEach(function (c2) {
+            dests[RULES.sqName(c2.m.to)] = 1;
+            movers[c2.m.piece === "p" ? RULES.sqName(c2.m.from)[0]
+                                      : c2.m.piece] = 1;
+          });
+          var nDest = Object.keys(dests).length;
+          if (nDest === 1) {
+            var onlySq = Object.keys(dests)[0];
+            if (Object.keys(movers).length > 1) {
+              log("CND", "half-square: " + narrowed.map(function (c2) {
+                return c2.san;
+              }).join(",") + " all land on " + onlySq +
+                  ", asking which piece");
+              askPiece(narrowed.map(function (c2) { return c2.m; }),
+                       "I heard takes " + spokenSquare(onlySq) + ".",
+                       onlySq);
+              return;
+            }
+            // one square AND one mover, so the fits differ by
+            // something neither question can name - promotion
+            // choices are the case. Walk them as yes/no.
+            log("CND", "half-square: " + narrowed.map(function (c2) {
+              return c2.san;
+            }).join(",") + " differ only in promotion, asking");
             pending = { cands: narrowed, idx: 0 };
             askCandidate();
             return;
