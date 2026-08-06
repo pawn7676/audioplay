@@ -1138,6 +1138,74 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
                 /say the rank/i,
                 '"text delta" is heard as a capture (w44)');
 
+  // ---- PROPERTY: "I heard" never claims what was not said ----
+  // The unit-level properties live in property_check.js, which
+  // runs the parser and matcher over hundreds of thousands of
+  // generated utterances. Two invariants cannot be checked
+  // there because they are about what the page SAYS, not about
+  // which moves it finds, and saying things is the whole job:
+  //
+  //   1. every utterance with a content word in it gets an
+  //      answer (CLAUDE.md rule 5 - silence reads as "not
+  //      heard", never as "done")
+  //   2. an "I heard ..." lead repeats only what was spoken
+  //      (w44 - it is the one sentence that makes a claim about
+  //      the USER, and the owner is across the room with it as
+  //      his only evidence)
+  //
+  // Generated rather than listed, because w44 was a lie that a
+  // hand-written test asserted verbatim and therefore blessed.
+  const FILE_WORD = { a: "alpha", b: "bravo", c: "charlie", d: "delta",
+                      e: "echo", f: "foxtrot", g: "golf", h: "hotel" };
+  const RANK_WORD = { 1: "one", 2: "two", 3: "three", 4: "four",
+                      5: "five", 6: "six", 7: "seven", 8: "eight" };
+  const spokenForms = [];
+  Object.keys(FILE_WORD).forEach(f => {
+    spokenForms.push("takes " + FILE_WORD[f]);
+    spokenForms.push(FILE_WORD[f] + " takes");
+    spokenForms.push("queen " + FILE_WORD[f]);
+    spokenForms.push(FILE_WORD[f] + " five takes");
+  });
+  const boards = [
+    ["1.c4 d5 2.Nc3 a6", null, W42_GAME],
+    ["the w41 game at 16:32", null, W41_GAME]
+  ];
+  let heardClaims = 0, silences = 0, lies = 0, worst = "";
+  for (const [, , game] of boards) {
+    for (const utt of spokenForms) {
+      await setGame(game);
+      say(utt);
+      await sleep(60);
+      const out = heard().join(" | ");
+      if (!out) { silences++; worst = worst || ("silent on: " + utt); continue; }
+      const m = /I heard ([^.]*)\./i.exec(out);
+      if (!m) continue;
+      heardClaims++;
+      const lead = m[1].toLowerCase();
+      // a rank may only appear in the lead if a rank was said
+      const saidRank = Object.keys(RANK_WORD)
+        .some(r => utt.indexOf(RANK_WORD[r]) >= 0);
+      if (!saidRank && /[1-8]/.test(lead)) {
+        lies++;
+        worst = worst || ('said "' + utt + '" -> "I heard ' + m[1] + '"');
+      }
+      // and a file may only appear if that file was said
+      Object.keys(FILE_WORD).forEach(f => {
+        if (lead.indexOf(FILE_WORD[f]) >= 0 &&
+            utt.indexOf(FILE_WORD[f]) < 0) {
+          lies++;
+          worst = worst || ('said "' + utt + '" -> "I heard ' + m[1] + '"');
+        }
+      });
+    }
+  }
+  check("every utterance got an answer (" +
+        (spokenForms.length * boards.length) + " driven, " +
+        heardClaims + ' made an "I heard" claim)',
+        silences === 0);
+  check('no "I heard" claimed anything unsaid' +
+        (worst ? " (" + worst + ")" : ""), lies === 0);
+
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);
 })();

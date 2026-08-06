@@ -63,6 +63,8 @@ jobs:
         run: node test_harness.js
       - name: perft
         run: node perft_check.js
+      - name: properties
+        run: node property_check.js
 
       # Build into an empty directory rather than the checkout,
       # so whatever ships is exactly what build.js wrote and

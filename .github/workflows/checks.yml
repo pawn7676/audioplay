@@ -41,6 +41,19 @@ jobs:
       - name: perft
         run: node perft_check.js
 
+      # THE INVARIANTS, on utterances nobody chose. Random games
+      # supply the positions, the whole spoken grammar supplies
+      # the sentences, and rules that must hold whatever was said
+      # are checked against every combination. It guards the one
+      # thing the harness structurally cannot: a sentence nobody
+      # thought to write a test for, quietly becoming a move.
+      #
+      # 150 positions is ~56k utterances in four seconds. The
+      # count is an argument, so raise it when the grammar grows:
+      # "node property_check.js 900" is 340k in twenty.
+      - name: properties
+        run: node property_check.js
+
       # The page itself is NOT checked here any more, because
       # there is nothing left to check: index.html is no
       # longer committed. deploy.yml builds it on the way to
