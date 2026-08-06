@@ -15,9 +15,10 @@ you are about to touch. **The comments are the
 documentation**; there is no wiki. The one exception is the
 w-series history, which is a changelog rather than reasoning
 next to code: it lives in `HISTORY.md` at the repo root.
-`frozen-userscript/us-header.js` is also binding: its
-platform findings and closed cases did not freeze with the
-code they were learned in.
+`frozen-userscript/us-header.js` is NOT binding any more —
+everything still live moved into `src/`, and what is
+left there describes the frozen userscript. Read it for why
+something happened, never for what to do now.
 
 ## Commands
 
@@ -66,9 +67,11 @@ page in a browser; the output is scratch.
 - `HISTORY.md` — the w-series history, one entry per bump.
 - `.github/workflows/checks.yml` — the checks GitHub runs.
 - `frozen-userscript/` — the userscript, frozen at v137,
-  kept as a working fallback. Do not edit, do not build,
-  do not "fix". `test_harness.js` checks the artifact's
-  sha against `userscript-frozen.sha256`.
+  kept as a working fallback. Do not build, do not "fix".
+  `test_harness.js` checks the ARTIFACT's sha against
+  `userscript-frozen.sha256`; the sources beside it are not
+  guarded, which is how `us-header.js` could be marked as
+  history without breaking anything.
 - `reference/` — the retired w19 site. Salvage only.
 
 ## Rules that are not style preferences

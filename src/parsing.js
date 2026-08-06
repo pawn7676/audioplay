@@ -1,5 +1,98 @@
   /*=========================== PARSING ============================*/
 
+  /*===================== THE SPOKEN GRAMMAR =======================
+   *
+   *  WHAT CAN BE SAID, and what it means. Moved here from
+   *  us-header.js when that file was demoted to history.
+   *  It is the frozen
+   *  userscript's front door and its copy had drifted five
+   *  versions behind: it describes no capture form w40 to
+   *  w45 added. The grammar belongs beside the parser that
+   *  implements it, where changing one is changing the
+   *  other in the same diff.
+   *
+   *  SPEAKING MOVES
+   *    "echo four"                a pawn to e4
+   *    "knight takes delta five"  Nxd5
+   *    "castle kingside"          also "short"/"long"
+   *    "echo eight equals knight" promotion
+   *    "bravo one charlie three"  from-square, to-square
+   *
+   *  A BARE SQUARE IS ALWAYS A PAWN PUSH. "foxtrot three"
+   *  is f3 - never Nf3, never a capture onto f3. Say "pawn
+   *  foxtrot three" or "push foxtrot three" to rule out the
+   *  piece name having been lost by the mic. This is the
+   *  oldest rule here and the most expensive one: game6
+   *  played a pawn capture that was meant as a queen
+   *  capture, unasked, and lost. property_check.js
+   *  generates it on every push.
+   *
+   *  CAPTURES ALWAYS NEED A TAKE WORD. Past that, name
+   *  whichever half of the move you have:
+   *    "foxtrot takes golf five"  from-file, then target
+   *    "takes golf five"          target square only
+   *    "queen takes queen"        the victim, not a square
+   *    "echo five takes"          the ORIGIN only      (w40)
+   *    "echo takes"               the origin FILE only (w40)
+   *    "charlie takes delta"      file to file         (w41)
+   *    "takes delta"              target file only     (w42)
+   *
+   *  WORD ORDER IS WHAT SEPARATES THEM, and it costs
+   *  nothing because it is already in the sentence: what
+   *  comes BEFORE the take word is the mover, what comes
+   *  AFTER it is the prey. That is the whole discriminator
+   *  between "echo five takes" and "takes echo five", and
+   *  why either can be said without ambiguity.
+   *
+   *  WHAT PLAYS AND WHAT ASKS. A short form plays at once
+   *  when exactly one legal move fits everything heard, and
+   *  uniqueness is always counted over EVERY legal move -
+   *  pawns and pieces alike - so a mover lost off the front
+   *  of the utterance can only turn one candidate into
+   *  several, which asks. It can never pick the wrong
+   *  piece. Several fits ask about whichever half still has
+   *  more than one value: the target if the movers agree,
+   *  the mover if the targets do.
+   *
+   *  THE SAFEGUARDS, each earned:
+   *    - if a PIECE could also reach a bare square, it is
+   *      confirmed as a pawn move first, in case the piece
+   *      name was eaten. "pawn foxtrot three" skips the
+   *      question, and so does naming a promotion, since
+   *      only a pawn can promote.
+   *    - the same guard covers a bare "takes".
+   *    - naming the from-file skips it, as the grammar has
+   *      always asked.
+   *
+   *  SAYING "CHECK" as part of the move narrows the fits -
+   *  "rook takes echo three check" rules out anything that
+   *  does not give check. Said on its own a moment later it
+   *  is a word with no move in it and is ignored, like any
+   *  other stray talk.
+   *
+   *  SINGLE LETTERS work as well as NATO words and are
+   *  sometimes clearer: "A four" is "alpha four", "B takes
+   *  charlie five" is "bravo takes charlie five". Mix them
+   *  freely.
+   *
+   *  IF THE FIRST WORD KEEPS GETTING LOST, start with one
+   *  that does not matter and let it absorb the loss:
+   *  "move", "play", "please", "okay", "um" are ignored.
+   *
+   *  COMMANDS: "repeat" (or "say again"), "clock" (or
+   *  "time"), "flip clock", "cancel", "memo ...".
+   *  QUESTIONS: "whose turn", "what is on foxtrot three",
+   *  "where are the knights", and the like.
+   *
+   *  STRAY TALK. The mic is open all game, so everything
+   *  said in the room reaches it. Anything with no move in
+   *  it is ignored silently while the opponent is thinking,
+   *  and only logged. A real move spoken at the wrong
+   *  moment still gets an answer: a mistimed move is never
+   *  swallowed without a word.
+   *================================================================*/
+
+
   /* Safari mangles words the homophone lists cannot all anticipate
    * ("foxtrott", "delter", "charlies"). As a LAST resort, accept a
    * token that is one edit away from exactly one vocabulary word.
