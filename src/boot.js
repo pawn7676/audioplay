@@ -26,8 +26,16 @@
 
   function repaintTick() {
     renderPageClocks();
+    // myColor and pos joined the fingerprint at w60. Joining a
+    // game as black changed neither gameId (already consumed by
+    // the join tick) nor moves.length (still 0), so the glance
+    // board sat white-side-up - directly after the page SAID
+    // "you are black" - until the first move bumped the count.
+    // The board's whole job is confirming the pipeline and
+    // Lichess agree; orientation is part of what it confirms.
     var now = [api.gameId, api.moves.length, api.over,
-               api.myName, !!seekAbort, running, dryRun].join("|");
+               api.myName, !!seekAbort, running, dryRun,
+               api.myColor, !!api.pos].join("|");
     if (now !== paintedState) {
       paintedState = now;
       uiGameChanged();
