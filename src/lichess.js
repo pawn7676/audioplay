@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w61";
+  VERSION = "w62";
 
   var RULES = makeRules();
 
@@ -91,6 +91,12 @@
 
   function saveToken(t) {
     cachedToken = t;
+    authGone = false;   /* w62: a NEW token re-arms the reconnects.
+                           Today this only matters because sign-in
+                           navigates away and back (fresh closure),
+                           but nothing SAID the reset relied on
+                           navigation, and an in-page refresh would
+                           have inherited a stuck-true latch. */
     try { localStorage.setItem(TOKEN_KEY, t); } catch (e) {}
     log("API", "token saved in this browser");
   }
@@ -596,6 +602,10 @@
         if (!r.ok) throw new Error("stream HTTP " + r.status);
         if (!r.body || !r.body.getReader) throw new Error("no streaming body");
         streamFails = 0;          /* it opened: the ladder resets */
+        stopPolling();            /* w62: one transport at a time - a
+                                     transient body-less response must
+                                     not leave stream and poll racing
+                                     each other forever */
         var reader = r.body.getReader();
         var dec = new TextDecoder();
         var buf = "";
@@ -713,13 +723,35 @@
    * of a game is inferred from the game leaving the list.
    */
 
+  /* THE POLL IS THE WHOLE FALLBACK NOW, NOT HALF OF ONE (w62).
+   * w52 repaired this path's arithmetic and never asked whether
+   * it could be REACHED: gameStart arrives on the account event
+   * stream, which needs the same streaming body these browsers
+   * lack - so the fallback could FOLLOW a game that existed at
+   * sign-in and could never START one, and startSeek's promise
+   * that "the game arrives on the event stream anyway" was
+   * false in exactly the browsers it was written for. A lodged
+   * seek meant an opponent's clock running against a silent
+   * page.
+   *
+   * So pollOnce now has two jobs, split on whether a game is
+   * live: FOLLOW it (the w52 path, repaired again below), or
+   * DISCOVER one - the most urgent entry in nowPlaying that we
+   * are not already in becomes a join. watchEvents hands over
+   * to polling when it has no streaming body, the same way
+   * startStream always has. */
   var pollTimer = null;
-  var pollSeen = false;      // has this game ever appeared in the list?
+  var pollSeen = false;      // has THIS game appeared in the list?
+                             // (reset per game, in joinGame - a
+                             // re-entry into polling for the same
+                             // game must not forget it saw it)
+  var pollMisses = 0;        // consecutive ticks the game was gone
+  var pollFails = 0;         // consecutive failed requests
+  var pollSkip = 0;
 
   function startPolling() {
+    if (pollTimer) return;   // already the fallback; keep cadence
     log("NET", "falling back to polling /api/account/playing");
-    clearInterval(pollTimer);
-    pollSeen = false;
     pollTimer = setInterval(pollOnce, 1500);
     pollOnce();
   }
@@ -730,28 +762,68 @@
   }
 
   function pollOnce() {
-    if (!running || api.over || dryRun) return;
-    apiGet("/api/account/playing?nb=10").then(function (d) {
+    /* NOT GATED ON THE MIC (w62) - the same fault w50 removed
+     * from scheduleReconnect was still here, four functions
+     * down: voice off froze the poll, so moves, clocks and the
+     * game-over inference all stopped, and a game that ended
+     * during voice-off was missed forever. Listening and being
+     * connected are different things, in this transport too. */
+    if (dryRun) return;
+    /* the ladder, poll-shaped (w62): with the network gone this
+     * fired every 1.5s indefinitely. After four straight
+     * failures, only every eighth tick goes out (~12s); one
+     * success restores full cadence. */
+    if (pollFails >= 4) {
+      pollSkip++;
+      if (pollSkip % 8 !== 0) return;
+    }
+    var forGame = api.gameId;   // w62: bail if the world changes
+                                // while the request is in flight
+    apiGet("/api/account/playing?nb=50").then(function (d) {
+      pollFails = 0;
+      /* THE WORLD MAY HAVE CHANGED UNDER THE REQUEST (w62).
+       * Practice tapped, sign-out, or a join while this was in
+       * flight: the landing response describes a game that is
+       * no longer the question, and acting on it spoke a false
+       * "game over" straight after "Practice mode." and killed
+       * the practice game. */
+      if (dryRun || api.gameId !== forGame) return;
+      var live = api.gameId && api.gameId !== "PRACTICE" && !api.over;
+
+      if (!live) {
+        /* DISCOVERY (w62): no live game, so the most urgent
+         * ongoing game IS the news. This is how a poll-only
+         * browser ever starts a game: the seek or challenge is
+         * lodged, the opponent arrives, and the game appears
+         * here. nb=50 is the endpoint's maximum - at the old
+         * nb=10 a correspondence account's live game could rank
+         * off the page and read as nonexistent. */
+        var g2 = (d.nowPlaying || [])[0];
+        var gid2 = g2 && (g2.gameId ||
+                          (g2.fullId || "").slice(0, 8));
+        if (gid2 && gid2 !== api.gameId) joinGame(gid2);
+        return;
+      }
+
       var g = (d.nowPlaying || []).filter(function (x) {
         return x.gameId === api.gameId || (x.fullId || "").indexOf(api.gameId) === 0;
       })[0];
       if (!g) {
-        /* THE GAME LEFT THE LIST OF ONGOING GAMES, so it is
-         * over - and this used to `return` here, silently,
-         * every 1.5 seconds, forever. In poll mode the game
-         * simply ended and the page never said so: no result,
-         * no "game over", no end to the polling. The account
-         * event stream cannot rescue it either, because a
-         * browser with no streaming body fails watchEvents for
-         * exactly the same reason it fell back to polling.
-         *
-         * The endpoint gives no status, so the result cannot be
-         * named and the sentence says so rather than guessing.
-         * pollSeen guards the first tick, where the game may
-         * not have appeared yet. */
+        /* The game left the list of ongoing games, so it is
+         * over. The endpoint gives no status, so the sentence
+         * does not guess a result. TWO consecutive missing
+         * ticks are required (w62): the old one-shot inference
+         * was irreversible, and a single anomalous response -
+         * load-shedding, a stale cache - permanently ended a
+         * live game. At 1.5s cadence the announcement still
+         * lands within ~5 seconds. Polling continues afterwards
+         * for DISCOVERY of the next game; it used to stop here,
+         * which in a poll-only browser made the first game the
+         * last. */
         if (pollSeen && !api.over) {
+          pollMisses++;
+          if (pollMisses < 2) return;
           api.over = true;
-          stopPolling();
           clearDialogue();
           log("API", "game gone from nowPlaying - treating it as over");
           speak("game over. check lichess for the result.");
@@ -760,11 +832,27 @@
         return;
       }
       pollSeen = true;
+      pollMisses = 0;
       if (!api.myColor) {
+        /* FIRST SIGHTING LOADS THE REAL POSITION (w62). This
+         * built the START position and replayed only lastMove -
+         * so joining mid-game (the COMMON poll case: a reload,
+         * or connectAccount finding a game in progress), a
+         * lastMove that happened to be legal from the start
+         * position applied cleanly and the page silently held a
+         * one-ply board against a thirty-move game. Every
+         * refusal and every candidate match then ran against
+         * the wrong board, for a user who cannot cross-check.
+         * The endpoint's fen is FULL - side to move, castling,
+         * ep, the lot - so load it and say whose move it is,
+         * exactly as handleGameFull does. */
         api.myColor = g.color === "white" ? "w" : "b";
         api.pos = new RULES.Position();
+        if (g.fen) api.pos.load(g.fen);
+        api.moves = [];
         speak((everConnected ? "reconnected" : "connected") +
-              ". You are " + g.color + ".");
+              ". You are " + g.color + ". " +
+              colorWord(api.pos.turn) + " to move.");
         everConnected = true;
       }
       /* poll gives fen + lastMove only; replay lastMove onto our
@@ -784,48 +872,44 @@
             readBackMine(res.san, g.lastMove, true);
           log("MOV", "poll " + g.lastMove + " = " + res.san);
         } else {
-          /* RELOAD, THEN REMEMBER THAT WE DID. The reload alone
-           * left api.moves untouched, so the very next tick
-           * compared the same stale tail against the same
-           * lastMove, failed to apply it again - it is already
-           * inside the fen we just loaded - and reloaded once
-           * more, every 1.5 seconds until a new move arrived.
-           * The uci is pushed so the comparison moves on and
-           * the ply guards keep counting; the list is a
+          /* RELOAD, THEN REMEMBER THAT WE DID: the uci is
+           * pushed so the next tick's comparison moves on (w52)
+           * and the ply guards keep counting; the list is a
            * position marker in poll mode, not a game record.
            *
-           * The castling field is a FABRICATION and is the one
-           * thing here that cannot be got right: rights depend
-           * on history this endpoint does not send. KQkq is the
-           * permissive choice on purpose - if it grants a
-           * castle that is no longer legal, the move is offered,
-           * said, and REFUSED BY LICHESS out loud, which the
-           * user hears and can act on. The strict choice would
-           * silently refuse a castle that is perfectly legal,
-           * with nothing to explain it. */
-          log("ERR", "poll desync on " + g.lastMove +
-              "; reloading from fen (castling rights are a guess)");
-          api.pos.load(g.fen + " " + (g.isMyTurn
-            ? (api.myColor === "w" ? "w" : "b")
-            : (api.myColor === "w" ? "b" : "w")) + " KQkq - 0 1");
+           * The fen is loaded WHOLE (w62). w52 appended a
+           * fabricated turn and "KQkq" here and reasoned at
+           * length about permissive castling rights - and the
+           * reasoning was wrong twice over: the endpoint sends
+           * a FULL fen, rights and all, and Position.load reads
+           * fields from the front and ignored the appended
+           * fabrication entirely. The code was accidentally
+           * better than its comment, purely because load()
+           * tolerates trailing junk. See the w62 HISTORY entry,
+           * which corrects w52's claim. */
+          log("ERR", "poll desync on " + g.lastMove + "; reloading from fen");
+          api.pos.load(g.fen);
           api.moves.push(g.lastMove);
           armedUci = null;          /* it named the old position */
         }
       }
       /* secondsLeft IS THE ACCOUNT HOLDER'S CLOCK, not white's.
-       * This assigned it to api.wtime whatever colour we were,
-       * so playing black you were shown the opponent's time as
-       * your own - and api.btime was never set at all, so the
-       * other side read "--" on the overlay and "unknown" when
-       * you asked. Half of that is unavoidable: the endpoint
-       * does not carry the opponent's clock. Putting our own on
-       * the right side is not. */
+       * The other side is unknowable from this endpoint and
+       * stays null - "unknown" is the honest answer (w52). */
       if (g.secondsLeft != null) {
         if (api.myColor === "w") api.wtime = g.secondsLeft * 1000;
         else api.btime = g.secondsLeft * 1000;
         api.clockAt = Date.now();
       }
-    }).catch(function (e) { log("ERR", "poll: " + e.message); });
+    }).catch(function (e) {
+      pollFails++;
+      /* A REVOKED TOKEN IN POLL MODE (w62): the exact failure
+       * w52 cured for the streams - a 401 every tick, forever,
+       * telling the user nothing - was untouched in the one
+       * transport that has no stream. Same sentence, same halt. */
+      if (noteAuthFailure(e)) { stopPolling(); return; }
+      log("ERR", "poll: " + e.message);
+    });
   }
 
   // The userscript read the game id from the lichess.org
@@ -847,10 +931,16 @@
     fetch(LICHESS_BASE + "/api/stream/event", opts)
       .then(function (r) {
         if (!r.ok) throw new Error("event stream HTTP " + r.status);
-        eventFails = 0;           /* it opened: the ladder resets */
         if (!r.body || !r.body.getReader) {
           throw new Error("no streaming body");
         }
+        /* AFTER the body check (w62). It sat before it, the
+         * opposite order from startStream, so a no-body browser
+         * reset the ladder every attempt and retried flat at 3s
+         * forever - the battery shape the ladder was built to
+         * remove. Moot on this path now (no body hands over to
+         * polling below), kept right for every other error. */
+        eventFails = 0;
         var reader = r.body.getReader();
         var dec = new TextDecoder();
         var buf = "";
@@ -878,6 +968,16 @@
       .catch(function (e) {
         if (String(e.name) === "AbortError") return;
         log("ERR", "event stream: " + e.message);
+        /* NO STREAMING BODY MEANS THE POLL IS THE ACCOUNT
+         * FALLBACK TOO (w62). This used to reconnect forever -
+         * fail, wait, fail - in a browser that can never hold
+         * the stream open, and gameStart simply never arrived:
+         * the fallback could follow a game and never start one.
+         * pollOnce's discovery branch is the replacement. */
+        if (String(e.message).indexOf("no streaming body") >= 0) {
+          startPolling();
+          return;
+        }
         if (!noteAuthFailure(e)) scheduleEventReconnect();
       });
   }
@@ -965,6 +1065,10 @@
     api.over = false;
     offerState = { draw: false, takeback: false };
     oppGone = false; claimAsked = false;   /* w61 */
+    pollSeen = false; pollMisses = 0;      /* w62: per-game, so a
+                                              re-entry into polling
+                                              cannot inherit the last
+                                              game's sighting */
     // and the questions from whatever game came before this
     // one. api.moves going empty makes every ply guard read
     // "current" again, so the two ply-guarded asks would
@@ -1066,12 +1170,19 @@
       // LODGED (Lichess has the POST); we simply cannot hold it
       // open or watch it, so say what is true rather than
       // throwing on r.body and reporting "Seek failed" for a
-      // seek that is sitting in the pool right now. The game
-      // arrives on the event stream either way.
+      // seek that is sitting in the pool right now.
+      //
+      // w52 ended this comment "the game arrives on the event
+      // stream either way" - FALSE in exactly this browser,
+      // which cannot hold the event stream open either. The
+      // game arrives via pollOnce's discovery branch now
+      // (w62), which is started below so a match is actually
+      // noticed rather than promised.
       if (!r.body || !r.body.getReader) {
         seekAbort = null;
         log("NET", "seek posted, but this browser cannot hold it open");
         uiStatus("Seek sent. Waiting for a game.");
+        startPolling();           /* w62: the watcher, not a hope */
         uiGameChanged();
         return;
       }

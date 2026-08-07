@@ -1578,3 +1578,71 @@ All five mutation-tested. Still unreachable by the harness: a real
 human taking real seconds to accept - the twenty-second expiry can
 only truly be confirmed by challenging one.
 
+
+### w62
+
+THE POLL BECOMES A WHOLE FALLBACK, AND w52 GETS ITS CORRECTIONS. Third
+batch from the targeted review (111-123), all one subsystem. w52 repaired
+this path's arithmetic and never asked whether the path could be REACHED -
+and it could not, not for the case that matters. gameStart arrives on the
+account event stream, which needs the same streaming body these browsers
+lack. So the fallback could FOLLOW a game that existed at sign-in and could
+never START one: the seek was lodged, the opponent's clock ran, and
+startSeek's own comment promised "the game arrives on the event stream
+either way" - false in exactly the browsers the sentence was written for.
+
+POLLING NOW DISCOVERS AS WELL AS FOLLOWS. With no live game, the most
+urgent entry in nowPlaying becomes a join; watchEvents hands over to the
+poll when it has no streaming body, the way startStream always has; the
+seek's no-body path starts the watcher instead of promising one. And the
+poll no longer stops when a game ends - in a poll-only browser that made
+the first game the last, with nothing left to notice the next one.
+
+THE MID-GAME JOIN WAS SILENTLY WRONG. First sighting built the START
+position and replayed one move, so joining a game in progress - the COMMON
+poll case, a reload mid-game - with a lastMove that happened to be legal
+from the start position left the page holding a one-ply board against a
+thirty-move game, refusing and matching against squares that held nothing.
+The endpoint's fen is full; it is loaded, and the join says whose move it
+is, exactly as the stream join does.
+
+w50'S MIC-GATE LESSON, APPLIED A THIRD TIME. pollOnce still gated on
+`running`, four functions below the long comment explaining why
+scheduleReconnect must not - so voice off froze moves, clocks, and the
+game-over inference, and a game that ended during voice-off was missed
+forever once startPolling's pollSeen reset met ui's voice-on reconnect.
+The gate is gone and pollSeen is per-game state now, reset in joinGame
+beside everything else per-game.
+
+AND THE REST OF THE CLUSTER: a revoked token in poll mode 401'd every 1.5
+seconds forever, telling the user nothing - the exact disease w52 cured
+for the streams, untouched in the one transport with no stream; it now
+speaks the same sentence and halts. The game-over inference takes TWO
+consecutive missing ticks instead of one irreversible reading. A response
+landing after practice was tapped could join its stale game INTO practice
+through the new discovery branch - the mutation test for this one is worth
+reading, because the first version of the test used an empty response and
+proved nothing. nb=50, the endpoint's maximum, so a correspondence
+account's live game cannot rank off the page and read as nonexistent. Four
+straight failures stretch the cadence eightfold; one success restores it.
+eventFails resets after the body check, not before. A stream that opens
+takes the poll down with it, so one transient body-less response cannot
+leave two transports racing forever. And a fresh token re-arms authGone,
+which until now relied - undocumented - on sign-in navigating away.
+
+THE w52 CORRECTION, owed by convention: that entry says the desync
+reload's castling rights "depend on history this endpoint does not send"
+and defends KQkq as the permissive fabrication. Both halves are wrong. The
+endpoint sends a FULL fen - rights, ep, turn, the lot (doc-verified) - and
+Position.load reads fields from the front, so the fabricated tokens
+appended after a full fen were IGNORED and the real rights were in use all
+along. The code was accidentally better than its comment, purely because
+load() tolerates trailing junk. The reload now loads the fen whole and the
+reasoning is gone. w52's entry stays as written - the mistakes are the
+record - and this one is the correction beside it.
+
+Eight fixes mutation-tested, including the sharpened race test above. The
+whole cluster remains provable only down to the harness's stubs: no real
+browser without a streaming body has ever run this page, and until one
+does, this is the best that reading and simulation can do.
+
