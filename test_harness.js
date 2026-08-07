@@ -2163,13 +2163,77 @@ const sleep = ms =>
   // still carries Lichess's reason, without the blitz hint
   vm.runInContext("seekAbort = null; startSeek(15, 10, false);", sandbox);
   await sleep(60);
-  check("a rapid refusal gets the server's reason, no blitz hint (" +
+  // w74: the "and no blitz hint" half of this check went with
+  // the hint itself. Deleting a branch makes any assertion that
+  // it is ABSENT trivially true, which is a test that passes
+  // for the wrong reason - so what is left is the claim that
+  // still means something: a refusal Lichess DID send carries
+  // Lichess's own words.
+  check("a rapid refusal carries the server's own reason (" +
         seekLine() + ")",
-        /Invalid time control/.test(seekLine()) &&
-        !/challenge someone instead/i.test(seekLine()));
+        /Invalid time control/.test(seekLine()));
   check("which did reach the network",
         vm.runInContext("__gateFetches", sandbox) === 1);
   vm.runInContext("fetch = __realFetch5; seekAbort = null;", sandbox);
+
+  // ---- w74: an incoming too-fast challenge is DECLINED ----
+  // The hole w71 left. This page never accepts a challenge
+  // itself, so by the time gameStart lands with
+  // compat.board:false there is a live game it can only walk
+  // away from. Declining is the last point it can be stopped.
+  vm.runInContext(`
+    __realFetch6 = fetch; __declines = [];
+    fetch = function (url, opts) {
+      __declines.push({ url: String(url),
+                        body: String((opts && opts.body) || "") });
+      return Promise.resolve({ ok: true, status: 200,
+        text: function () { return Promise.resolve("{}"); },
+        json: function () { return Promise.resolve({}); } });
+    };
+    dryRun = false; api.myId = "me"; api.gameId = null;
+    handleAccountEvent({ type: "challenge", challenge: {
+      id: "BULLET1", challenger: { id: "someone", name: "someone" },
+      timeControl: { type: "clock", limit: 120, increment: 1,
+                     show: "2+1" } } });
+  `, sandbox);
+  await sleep(60);
+  const declined = vm.runInContext("__declines", sandbox);
+  check("a 2+1 challenge is declined, not just announced (" +
+        (declined.length ? declined[0].url : "no request") + ")",
+        declined.length === 1 &&
+        /\/api\/challenge\/BULLET1\/decline/.test(declined[0].url));
+  check("with Lichess's own tooFast reason, so they are told why",
+        /reason=tooFast/.test(declined[0].body));
+  check("and it is SAID, not only shown (" + heard().join(" | ") + ")",
+        /too fast/i.test(vm.runInContext(
+          'document.getElementById("lichessLine").textContent', sandbox)));
+
+  // a BLITZ challenge is legal for the Board API and must
+  // survive - this is the line the decline must not cross
+  vm.runInContext(`
+    __declines = [];
+    handleAccountEvent({ type: "challenge", challenge: {
+      id: "BLITZ1", challenger: { id: "someone", name: "someone" },
+      timeControl: { type: "clock", limit: 300, increment: 0,
+                     show: "5+0" } } });
+  `, sandbox);
+  await sleep(60);
+  check("a 5+0 challenge is left alone - blitz is playable here",
+        vm.runInContext("__declines.length", sandbox) === 0 &&
+        /accept it on lichess/i.test(vm.runInContext(
+          'document.getElementById("lichessLine").textContent', sandbox)));
+  // and a clockless challenge has no speed to be wrong about
+  vm.runInContext(`
+    __declines = [];
+    handleAccountEvent({ type: "challenge", challenge: {
+      id: "CORR1", challenger: { id: "someone", name: "someone" },
+      timeControl: { type: "correspondence", daysPerTurn: 2 } } });
+  `, sandbox);
+  await sleep(60);
+  check("a correspondence challenge is left alone too",
+        vm.runInContext("__declines.length", sandbox) === 0);
+  vm.runInContext("fetch = __realFetch6;", sandbox);
+  heard();
 
   // 94: an opponent who leaves is heard about, once, and the
   // claim window becomes a question

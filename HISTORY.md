@@ -2180,6 +2180,10 @@ as one string - a rule drifting outside the query would otherwise
 still match. Two mutations: order:-1 deleted (the far bar quietly
 stays below, exactly the bug being fixed) and the whole query deleted.
 
+CLOSED AT w74 - BOTH OF THEM. Left here as written because the
+first one's answer came from the owner reading it and asking the
+obvious question nobody had asked:
+
 STILL OPEN AFTER w73, written down here because both were found in
 conversation and neither is in the code's own comments:
 
@@ -2209,4 +2213,53 @@ conversation and neither is in the code's own comments:
 Also unverified on the device at the time of writing: w73's portrait
 split (iPhone), and whether w72's 2.4rem clock digits read right at
 arm's length. w56's rule applies to the second - measure before
-retuning.
+retuning. BOTH VERIFIED GOOD by the owner the same evening: the
+portrait clocks separate correctly, and the digits read at the right
+size. Neither needs retuning.
+
+### w74
+
+BOTH OPEN ITEMS CLOSED, and the first one closed better than the note
+proposing it did, because the owner asked the question the note had
+not: "if someone sends in a challenge for a bullet game, it should
+just simply not be accepted, right?"
+
+DECLINE IT BEFORE IT IS A GAME. The w73 note framed this as cleanup -
+abort or resign the unplayable game that arrives - and flagged it as
+the owner's call because ending a game is not a thing to slip in.
+That framing was working one step too late. This page NEVER accepts a
+challenge itself; it says "accept it on Lichess or with the app". So
+the sequence is: challenge arrives, you accept it elsewhere, gameStart
+lands with compat.board:false, and a live game with a running clock is
+now something this page can only walk away from. THE CHALLENGE is
+where it can still be stopped, and Lichess has a decline reason called
+tooFast, so the challenger is told exactly why instead of being left
+to time out. No game is created, so there is nothing to abort and no
+judgement call to make.
+
+The other route to an unplayable game - starting one yourself in the
+Lichess app - is left exactly as it was, and now on purpose rather
+than by omission: that was a choice made in another app, and aborting
+a game someone deliberately started is not this page's business. It
+still says so out loud.
+
+The floor is PLAY_FLOOR_S, not the seek floor: a blitz challenge is
+legal for the Board API and must survive. A clockless challenge has no
+speed to be wrong about. Both have tests, because "declines the wrong
+thing" is the failure that would cost a real game the owner wanted.
+
+THE DEAD w61 HINT IS DELETED. It became unreachable at w71 and its
+existence was defended as "correct if the gate is ever loosened" -
+which is precisely the reasoning that leaves two copies of a constant
+to disagree. The floors are now named once, SEEK_FLOOR_S and
+PLAY_FLOOR_S, and used in all three places that need them. The test
+that asserted the hint was ABSENT went with it: deleting a branch
+makes any check for its absence trivially true, which is a test that
+passes for the wrong reason.
+
+Four mutation tests: the decline branch removed (the w71 hole
+reopens), the floor raised so legal blitz would be declined, clockless
+challenges no longer exempt, and the wrong decline reason.
+
+Verified on the device: w73's portrait split and w72's digit size,
+both good, neither needing a retune.
