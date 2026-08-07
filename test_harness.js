@@ -382,18 +382,22 @@ const sleep = ms =>
   check("messages always keep one channel (" + chans + ")",
         chans[0] === true || chans[1] === true);
 
-  // the same shape for the w72 pair: a stored players-off /
-  // ratings-on save (legal under w71) must load repaired, not
-  // trusted - the panel can only guard taps it sees
-  const pairFix = vm.runInContext(`
+  // w75: a settings key that no longer exists must be IGNORED,
+  // not carried. showPlayers was deleted with the switch, and
+  // a device that saved it off would otherwise have hidden the
+  // names forever with no control left to bring them back.
+  // loadSettings only copies keys present in SETTING_DEFAULTS,
+  // which is what makes that safe - asserted, because it is
+  // the property the deletion relies on.
+  const dropped = vm.runInContext(`
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(
       { showPlayers: false, showRatings: true }));
     var c2 = loadSettings();
     localStorage.removeItem(SETTINGS_KEY);
-    [c2.showPlayers, c2.showRatings];
+    [("showPlayers" in c2), c2.showRatings];
   `, sandbox);
-  check("a stored rating-without-name pair loads repaired (" + pairFix + ")",
-        pairFix[0] === false && pairFix[1] === false);
+  check("a deleted setting is dropped from a stored save (" + dropped + ")",
+        dropped[0] === false && dropped[1] === true);
 
   // ---- w10/w12: the account button is the identity ----
   vm.runInContext(`
@@ -2356,7 +2360,7 @@ const sleep = ms =>
     ' document.getElementById("nameBottom").innerHTML', sandbox);
   vm.runInContext(`
     api.gameId = "P1"; api.over = false; api.myId = "me"; dryRun = false;
-    CFG.showPlayers = true;
+    CFG.showRatings = true;
     handleGameFull({
       white: { id: "me", name: "pawn76", rating: 1500 },
       black: { id: "maia1", name: "maia1", title: "BOT", rating: 1900 },
@@ -2384,15 +2388,13 @@ const sleep = ms =>
   // something already on screen. (Ratings off too here, so the
   // row is genuinely empty; their independence has its own
   // tests below.)
-  vm.runInContext(
-    "CFG.showPlayers = false; CFG.showRatings = false; renderPlayers();",
-    sandbox);
-  check("both switches off empty the row without a game event",
-        playersHtml() === "");
-  vm.runInContext(
-    "CFG.showPlayers = true; CFG.showRatings = true; renderPlayers();",
-    sandbox);
-  check("and back on restores it", /pawn76/.test(playersHtml()));
+  // w75: names are unconditional now, so the row can never be
+  // empty while a game is on - only the rating comes and goes.
+  vm.runInContext("CFG.showRatings = false; renderPlayers();", sandbox);
+  check("ratings off still leaves the names (" + playersHtml() + ")",
+        /pawn76/.test(playersHtml()) && !/1500/.test(playersHtml()));
+  vm.runInContext("CFG.showRatings = true; renderPlayers();", sandbox);
+  check("and back on restores the numbers", /1500/.test(playersHtml()));
 
   // A Lichess AI opponent has aiLevel and NO name at all - the
   // shape that would otherwise render "undefined".
@@ -2416,13 +2418,18 @@ const sleep = ms =>
         (playersHtml() || "empty") + ")", playersHtml() === "");
   vm.runInContext("dryRun = false;", sandbox);
 
-  // ---- w69: ratings are their own switch ----
-  // A name tells you who is across the board, a rating tells
-  // you what to expect from them; wanting the first without
-  // the second is an ordinary thing to want.
+  // ---- w69/w75: ratings are a free switch; names are not a
+  // switch at all ----
+  // Fourth and last landing for this pair. w69 split ratings
+  // off but nested (players off + ratings on showed nothing -
+  // "half-baked"), w71 freed them (a bare number floated
+  // beside a clock - "sucks"), w72 chained them together, and
+  // w75 deletes the thing they were chained to: a week on the
+  // device turned up no occasion to hide a name, so names
+  // always show and the rating answers to nobody.
   vm.runInContext(`
     api.gameId = "P3"; api.over = false;
-    CFG.showPlayers = true; CFG.showRatings = true;
+    CFG.showRatings = true;
     handleGameFull({
       white: { id: "me", name: "pawn76", rating: 1500 },
       black: { id: "maia1", name: "maia1", title: "BOT", rating: 1900 },
@@ -2430,23 +2437,14 @@ const sleep = ms =>
     uiGameChanged();
   `, sandbox);
   await sleep(40);
-  vm.runInContext("CFG.showRatings = false; renderPlayers();", sandbox);
-  const noRatings = playersHtml();
-  check("ratings off keeps the names (" + noRatings + ")",
-        /pawn76/.test(noRatings) && /maia1/.test(noRatings));
-  check("and drops both numbers",
-        !/1500/.test(noRatings) && !/1900/.test(noRatings));
-  check("but not the title - a BOT is not a rating",
-        /BOT/.test(noRatings));
-  // RATINGS CANNOT EXIST WITHOUT NAMES (w72). Third landing
-  // of this pair: w69 nested them (players off + ratings on
-  // showed nothing - "half-baked"), w71 let the rating stand
-  // alone ("sucks"), w72 makes the pair DEPENDENT, like the
-  // message channels: players off drags ratings off, and
-  // ratings cannot be switched on while players are off.
-  // Driven through the PANEL'S OWN PILLS, as a finger would,
-  // because the rule lives in the panel - a test that poked
-  // CFG directly would pass with the panel coupling deleted.
+  check("both names and both ratings are there to start (" +
+        playersHtml() + ")",
+        /pawn76/.test(playersHtml()) && /maia1/.test(playersHtml()) &&
+        /1500/.test(playersHtml()) && /1900/.test(playersHtml()));
+
+  // driven through the panel's own pill, as a finger would -
+  // a test that set CFG directly would pass with the row
+  // unwired from the panel entirely
   const tapPill = (label) => vm.runInContext(
     '(function () {' +
     '  var rows = setPanel.children;' +
@@ -2460,33 +2458,22 @@ const sleep = ms =>
     '  }' +
     '  return false;' +
     '})()', sandbox);
-  vm.runInContext(
-    "CFG.showPlayers = true; CFG.showRatings = true; renderPlayers();",
-    sandbox);
-  check("the players pill exists and answers a tap",
-        tapPill("show players") === true);
-  check("players off drags ratings off with it",
-        vm.runInContext("CFG.showPlayers", sandbox) === false &&
-        vm.runInContext("CFG.showRatings", sandbox) === false);
-  check("and the row is empty - no floating numbers (" +
-        (playersHtml() || "empty") + ")", playersHtml() === "");
-  // trying to raise ratings while players are off snaps back
+  check("the players switch is gone from the panel (w75)",
+        tapPill("show players") === false);
+  check("the ratings switch is still there and answers a tap",
+        tapPill("show ratings") === true);
+  const noRatings = playersHtml();
+  check("tapping it drops the numbers and keeps the names (" +
+        noRatings + ")",
+        vm.runInContext("CFG.showRatings", sandbox) === false &&
+        /pawn76/.test(noRatings) && /maia1/.test(noRatings) &&
+        !/1500/.test(noRatings) && !/1900/.test(noRatings));
+  check("but not the title - a BOT is not a rating",
+        /BOT/.test(noRatings));
   tapPill("show ratings");
-  check("ratings cannot rise while players are off",
-        vm.runInContext("CFG.showRatings", sandbox) === false);
-  check("and the log says why",
-        vm.runInContext(
-          'LOG.filter(function (l) { return /needs showPlayers/.test(l); })' +
-          '.length', sandbox) >= 1);
-  // even if a stray write reaches the bad state, the render
-  // guard is the last line: no rating without its name
-  vm.runInContext(
-    "CFG.showPlayers = false; CFG.showRatings = true; renderPlayers();",
-    sandbox);
-  check("the render guard never shows a rating without a name",
-        playersHtml() === "");
-  tapPill("show players");   /* back on, dragging nothing */
-  vm.runInContext("CFG.showRatings = true; renderPlayers();", sandbox);
+  check("and nothing drags it back down again",
+        vm.runInContext("CFG.showRatings", sandbox) === true &&
+        /1500/.test(playersHtml()));
 
   // ---- w69: the game id is for the log, not the panel ----
   heard();

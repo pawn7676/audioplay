@@ -265,28 +265,10 @@
     // effect is something already on screen, so a flip that
     // did nothing visible until the opponent moved would read
     // as a broken switch.
-    // RATINGS FOLLOW PLAYERS DOWN, AND CANNOT RISE WITHOUT
-    // THEM (w72). Same shape as keepOneMessageChannel below:
-    // the invariant lives here and in loadSettings, and the
-    // render just obeys. Turning players off drags ratings
-    // off with it; tapping ratings on while players are off
-    // snaps straight back, with the reason in the log.
-    settingRow("showPlayers", "show players", function () {
-      if (!CFG.showPlayers && CFG.showRatings) {
-        CFG.showRatings = false;
-        saveSettings();
-        log("SET", "showRatings forced off: ratings need a name");
-        settingPaints.showRatings();
-      }
-      renderPlayers();
-    });
+    // Names are not a switch any more (w75): they always show,
+    // so the w72 coupling that kept ratings from outliving
+    // them has nothing left to couple to. One free switch.
     settingRow("showRatings", "show ratings", function () {
-      if (CFG.showRatings && !CFG.showPlayers) {
-        CFG.showRatings = false;
-        saveSettings();
-        log("SET", "showRatings needs showPlayers on");
-        settingPaints.showRatings();
-      }
       renderPlayers();
     });
     settingHeader("voice mode");
@@ -671,15 +653,9 @@
     var pl = (api.players || {})[colour];
     if (!pl) return "";
     var isMine = colour === (api.myColor || "w");
-    // THE RATING NEVER RENDERS WITHOUT ITS NAME (w72). This
-    // took three tries to land: w69 nested ratings under
-    // players so off/on showed nothing (half-baked, said the
-    // owner); w71 let the rating stand alone (sucks, said the
-    // owner, and a bare number floating by a clock does).
-    // The setting pair is now DEPENDENT - the panel and
-    // loadSettings both force ratings off with players off -
-    // so this render guard is the last line, not the rule.
-    if (!CFG.showPlayers) return "";
+    // The name is unconditional since w75 - the switch that
+    // could hide it is gone, so the rating can never be the
+    // only thing here and needs no guard of its own.
     var parts = [(pl.title
       ? '<span class="title">' + esc(pl.title) + "</span> " : "") +
       esc(pl.name)];
