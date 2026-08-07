@@ -171,6 +171,33 @@ anything the harness cannot prove. Say plainly what to look
 for on the device; much of this project is only provable by
 a real game.
 
+**MERGING IS CLAUDE'S TO DO, and step 5 means it.** Push,
+open the PR, wait for the checks, merge when green — without
+asking, in this session or any later one. Report what was
+merged and why. This is written out because step 5 above
+reads as a list of stages and was taken as a list of stages:
+through w50–w59 every merge was paused on for a confirmation
+the loop had already given, which is a click per change for
+no decision.
+
+Three things it does not license, and none of them is a
+request for permission:
+
+- **Never merge on red.** Diagnose it, fix it, say what it
+  was. A failure that turns out to be infrastructure rather
+  than code is worth saying out loud too — that happened all
+  through 6 Aug 2026 and the difference mattered.
+- **Say what to look for BEFORE a device-visible change
+  lands**, in the same breath as merging it. w56 is the
+  example: one line, and the only change in ten versions
+  that could move what is on screen. Merging it was right;
+  merging it silently would not have been.
+- **Do not merge someone else's judgement call.** A
+  constraint pulling against the request, a behaviour the
+  owner has an opinion about, a trade with no obviously
+  right side — those are asked about while the branch sits
+  there, which costs nothing.
+
 **Branch protection on `main` is deliberately off.** It was
 weighed on 5 Aug 2026 and declined: with one person and CI
 already running on every push, requiring reviews would add
