@@ -662,6 +662,23 @@ const sleep = ms =>
         /id="nameBottom"/.test(tmplBoard) && /id="clockBottom"/.test(tmplBoard));
   check("and it wraps under the board rather than squeezing it",
         /#boardRow\s*\{[^}]*flex-wrap:\s*wrap/.test(tmplBoard));
+  // w73: on a narrow screen the clocks SPLIT around the board,
+  // Lichess's portrait shape - the far player's bar above,
+  // yours below - instead of both wrapping underneath. Three
+  // load-bearing pieces: a media query, the rail dissolved so
+  // its blocks join the column (display:contents), and the far
+  // block ordered above the canvas. Checked in the query's own
+  // text so a rule drifting outside it cannot pass.
+  const narrowCss = (tmplBoard.match(/@media[^{]*\{([\s\S]*?)\n  \}/) ||
+                     [,""])[1];
+  check("a narrow screen has its own board layout (@media found)",
+        narrowCss.length > 0);
+  check("the rail dissolves into the column there",
+        /#boardSide\s*\{[^}]*display:\s*contents/.test(narrowCss));
+  check("and the far player's block moves above the board",
+        /#sideTop\s*\{[^}]*order:\s*-1/.test(narrowCss));
+  check("each bar goes horizontal, name and clock on one line",
+        /\.sideBlock\s*\{[^}]*flex-direction:\s*row/.test(narrowCss));
   // press Start with no token and listen, rather than
   // grepping the source for the string
   vm.runInContext(`
