@@ -2228,19 +2228,33 @@ const sleep = ms =>
   // be said and it must stop the polling.
   heard();
   vm.runInContext(`
-    api.over = false; pollSeen = true; api.gameId = "PG";
+    api.over = false; pollSeen = true; pollMisses = 0; api.gameId = "PG";
     pollTimer = setInterval(function () {}, 100000);
   `, sandbox);
   pollWith([]);                       // the game is gone
   vm.runInContext("pollOnce();", sandbox);
   await sleep(80);
+  // ONE missing tick is a hiccup, not a result (w62): the old
+  // one-shot inference was irreversible, so a single anomalous
+  // empty response permanently ended a live game.
+  const ended1 = heard().join(" | ");
+  check("one missing tick does not end the game (" +
+        (ended1 || "silence") + ")",
+        vm.runInContext("api.over", sandbox) === false);
+  vm.runInContext("pollOnce();", sandbox);
+  await sleep(80);
   const ended = heard().join(" | ");
-  check("a game vanishing from the list is announced (" + ended + ")",
+  check("two missing ticks are announced (" + ended + ")",
         /game over/i.test(ended));
   check("and the game is marked over",
         vm.runInContext("api.over", sandbox) === true);
-  check("and the polling stops",
-        vm.runInContext("pollTimer === null", sandbox) === true);
+  // POLLING CONTINUES (w62): it used to stop here, which in a
+  // poll-only browser made the first game the last - nothing
+  // was left to notice the next one. The interval now lives on
+  // as the discovery watcher.
+  check("and the polling keeps watching for the next game",
+        vm.runInContext("pollTimer !== null", sandbox) === true);
+  vm.runInContext("stopPolling();", sandbox);
 
   // ...but not on the very first tick, before it has appeared
   heard();
@@ -2259,7 +2273,10 @@ const sleep = ms =>
   `, sandbox);
   // a lastMove that cannot be applied to the start position
   pollWith([{ gameId: "PG", color: "white",
-              fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR",
+              // a FULL fen, as the real endpoint sends (w62): the old
+              // board-only stub baked the wrong model of the endpoint
+              // into this path's only test
+              fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
               lastMove: "h7h6", isMyTurn: true, secondsLeft: 60 }]);
   vm.runInContext("pollOnce();", sandbox);
   await sleep(80);
@@ -2276,6 +2293,229 @@ const sleep = ms =>
         secondReload === 1);
   check("and the stale arm is dropped",
         !vm.runInContext("armedUci", sandbox));
+
+  // ============== w62 ADDITIONS TO THE POLL ==============
+
+  // 112: FIRST SIGHTING LOADS THE REAL POSITION. Mid-game join
+  // used to build the start position and replay one move - a
+  // coincidentally-legal lastMove then left a silent one-ply
+  // board against a thirty-move game.
+  heard();
+  vm.runInContext(`
+    dryRun = false; running = true;
+    api.gameId = "MID1"; api.myColor = null; api.over = false;
+    api.pos = null; api.moves = []; pollSeen = false; pollMisses = 0;
+    pollFails = 0;
+  `, sandbox);
+  pollWith([{ gameId: "MID1", color: "black",
+              fen: "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
+              lastMove: "f1c4", isMyTurn: true, secondsLeft: 500 }]);
+  vm.runInContext("pollOnce();", sandbox);
+  await sleep(80);
+  const midSaid = heard().join(" | ");
+  check("a mid-game join loads the real position, not the start (" +
+        midSaid + ")",
+        vm.runInContext('api.pos && api.pos.board[RULES.nameSq("c4")]',
+                        sandbox) === "B");
+  check("and says whose move it is, like the stream join does",
+        /black to move/i.test(midSaid));
+
+  // 111: DISCOVERY. With no live game, the most urgent entry in
+  // nowPlaying becomes a join - this is how a poll-only browser
+  // ever starts a game at all.
+  pollWith([{ gameId: "NEW77", color: "white", fen: "", lastMove: "",
+              isMyTurn: true, secondsLeft: 600 }]);
+  const discoveredId = await vm.runInContext(`
+    (function () {
+      var realJoin = joinGame, joined = null;
+      joinGame = function (id) { joined = id; };
+      api.gameId = null; api.over = false; dryRun = false;
+      pollFails = 0;
+      pollOnce();
+      return new Promise(function (res) {
+        setTimeout(function () { joinGame = realJoin; res(joined); }, 60);
+      });
+    })()
+  `, sandbox);
+  check("with no live game, polling discovers and joins one (" +
+        discoveredId + ")", discoveredId === "NEW77");
+
+  // 113: the mic gate is gone - voice off must not freeze the poll
+  heard();
+  vm.runInContext(`
+    running = false;              // voice OFF
+    api.gameId = "PG2"; api.myColor = "w"; api.over = false;
+    api.pos = new RULES.Position(); api.moves = [];
+    pollSeen = true; pollMisses = 0; pollFails = 0;
+  `, sandbox);
+  pollWith([{ gameId: "PG2", color: "white",
+              fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+              lastMove: "e2e4", isMyTurn: false, secondsLeft: 600 }]);
+  vm.runInContext("pollOnce();", sandbox);
+  await sleep(80);
+  check("voice off no longer freezes the poll (the move landed)",
+        vm.runInContext("api.moves.join(' ')", sandbox) === "e2e4");
+  vm.runInContext("running = true;", sandbox);
+
+  // 117: an in-flight response must not act on a changed
+  // world. The sharp case is a STALE response that still
+  // carries a game row landing after practice was tapped:
+  // without the guard, the discovery branch would join that
+  // game mid-practice - the exact silent-real-game state w50
+  // closed the front door on, reopened through the back.
+  heard();
+  const raceOut = await vm.runInContext(`
+    (function () {
+      var realJoin = joinGame, joined = null;
+      joinGame = function (id) { joined = id; };
+      var release = null;
+      fetch = function () {
+        return new Promise(function (res) {
+          release = function () {
+            res({ ok: true, status: 200,
+                  json: function () {
+                    return Promise.resolve({ nowPlaying: [
+                      { gameId: "STALE9", color: "white", fen: "",
+                        lastMove: "", secondsLeft: 60 } ] });
+                  } });
+          };
+        });
+      };
+      api.gameId = null; api.over = false; api.myColor = null;
+      pollSeen = false; pollMisses = 0; pollFails = 0; dryRun = false;
+      pollOnce();                    // request now in flight
+      dryRun = true; api.gameId = "PRACTICE";   // practice tapped
+      release();                     // the old response lands
+      return new Promise(function (res) {
+        setTimeout(function () {
+          joinGame = realJoin;
+          res({ joined: joined, over: api.over });
+        }, 60);
+      });
+    })()
+  `, sandbox);
+  check("a stale response cannot join a game into practice (" +
+        (raceOut.joined || "nothing joined") + ")",
+        raceOut.joined === null && raceOut.over === false);
+  vm.runInContext("dryRun = false; api.gameId = null;", sandbox);
+
+  // 116: the request asks for the endpoint's maximum
+  vm.runInContext(`
+    __pollUrl = null;
+    fetch = function (url) {
+      __pollUrl = String(url);
+      return Promise.resolve({ ok: true, status: 200,
+        json: function () { return Promise.resolve({ nowPlaying: [] }); } });
+    };
+    api.gameId = null; api.over = false; pollFails = 0;
+    pollOnce();
+  `, sandbox);
+  await sleep(40);
+  check("the poll asks for all 50 games, not the default page",
+        /nb=50/.test(vm.runInContext("__pollUrl", sandbox) || ""));
+
+  // 122: four straight failures stretch the cadence; one
+  // success restores it
+  const backoff = await vm.runInContext(`
+    (function () {
+      var calls = 0;
+      fetch = function () {
+        calls++;
+        return Promise.reject(new Error("network gone"));
+      };
+      api.gameId = "PG4"; api.over = false; dryRun = false;
+      authGone = false; pollFails = 0; pollSkip = 0;
+      var chain = Promise.resolve();
+      for (var i = 0; i < 4; i++) {
+        chain = chain.then(function () {
+          pollOnce();
+          return new Promise(function (r) { setTimeout(r, 10); });
+        });
+      }
+      return chain.then(function () {
+        var afterFailures = calls;
+        for (var j = 0; j < 7; j++) pollOnce();   // all skipped
+        var afterSkips = calls;
+        pollOnce();                                // 8th: goes out
+        return new Promise(function (r) {
+          setTimeout(function () {
+            r({ f: afterFailures, s: afterSkips, t: calls });
+          }, 10);
+        });
+      });
+    })()
+  `, sandbox);
+  check("after four failures the poll backs off (" +
+        backoff.f + "," + backoff.s + "," + backoff.t + ")",
+        backoff.f === 4 && backoff.s === 4 && backoff.t === 5);
+  vm.runInContext("pollFails = 0; pollSkip = 0;", sandbox);
+
+  // 114: a dead token in poll mode is said, and the poll halts
+  heard();
+  vm.runInContext(`
+    fetch = function () {
+      return Promise.reject(new Error("/api/account/playing -> HTTP 401"));
+    };
+    authGone = false; pollFails = 0; pollSkip = 0;
+    api.gameId = "PG5"; api.over = false; dryRun = false;
+    pollTimer = setInterval(function () {}, 100000);
+    pollOnce();
+  `, sandbox);
+  await sleep(60);
+  check("a dead token in poll mode speaks the sign-out sentence (" +
+        heard().join(" | ") + ")",
+        vm.runInContext("authGone", sandbox) === true);
+  check("and the polling halts rather than 401ing forever",
+        vm.runInContext("pollTimer === null", sandbox) === true);
+  vm.runInContext("authGone = false;", sandbox);
+
+  // 111b/115: watchEvents with no streaming body hands the
+  // account watch to the poll instead of retrying at 3s forever
+  vm.runInContext(`
+    fetch = function () {
+      return Promise.resolve({ ok: true, status: 200 });  // no body
+    };
+    saveToken("lip_w62_watch");
+    eventFails = 7; stopPolling(); dryRun = false;
+    api.gameId = null; api.over = false;
+    watchEvents();
+  `, sandbox);
+  await sleep(60);
+  check("a body-less event stream hands over to the poll",
+        vm.runInContext("pollTimer !== null", sandbox) === true);
+  check("and does not reset the event ladder on the way",
+        vm.runInContext("eventFails", sandbox) === 7);
+  vm.runInContext("stopPolling(); clearTimeout(eventTimer); clearToken();",
+                  sandbox);
+
+  // 121: a fresh token un-sticks the auth latch
+  vm.runInContext("authGone = true; saveToken('lip_new');", sandbox);
+  check("a new token re-arms the reconnects",
+        vm.runInContext("authGone", sandbox) === false);
+  vm.runInContext("clearToken();", sandbox);
+
+  // 118: a stream that opens successfully stops the poll
+  vm.runInContext(`
+    pollTimer = setInterval(function () {}, 100000);
+    fetch = function () {
+      return Promise.resolve({
+        ok: true, status: 200,
+        body: { getReader: function () {
+          return { read: function () {
+            return Promise.resolve({ done: true });
+          } };
+        } }
+      });
+    };
+    api.gameId = "PG6"; api.over = false; dryRun = false;
+    startStream();
+  `, sandbox);
+  await sleep(60);
+  check("a stream that opens takes over from the poll",
+        vm.runInContext("pollTimer === null", sandbox) === true);
+  vm.runInContext(
+    "fetch = __realFetch3; api.gameId = null; clearTimeout(reconnectTimer);",
+    sandbox);
 
   // A REFUSED TOKEN IS SAID ONCE AND STOPS THE RETRYING.
   heard();
