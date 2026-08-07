@@ -104,7 +104,14 @@
     drawoffer:     { yes: "draw/yes", yesSay: "draw accepted.",
                      no: "draw/no", noSay: "draw declined." },
     takebackoffer: { yes: "takeback/yes", yesSay: "takeback accepted.",
-                     no: "takeback/no", noSay: "takeback declined." }
+                     no: "takeback/no", noSay: "takeback declined." },
+    // claim-victory (w61): offered when the opponent has been
+    // gone past Lichess's window. "no" sends nothing - the
+    // window stays open, and handleOpponentGone only re-arms
+    // the question on a FRESH departure, so declining is
+    // declining, not snoozing. "waiting." is the honest word.
+    claimvictory:  { yes: "claim-victory", yesSay: "claiming the win.",
+                     no: null, noSay: "waiting." }
   };
   /* A REPAIR MAY BE FIRED BY A RIVAL READING, BUT THEN IT MAY
    * ONLY ASK (w49).

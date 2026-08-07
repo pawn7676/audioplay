@@ -1715,6 +1715,195 @@ const sleep = ms =>
   check("VERSION is a w-number at runtime (" + ver + ")",
         /^w\d+$/.test(ver));
 
+  // ========= w61: THE OTHER PLAYER IS A HUMAN =========
+  // seek and challenge both refuse without a token, so one is
+  // banked for the block and cleared at its end
+  vm.runInContext('saveToken("lip_w61_test_token");', sandbox);
+
+  // 92: a challenge is kept alive, and aborting cancels it
+  vm.runInContext(`
+    __chBody = null; __chAborted = 0;
+    __realFetch4 = fetch;
+    fetch = function (url, opts) {
+      if (String(url).indexOf("/api/challenge/") < 0) {
+        return Promise.reject(new Error("unexpected " + url));
+      }
+      __chBody = String((opts && opts.body) || "");
+      return Promise.resolve({
+        ok: true, status: 200,
+        body: { getReader: function () {
+          var sent = false;
+          return { read: function () {
+            if (sent) return new Promise(function () {});  // held open
+            sent = true;
+            return Promise.resolve({ done: false,
+              value: new TextEncoder().encode('{"id":"c1"}\\n') });
+          } };
+        } }
+      });
+    };
+    dryRun = false; api.gameId = null; api.over = false;
+    challengeAbort = null;
+    sendChallenge("somebody", 10, 5, false, "random");
+  `, sandbox);
+  await sleep(60);
+  check("the challenge asks Lichess to keep it alive",
+        /keepAliveStream=true/.test(
+          vm.runInContext("__chBody", sandbox) || ""));
+  check("and the keep-alive stream is held open",
+        vm.runInContext("challengeAbort !== null", sandbox) === true);
+  vm.runInContext(`
+    challengeAbort = { abort: function () { __chAborted++; } };
+    stopEverything();
+  `, sandbox);
+  check("sign-out cancels an open challenge",
+        vm.runInContext("__chAborted", sandbox) === 1 &&
+        vm.runInContext("challengeAbort", sandbox) === null);
+  vm.runInContext("fetch = __realFetch4;", sandbox);
+
+  // 93: a refused seek says why, and blitz gets the way out
+  const seekLine = () => vm.runInContext(
+    'document.getElementById("lichessLine").textContent', sandbox);
+  vm.runInContext(`
+    __realFetch5 = fetch;
+    fetch = function (url, opts) {
+      return Promise.resolve({
+        ok: false, status: 400,
+        json: function () {
+          return Promise.resolve({ error: "Invalid time control" });
+        }
+      });
+    };
+    seekAbort = null; api.gameId = null;
+    startSeek(3, 2, false);
+  `, sandbox);
+  await sleep(60);
+  const blitzMsg = seekLine();
+  check("a refused seek carries Lichess's reason (" + blitzMsg + ")",
+        /Invalid time control/.test(blitzMsg));
+  check("and a blitz control is told the way out",
+        /challenge someone instead/i.test(blitzMsg));
+  vm.runInContext("seekAbort = null; startSeek(15, 10, false);", sandbox);
+  await sleep(60);
+  check("a rapid refusal gets the reason without the blitz hint",
+        !/challenge someone instead/i.test(seekLine()));
+  vm.runInContext("fetch = __realFetch5; seekAbort = null;", sandbox);
+
+  // 94: an opponent who leaves is heard about, once, and the
+  // claim window becomes a question
+  heard();
+  vm.runInContext(`
+    dryRun = false; api.gameId = "G"; api.over = false;
+    api.pos = new RULES.Position(); api.myColor = "w"; api.moves = [];
+    oppGone = false; claimAsked = false; confirmAction = null;
+    handleOpponentGone({ type: "opponentGone", gone: true,
+                         claimWinInSeconds: 8 });
+    handleOpponentGone({ type: "opponentGone", gone: true,
+                         claimWinInSeconds: 5 });
+  `, sandbox);
+  await sleep(40);
+  const goneSaid = heard();
+  check("a departure is spoken once, not per tick (" +
+        goneSaid.join(" | ") + ")",
+        goneSaid.filter(function (s) {
+          return /left the game/i.test(s);
+        }).length === 1);
+  heard();
+  vm.runInContext(`
+    handleOpponentGone({ type: "opponentGone", gone: true,
+                         claimWinInSeconds: 0 });
+  `, sandbox);
+  await sleep(40);
+  check("the open window becomes a yes/no question",
+        /claim the win/i.test(heard().join(" | ")) &&
+        vm.runInContext("confirmAction", sandbox) === "claimvictory");
+  heard();
+  vm.runInContext(`
+    __claimPath = null;
+    __realPA2 = postAction;
+    postAction = function (p) {
+      __claimPath = p;
+      return Promise.resolve({ ok: true, status: 200, body: "" });
+    };
+  `, sandbox);
+  say("yes");
+  await sleep(60);
+  check('saying yes posts claim-victory and says so (' +
+        heard().join(" | ") + ")",
+        vm.runInContext("__claimPath", sandbox) === "claim-victory");
+  vm.runInContext("postAction = __realPA2;", sandbox);
+  heard();
+  vm.runInContext(`
+    oppGone = true; claimAsked = true; confirmAction = "claimvictory";
+    handleOpponentGone({ type: "opponentGone", gone: false });
+  `, sandbox);
+  await sleep(40);
+  check("a returning opponent is announced and the question dies",
+        /opponent is back/i.test(heard().join(" | ")) &&
+        vm.runInContext("confirmAction", sandbox) === null);
+
+  // 96: a game the Board API cannot play is named, not joined
+  heard();
+  const compatRefused = vm.runInContext(`
+    (function () {
+      var realJoin = joinGame, joined = null;
+      joinGame = function (id) { joined = id; };
+      dryRun = false;
+      handleAccountEvent({ type: "gameStart",
+        game: { gameId: "FAST1", compat: { board: false } } });
+      joinGame = realJoin;
+      return joined;
+    })()
+  `, sandbox);
+  await sleep(40);
+  const compatSaid = heard().join(" | ");
+  check("a board-incompatible game is not joined", compatRefused === null);
+  check("and the user is told why (" + compatSaid + ")",
+        /cannot play/i.test(compatSaid) && /too fast/i.test(compatSaid));
+  const compatOk = vm.runInContext(`
+    (function () {
+      var realJoin = joinGame, joined = [];
+      joinGame = function (id) { joined.push(id); };
+      handleAccountEvent({ type: "gameStart",
+        game: { gameId: "OK1", compat: { board: true } } });
+      handleAccountEvent({ type: "gameStart", game: { id: "LEGACY1" } });
+      joinGame = realJoin;
+      return joined.join(",");
+    })()
+  `, sandbox);
+  check("a compatible game still joins, and so does the legacy id " +
+        "field (" + compatOk + ")", compatOk === "OK1,LEGACY1");
+
+  // 97: a variant game is named, not mangled
+  heard();
+  vm.runInContext(`
+    api.gameId = "V1"; api.over = false; api.myId = "me";
+    handleGameFull({ variant: { key: "chess960", name: "Chess960" },
+                     white: { id: "me" }, state: { moves: "" } });
+  `, sandbox);
+  await sleep(40);
+  const variantSaid = heard().join(" | ");
+  check("a variant game is refused out loud (" + variantSaid + ")",
+        /standard chess only/i.test(variantSaid));
+  check("and marked over so nothing is sent",
+        vm.runInContext("api.over", sandbox) === true);
+  heard();
+  vm.runInContext(`
+    api.gameId = "V2"; api.over = false;
+    handleGameFull({ variant: { key: "fromPosition" },
+      initialFen: "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1",
+      white: { id: "me" }, state: { moves: "" } });
+  `, sandbox);
+  await sleep(40);
+  check("fromPosition is standard chess and stays playable",
+        vm.runInContext("api.over", sandbox) === false &&
+        vm.runInContext('RULES.sqName ? api.pos.board[RULES.nameSq("e2")] : null',
+                        sandbox) === "P");
+  vm.runInContext(
+    "api.gameId = null; api.over = false; dryRun = true; clearToken();",
+    sandbox);
+  heard();
+
   // ========= w60: WHAT THE PAGE SAYS MUST BE TRUE =========
 
   // 91: a refused action is never announced as done. The Board

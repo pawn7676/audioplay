@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w60";
+  VERSION = "w61";
 
   var RULES = makeRules();
 
@@ -365,6 +365,45 @@
     }
   }
 
+  /* AN OPPONENT WHO LEAVES IS INVISIBLE TOO (w61). The stream
+   * has always sent opponentGone - gone plus claimWinInSeconds
+   * counting down - and this page logged the event type and did
+   * nothing, in an app whose header worries at length about the
+   * claim-victory window from the OTHER side. A sighted player
+   * watches the banner; an eyes-free one hears silence while
+   * their own clock is the only one moving. Spoken once per
+   * departure, and when the window opens it becomes a yes/no
+   * through the same CONFIRMS machinery as every other
+   * game-ending question. The event repeats as the countdown
+   * ticks, so oppGone/claimAsked keep each sentence to once. */
+  var oppGone = false, claimAsked = false;
+
+  function handleOpponentGone(ev) {
+    if (api.over || dryRun) return;
+    if (ev.gone) {
+      if (!oppGone) {
+        oppGone = true;
+        log("EVT", "opponent gone" + (ev.claimWinInSeconds != null
+            ? ", claim in " + ev.claimWinInSeconds + "s" : ""));
+        speak("your opponent has left the game.");
+      }
+      if (ev.claimWinInSeconds != null && ev.claimWinInSeconds <= 0 &&
+          !claimAsked) {
+        claimAsked = true;
+        pending = null;
+        confirmAction = "claimvictory";
+        speak("you can claim the win. say yes to claim it, " +
+              "no to keep waiting.");
+      }
+    } else if (oppGone) {
+      oppGone = false;
+      claimAsked = false;
+      if (confirmAction === "claimvictory") confirmAction = null;
+      log("EVT", "opponent back");
+      speak("your opponent is back.");
+    }
+  }
+
   /* An opponent's draw or takeback offer is invisible if you are not
    * looking at the screen, so it has to be spoken and answerable. */
   var offerState = { draw: false, takeback: false };
@@ -400,6 +439,7 @@
       // is the same kind of thing and needs no apology.
       if (confirmAction === "resign") return "that cancels the resign question. ";
       if (confirmAction === "offerdraw") return "that cancels your draw offer question. ";
+      if (confirmAction === "claimvictory") return "that cancels the claim question. ";
       if (pending) return "that cancels the move question. ";
       return "";
     }
@@ -480,6 +520,23 @@
   var everConnected = false;
 
   function handleGameFull(g) {
+    // STANDARD CHESS ONLY, SAID IN SO MANY WORDS (w61). A
+    // variant game (chess960, atomic, crazyhouse...) arriving
+    // from the app would feed castling-as-king-takes-rook and
+    // variant moves into rules.js, which would hit the
+    // illegal-uci resync on every event - a loop of ERR lines
+    // and a board that cannot be trusted, with nothing said
+    // about WHY. fromPosition is allowed: it is standard chess
+    // from a custom start, and initialFen below handles it.
+    var vkey = (g.variant && (g.variant.key || g.variant.name)) || "standard";
+    if (vkey !== "standard" && vkey !== "fromPosition") {
+      api.over = true;
+      log("API", "variant game (" + vkey + ") - not playable here");
+      speak("this is a " + ((g.variant && g.variant.name) || vkey) +
+            " game. this app plays standard chess only. play it on lichess.");
+      try { if (streamAbort) streamAbort.abort(); } catch (e) {}
+      return;
+    }
     api.pos = new RULES.Position(g.initialFen && g.initialFen !== "startpos"
                                ? g.initialFen : undefined);
     api.moves = [];
@@ -556,6 +613,7 @@
               log("EVT", ev.type || "?");
               if (ev.type === "gameFull") handleGameFull(ev);
               else if (ev.type === "gameState") handleGameState(ev, true);
+              else if (ev.type === "opponentGone") handleOpponentGone(ev);
               else if (ev.type === "chatLine") { /* ignore */ }
             });
             return pump();
@@ -835,9 +893,28 @@
   }
 
   function handleAccountEvent(ev) {
-    if (ev.type === "gameStart" && ev.game && ev.game.id) {
-      log("EVT", "gameStart " + ev.game.id);
+    // gameId first, id as the fallback (w61): the spec marks
+    // gameId/fullId required and id as the legacy spelling.
+    if (ev.type === "gameStart" && ev.game &&
+        (ev.game.gameId || ev.game.id)) {
+      var gid = ev.game.gameId || ev.game.id;
+      log("EVT", "gameStart " + gid);
       cancelSeek();
+      // A GAME THIS APP CANNOT PLAY IS NAMED, NOT JOINED (w61).
+      // gameStart carries compat.board: false for games the
+      // Board API will not accept moves for - a bullet or
+      // blitz game started from the Lichess app. Joining one
+      // anyway meant every move 400'd with no explanation of
+      // WHY; the user heard "Lichess rejected that move" for
+      // every legal move they said, which reads as the
+      // grammar breaking, not as the game being out of scope.
+      if (ev.game.compat && ev.game.compat.board === false) {
+        log("EVT", "game " + gid + " is not Board-API compatible");
+        speak("a game has started that this app cannot play. " +
+              "it is too fast. play it on lichess.");
+        uiStatus("Game " + gid + " cannot be played here (too fast).");
+        return;
+      }
       // A REAL GAME OUTRANKS PRACTICE, AND SAYS SO (w50).
       // dryStart now closes this stream and cancels any seek,
       // so reaching here in practice means an event that was
@@ -850,12 +927,12 @@
       // it was: the user was speaking moves a moment ago and
       // is about to need to again.
       if (dryRun) {
-        log("DRY", "real game " + ev.game.id + " started - leaving practice");
+        log("DRY", "real game " + gid + " started - leaving practice");
         dryRun = false;
         speak("a real game has started. leaving practice.");
         renderButton();
       }
-      joinGame(ev.game.id);
+      joinGame(gid);
     } else if (ev.type === "gameFinish") {
       log("EVT", "gameFinish");
       uiGameChanged();
@@ -887,6 +964,7 @@
     api.moves = [];
     api.over = false;
     offerState = { draw: false, takeback: false };
+    oppGone = false; claimAsked = false;   /* w61 */
     // and the questions from whatever game came before this
     // one. api.moves going empty makes every ply guard read
     // "current" again, so the two ply-guarded asks would
@@ -962,9 +1040,26 @@
     fetch(LICHESS_BASE + "/api/board/seek", seekOpts).then(function (r) {
       if (!r.ok) {
         seekAbort = null;
-        log("ERR", "seek refused (HTTP " + r.status + ")");
-        uiStatus("Seek refused (HTTP " + r.status + ").");
-        return;
+        // THE REASON, NOT JUST THE NUMBER (w61). The challenge
+        // path has parsed the {error} body since w1; this one
+        // said "HTTP 400" and left the user to guess. The guess
+        // they could not make: the Board API only accepts
+        // RAPID AND SLOWER for public seeks (blitz is fine for
+        // direct challenges), so half the preset row - 3+0,
+        // 3+2, 5+0, 5+3 - is refusable here and fine one
+        // button over. When a 400 lands on a blitz control,
+        // say which way out exists.
+        return r.json().catch(function () { return {}; })
+          .then(function (j) {
+            var why = j.error ? " - " + j.error : " (HTTP " + r.status + ")";
+            var blitz = (minutes * 60 + 40 * increment) < 480;
+            var hint = (r.status === 400 && blitz)
+              ? " Blitz seeks are not allowed - challenge someone instead."
+              : "";
+            log("ERR", "seek refused" + why);
+            uiStatus("Seek refused" + why + "." + hint);
+            uiGameChanged();
+          });
       }
       // The seek lives as long as this request streams - where
       // there IS a stream. Without one the seek is still
@@ -1007,8 +1102,31 @@
     uiStatus("Seek cancelled.");
   }
 
+  /* A CHALLENGE MUST BE KEPT ALIVE, OR IT QUIETLY DIES (w61).
+   * The spec, verbatim: realtime challenges "expire after 20s
+   * if not accepted. To prevent that, use the keepAliveStream
+   * flag." This page never sent it, said "waiting.", and any
+   * human who took half a minute to notice was accepting a
+   * challenge that no longer existed - while the eyes-free
+   * user waited on it. Never seen, because maia auto-accepts
+   * within a second; the flaw was exactly the size of the gap
+   * between a bot opponent and a human one.
+   *
+   * With the flag, the response is an ndjson stream and the
+   * challenge lives as long as we hold it open - the seek's
+   * own lifecycle, so it is handled the seek's way, abort
+   * controller and drain and all. Aborting the stream CANCELS
+   * the challenge (spec semantics), which is what
+   * stopEverything and practice should do to one anyway. The
+   * final {"done": ...} line is logged, not spoken: a decline
+   * arrives as challengeDeclined on the event stream and an
+   * accept arrives as gameStart, and both already speak -
+   * saying it here too would say everything twice. */
+  var challengeAbort = null;
+
   function sendChallenge(who, minutes, increment, rated, color) {
     if (!storedToken() || api.gameId && !api.over) return;
+    if (challengeAbort) { uiStatus("Still waiting on the last challenge."); return; }
     who = (who || "").trim();
     if (!who) { uiStatus("Name an opponent."); return; }
     minutes = Math.max(1, Number(minutes) || 15);
@@ -1017,18 +1135,25 @@
       "&clock.limit=" + (minutes * 60) +
       "&clock.increment=" + increment +
       "&color=" + (color || "random") +
-      "&variant=standard";
+      "&variant=standard" +
+      "&keepAliveStream=true";
+    challengeAbort = (typeof AbortController !== "undefined")
+      ? new AbortController() : null;
     uiStatus("Challenging " + who + "...");
     log("API", "challenge " + who + " " + body);
-    fetch(LICHESS_BASE + "/api/challenge/" + encodeURIComponent(who), {
+    var opts = {
       method: "POST",
       headers: {
         Authorization: "Bearer " + storedToken(),
         "Content-Type": "application/x-www-form-urlencoded"
       },
       body: body
-    }).then(function (r) {
+    };
+    if (challengeAbort) opts.signal = challengeAbort.signal;
+    fetch(LICHESS_BASE + "/api/challenge/" + encodeURIComponent(who), opts)
+      .then(function (r) {
       if (!r.ok) {
+        challengeAbort = null;
         return r.json().catch(function () { return {}; })
           .then(function (j) {
             log("ERR", "challenge refused (HTTP " + r.status +
@@ -1038,10 +1163,48 @@
           });
       }
       uiStatus("Challenge sent to " + who + " - waiting.");
+      if (!r.body || !r.body.getReader) {
+        // cannot hold it open: it is lodged, but on its 20s
+        // clock. Say the true thing in the log at least.
+        challengeAbort = null;
+        log("NET", "challenge posted, but this browser cannot keep it " +
+            "alive - it expires in 20s if not accepted");
+        return;
+      }
+      var reader = r.body.getReader();
+      var dec = new TextDecoder();
+      var buf = "";
+      function drain() {
+        return reader.read().then(function (c) {
+          if (c.done) return;
+          buf += dec.decode(c.value, { stream: true });
+          var lines = buf.split("\n");
+          buf = lines.pop();
+          lines.forEach(function (ln) {
+            if (!ln.trim()) return;
+            try {
+              var ev = JSON.parse(ln);
+              if (ev.done) log("EVT", "challenge " + ev.done);
+            } catch (e) {}
+          });
+          return drain();
+        });
+      }
+      return drain().then(function () { challengeAbort = null; });
     }).catch(function (e) {
-      log("ERR", "challenge: " + e.message);
-      uiStatus("Challenge failed (" + e.message + ").");
+      challengeAbort = null;
+      if (e.name !== "AbortError") {
+        log("ERR", "challenge: " + e.message);
+        uiStatus("Challenge failed (" + e.message + ").");
+      }
     });
+  }
+
+  function cancelChallenge() {
+    if (!challengeAbort) return;
+    try { challengeAbort.abort(); } catch (e) {}
+    challengeAbort = null;
+    log("API", "challenge cancelled");
   }
 
   // Everything that holds a connection, stopped in one place.
@@ -1056,6 +1219,7 @@
     try { if (eventAbort) eventAbort.abort(); } catch (e) {}
     try { if (streamAbort) streamAbort.abort(); } catch (e) {}
     cancelSeek();
+    cancelChallenge();      /* aborting the keep-alive CANCELS it (w61) */
     clearTimeout(eventTimer);
     clearTimeout(reconnectTimer);
     clearInterval(pollTimer);
