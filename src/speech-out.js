@@ -163,10 +163,10 @@
   }
 
   // iOS fires onend while the audio is still playing. If the
-  // next chunk is handed over then, the engine queues it
+  // next chunk is handed over then, the synthesizer queues it
   // internally and plays it back to back, so the gap elapses
   // silently underneath chunk one and is never heard. Wait for
-  // the engine to actually go quiet before timing the gap.
+  // the synthesizer to actually go quiet before timing the gap.
   function waitUntilQuiet(ceiling, cb) {
     var synth = window.speechSynthesis;
     var t0 = Date.now();
@@ -205,7 +205,7 @@
       if (settled) return;
       settled = true;
       clearTimeout(speakGuard);
-      // A WEDGED ENGINE IS RESET, NOT WALKED PAST (w63). An iOS
+      // A WEDGED SYNTHESIZER IS RESET, NOT WALKED PAST (w63). An iOS
       // audio-session interruption mid-utterance - Siri, a
       // call, an alarm - can leave speechSynthesis stuck:
       // speaking forever, new utterances queued inside it and
@@ -216,12 +216,12 @@
       // signal was already computed for the debug log and used
       // for nothing: the guard firing with tStart still 0 means
       // this utterance NEVER STARTED. cancel() flushes the
-      // engine's internal backlog (our own queue is untouched -
-      // items are handed over one at a time), resume() clears a
-      // stuck paused flag, and the cancelled utterance's late
-      // onerror lands on `settled` harmlessly.
+      // synthesizer's internal backlog (our own queue is
+      // untouched - items are handed over one at a time),
+      // resume() clears a stuck paused flag, and the cancelled
+      // utterance's late onerror lands on `settled` harmlessly.
       if (guardFired && tStart === 0) {
-        log("TTS", "utterance never started - resetting the engine");
+        log("TTS", "utterance never started - resetting speech synthesis");
         try {
           window.speechSynthesis.cancel();
           window.speechSynthesis.resume();
@@ -242,7 +242,7 @@
           // speaking stays TRUE across the gap (w63): it was
           // cleared above first, so a speak() arriving inside
           // the gap window pumped immediately and the
-          // engineered pause between chunks was lost. The
+          // deliberate pause between chunks was lost. The
           // delayed pump clears it itself.
           speaking = true;
           setTimeout(function () { speaking = false; pumpSpeech(); }, gap);

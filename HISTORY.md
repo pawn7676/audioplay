@@ -1655,7 +1655,7 @@ interruption, a rate limit, a promise resolving after its moment has passed -
 plus the nitpick sweep. With this, everything actionable from findings 91-129
 is done or explicitly declined below.
 
-A WEDGED SPEECH ENGINE IS RESET, NOT WALKED PAST. An iOS audio-session
+A WEDGED SYNTHESIZER IS RESET, NOT WALKED PAST. An iOS audio-session
 interruption mid-utterance - Siri, a call, an alarm - can leave
 speechSynthesis stuck, with new utterances queued inside it and never
 started. Every item then died the same way: onstart never fired, the guard
@@ -1664,7 +1664,7 @@ every test it has, like it was speaking - the worst rule-5 failure this
 program could have, because it defeats the very watchdog meant to prevent
 it. The detection signal was already computed for the debug log and used for
 nothing: the guard firing with tStart still 0 means the utterance NEVER
-STARTED. That branch now cancels and resumes the engine - our own queue is
+STARTED. That branch now cancels and resumes speech synthesis - our own queue is
 untouched, items being handed over one at a time - and says so in the log.
 
 THE KEEP-ALIVE FIGHTS BACK. The OS can pause the session-holder audio too -
@@ -1849,3 +1849,47 @@ and "queenie" is that the knight+e fusion is ALREADY accepted here and
 merely misspelled, where queen+e has never been seen at all. Left for
 the owner to call, with the probe method written down so the next
 sighting is cheap to confirm.
+
+### w67
+
+THE OWNER READ A LOG LINE AND SAW WHAT IT WOULD LOOK LIKE TO SOMEONE
+ELSE. "utterance never started - resetting the ___" meant the iOS
+speech synthesizer and nothing else. It is also, word for word, what a
+cheating client would print. This project asks users to paste that log
+when something goes wrong, and the reader of a pasted log has no way to
+tell which sense was meant - the one they would assume is the one that
+gets the owner banned.
+
+CONSTRAINT 1 ALREADY BANNED THE WORD. It has since the userscript. What
+it did not do was survive being restated: header.js carried the rule by
+NAMING the word ("... is deliberately absent"), which reads as
+authoritative and is unenforceable, because the file stating the ban is
+itself a hit. Nothing could grep for it without finding the rule. So the
+word came back in the speech layer, in a sense nobody would object to,
+and printed.
+
+THE RULE NOW HOLDS ITSELF. It is stated without using the word, in
+header.js and CLAUDE.md both, and the harness greps the WHOLE REPO and
+fails on a single hit - naming file and line. The needle is spelled in
+two halves so the harness can scan itself; cute, but exempting the
+harness is the shape of the thing that went wrong the first time. This
+is the one place grepping is right, and the exception is worth stating
+next to w27's rule rather than looking like a violation of it: w27 is
+about testing BEHAVIOUR, where finding a string proves nothing. Here the
+text IS the claim.
+
+The scan found two more than the first pass did, both in Markdown, both
+missed for the same silly reason - the hand grep was case-sensitive and
+they were capitalised. Which is the argument for the test over the
+habit.
+
+ONE EXCEPTION, AND IT IS FORCED: the frozen v137 artifact carries the
+word in four comments and is sha-locked. The lock is the point of
+freezing it; re-stamping the sha to edit a comment would throw away the
+guarantee to fix cosmetics. It never LOGS the word, so nothing it
+produces can reach a pasted log. The rest - HISTORY, reference/,
+us-header - is clean.
+
+Wording, for the next person: SYNTHESIZER, SPEECH SYNTHESIS, or THE
+VOICE. Not "voice" where a voice PICK is meant, though; settings already
+log voice=system and the two would read as one thing.

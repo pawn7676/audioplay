@@ -13,7 +13,8 @@
  *  answer which moves are LEGAL and what they are CALLED.
  *  No evaluation, no search, no opening book, no move
  *  recommendation — adding any of those would make this a
- *  cheating tool. The word "engine" is deliberately absent.
+ *  cheating tool. The usual word for a program that
+ *  CHOOSES moves is deliberately absent.
  */
 
   /*======= 13. EMBEDDED CHESS RULES / LEGAL MOVE GENERATOR ========*/

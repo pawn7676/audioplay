@@ -77,7 +77,8 @@
  *     CALLED. No evaluation, no search, no opening book,
  *     no move recommendation. Lichess bans analysis
  *     assistance; adding any would make this a cheating
- *     tool. The word "engine" is deliberately absent.
+ *     tool. The usual word for a program that CHOOSES
+ *     moves is deliberately absent.
  *  2. THE BOARD API IS THE ONLY TRUTH. The userscript's
  *     "no DOM scraping" rule, now structural: there is no
  *     Lichess page to scrape. Everything comes from

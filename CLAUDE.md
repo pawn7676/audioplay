@@ -78,8 +78,14 @@ page in a browser; the output is scratch.
 
 1. **FAIR PLAY.** `src/rules.js` says what is legal and
    what a move is called. It never evaluates, suggests, or
-   ranks. Engine help would make this a cheating device and
-   get the owner banned. Do not add it in any form.
+   ranks. Move-choosing help of any kind would make this a
+   cheating device and get the owner banned. Do not add it in
+   any form. **And the usual word for such a program appears
+   nowhere in this repo** - not in code, not in a comment, not
+   in a log line. It drifted into the speech layer once,
+   meaning the iOS synthesizer, and printed into the log users
+   are asked to paste (w67). Say synthesizer, speech synthesis,
+   or the voice. The harness greps for it and fails on one hit.
 2. **The board API is the only truth.** Never scrape a page
    or infer state from the DOM.
 3. **No external libraries, no build-time dependencies.**
