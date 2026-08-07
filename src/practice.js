@@ -72,6 +72,12 @@
     // Null here, both halves show a frozen 10, which is what a
     // practice clock is.
     api.clockAt = null;
+    // AND NOBODY IS PLAYING (w68). Exactly the w60 hazard one
+    // field over: play a real game, then practice, and the
+    // panel would still name the opponent you just finished
+    // with - beside a board they are not on. There is no
+    // opponent here; the row says so by being empty.
+    api.players = { w: null, b: null };
     log("DRY", "practice mode ON - nothing will be sent to Lichess");
     speakWhenAudioSettled("Practice mode. You are white.");
   }

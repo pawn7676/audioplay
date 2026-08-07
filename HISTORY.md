@@ -1893,3 +1893,57 @@ us-header - is clean.
 Wording, for the next person: SYNTHESIZER, SPEECH SYNTHESIS, or THE
 VOICE. Not "voice" where a voice PICK is meant, though; settings already
 log voice=system and the two would read as one thing.
+
+### w68
+
+THE OPPONENT HAD NO NAME. Not hidden, not truncated - never captured.
+gameFull has carried both players since w1, and handleGameFull read
+exactly one field of it, white.id, to decide which colour you are, and
+dropped the rest on the floor. Nothing on the page or in the log ever
+said who you were playing. The owner noticed the only way anyone could:
+they only ever play maia, maia's name is already sitting in the
+opponent dropdown, and so the absence had no way to announce itself.
+
+Both players now render under the board - name, rating, and title,
+because BOT is worth knowing - in the clock line's own white-then-black
+order (w39) with the same brass marking your side, so the two lines
+stack into one block. The log line names the opponent too: a pasted log
+should say who was on the other side.
+
+BEHIND A SETTING, because that is how it was asked for and it is the
+right shape. This page is for playing at a real board without looking
+at the screen, so anything permanent has to earn its room. "show
+players" is the Zen-mode choice with the sense reversed - a setting
+reads better as the thing it turns ON - and off leaves the row out
+rather than blanking it, so nothing shifts. It repaints on the flip:
+its whole effect is something already on screen, and a switch that did
+nothing until the opponent moved would read as broken.
+
+TWO SHAPES OF PLAYER, and the second one has no name at all: a Lichess
+AI slot is {aiLevel} and nothing else, which would have rendered
+"undefined" next to your own name. Normalised at the edge, so nothing
+downstream knows there were two shapes.
+
+AND w60'S LESSON, ONE FIELD OVER. Practice mode clears the players for
+exactly the reason it nulls clockAt: play a real game, then practice,
+and the panel would name the opponent you just finished with, beside a
+board they are not on. The repaint fingerprint gained them for the
+mirror-image reason - they arrive with gameFull, which on a REJOIN can
+land with gameId and moves.length both already settled, so nothing else
+in the list would move and the names would sit blank under a board that
+is otherwise right. Three mutation tests, one per hazard.
+
+NOT A FAIR-PLAY QUESTION, and the settings comment says so where the
+next reader will look. Constraint 1 is about MOVE CHOICE. A rating is a
+fact about a person, not about the position, and no rating ever
+suggested a move. The move list is the thing that would start to look
+like analysis surface, and it stays absent - the owner ruled it out in
+the same breath as asking for this, which is the right instinct.
+
+DECLINED FOR NOW: emulating the Lichess layout - board offset left,
+clocks in a right-hand rail. Reasons in the reply that asked for it,
+but briefly: the clocks already sit directly under the board, which is
+a shorter eye path from across a room than a side rail, and the whole
+page is one column on purpose. Reopen it on the device, not here - w56's
+rule, do not retune what you have not measured on the machine that
+matters.

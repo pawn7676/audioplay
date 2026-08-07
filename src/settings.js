@@ -110,6 +110,24 @@
     // carry it instead, so it is a choice.
     clockSpeakOpponent: true,
 
+    // Names and ratings under the board, both sides. Lichess
+    // shows them by default and hides them behind Zen mode;
+    // this is the same choice with the sense reversed, because
+    // a setting reads better as the thing it turns ON. It was
+    // asked for as an OPTION rather than a fixture (w68) and
+    // that is the right shape: the owner plays at a real board
+    // and looks at the iPad rarely, so anything permanent on
+    // screen has to earn the room. Off leaves the row out
+    // entirely rather than blanking it, so nothing shifts.
+    //
+    // NOT A FAIR-PLAY QUESTION, and worth saying where the
+    // next reader will look: constraint 1 is about MOVE
+    // CHOICE. A rating is a fact about a person, not about the
+    // position, and no rating ever suggested a move. The move
+    // list is the thing that would start to look like analysis
+    // surface, and it is deliberately still absent.
+    showPlayers: true,
+
     // The move row on the clock overlay. The cost is digit
     // size: with the row present the clocks take
     // CLOCK_TIME_SIZE instead of the larger

@@ -165,6 +165,13 @@
                font-family: Menlo, "SF Mono", monospace; }
   #clockLine .mine { color: var(--brass); }
   #clockLine .low { color: var(--bad); }
+  /* the same brass marks YOUR side on both lines, so the
+     block reads as one thing (w68). The title is dimmer than
+     the name because it qualifies it - BOT, GM - and at a
+     glance the name is what is wanted. */
+  #playersLine .mine { color: var(--brass); }
+  #playersLine .title { opacity: .65; }
+  #playersLine .rating { opacity: .65; }
   input.whoin { width: 9em; padding: 4px; font: inherit; }
   select { font: inherit; padding: 4px; }
   .row.opt { font-size: .85rem; color: var(--text); gap: 6px; }
@@ -199,6 +206,9 @@
   <details open>
   <summary>Board</summary>
   <canvas id="mini" width="768" height="768"></canvas>
+  <!-- players above the clocks, in the same white-then-black
+       order, so the two lines read down as one block (w68) -->
+  <div class="stats" id="playersLine"></div>
   <div class="stats" id="turnLine"></div>
   <div class="stats" id="clockLine"></div>
   </details>

@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w67";
+  VERSION = "w68";
 
   var RULES = makeRules();
 
@@ -44,6 +44,16 @@
     myId: null,
     myName: null,        // shown on the sign-in button (web)
     myColor: null,
+    /* WHO IS ON THE OTHER SIDE (w68). gameFull has carried
+     * this since w1 and the page read one field of it -
+     * white.id, to work out which colour you are - and threw
+     * the rest away, so nothing on screen or in the log ever
+     * said who you were playing. Keyed by COLOUR, not by
+     * us/them, because that is how every other part of this
+     * panel is keyed (w39) and it makes the render a lookup
+     * rather than a branch. Each is {name, rating, title} or
+     * null. */
+    players: { w: null, b: null },
     pos: null,
     moves: [],            // uci list already applied
     lastSan: "", lastSanW: "", lastSanB: "",
@@ -214,6 +224,7 @@
     api.moves = [];
     api.over = false;
     api.wtime = null; api.btime = null; api.clockAt = null;  /* w60 */
+    api.players = { w: null, b: null };   /* w68, and see w60 */
     uiStatus("Signed out.");
     uiGameChanged();
   }
@@ -548,8 +559,12 @@
     api.moves = [];
     var whiteId = ((g.white && g.white.id) || "").toLowerCase();
     api.myColor = (whiteId && whiteId === api.myId) ? "w" : "b";
+    api.players.w = playerOf(g.white);
+    api.players.b = playerOf(g.black);
     log("API", "game " + api.gameId + " you are " +
-        (api.myColor === "w" ? "white" : "black"));
+        (api.myColor === "w" ? "white" : "black") + ", " +
+        playerLabel(api.players[api.myColor === "w" ? "b" : "w"]) +
+        " on the other side");
     syncMoves(g.state && g.state.moves, false);   // catch up silently
     var st = g.state && g.state.status;
     if (st && st !== "started" && st !== "created") {
@@ -563,6 +578,34 @@
           ". You are " + colorWord(api.myColor) + ". " +
           colorWord(api.pos.turn) + " to move.");
     everConnected = true;
+  }
+
+  /* A gameFull player slot is one of two shapes: a human or
+   * bot has {id, name, title, rating}, and one of Lichess's
+   * own opponents has {aiLevel} and NO name at all. Both are
+   * normalised here so nothing downstream has to know, and an
+   * unrecognised slot becomes null rather than a row of
+   * undefineds. Rating is left off when absent rather than
+   * shown as 0 - an unrated game is a real case, not an
+   * error. */
+  function playerOf(p) {
+    if (!p) return null;
+    if (p.aiLevel != null) {
+      return { name: "computer level " + p.aiLevel, rating: null, title: null };
+    }
+    var name = p.name || p.id;
+    if (!name) return null;
+    return { name: name,
+             rating: (typeof p.rating === "number") ? p.rating : null,
+             title: p.title || null };
+  }
+
+  // For the log line and nothing else - the panel builds its
+  // own, because there the title is styled and here it is not.
+  function playerLabel(pl) {
+    if (!pl) return "unknown opponent";
+    return (pl.title ? pl.title + " " : "") + pl.name +
+           (pl.rating != null ? " (" + pl.rating + ")" : "");
   }
 
   function handleGameState(s, announce) {
