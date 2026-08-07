@@ -128,6 +128,18 @@
     // surface, and it is deliberately still absent.
     showPlayers: true,
 
+    // The rating beside each name, split off from showPlayers
+    // at w69 because the owner wanted the two decisions
+    // separately and they ARE two decisions: a name tells you
+    // who is across the board, a rating tells you what to
+    // expect from them, and wanting the first without the
+    // second is an ordinary thing to want. Nested under
+    // showPlayers - with players off there is nothing for a
+    // rating to sit beside, so the row is simply absent and
+    // this switch does nothing, which is the honest behaviour
+    // rather than a second empty row.
+    showRatings: true,
+
     // The move row on the clock overlay. The cost is digit
     // size: with the row present the clocks take
     // CLOCK_TIME_SIZE instead of the larger
