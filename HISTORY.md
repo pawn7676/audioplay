@@ -2113,3 +2113,40 @@ cancel branch. The gate test counts FETCHES - the claim is that no
 request leaves the page, so the proof is the counter staying at zero
 while three refusals land, then reading exactly one when a rapid
 control passes through to the stubbed server.
+
+### w72
+
+THREE CORRECTIONS FROM THE OWNER, all on w71's work, and two of them
+are the same lesson: when in doubt, do what Lichess does, because that
+is the thing the player already knows.
+
+THE RATING NEVER RENDERS WITHOUT ITS NAME. Third landing for this
+pair. w69 nested ratings under players and off/on showed nothing -
+"half-baked". w71 read the switches independently and a bare number
+floated beside the clock - "sucks", and it did. The owner's ruling is
+that the configuration itself should be impossible, so the pair is now
+DEPENDENT, the same shape as the message channels: players off drags
+ratings off (repainting the pill), ratings tapped on while players are
+off snaps straight back with the reason logged, and loadSettings
+repairs a stored pair that disagrees - a save made under w71 could
+legally hold one. The render guard stays as the last line, not the
+rule. The test drives the panel's own pills, as a finger would,
+because a test that poked CFG directly would pass with the panel
+coupling deleted - and the loadSettings repair got its own test after
+mutation M83 deleted it and nothing failed.
+
+A LOW CLOCK STAYS RED. w71 reasoned that a low clock that is not
+ticking is not an emergency and turned it grey between moves. The
+owner disagreed, and Lichess agrees with the owner: below the
+threshold the box turns red and stays red. What w71 got right survives
+in the fix - DIMMING IS ORTHOGONAL TO COLOUR. The waiting side dims
+whatever colour its box is, so a waiting low clock is a noticeably
+darker red, not a grey one, and whose turn it is stays legible without
+the colour lying about the emergency. A flagged game keeps its red at
+full brightness, as Lichess leaves the loser's.
+
+THE DIGITS ARE SIZED AND SET LIKE THE LICHESS CLOCK: big plain sans
+at regular weight (2.4rem) instead of small bold monospace, with
+tabular-nums holding the columns steady as the digits count - the
+job the monospace face was doing, done without it. No webfont, rule
+3: the system sans stands in for theirs.

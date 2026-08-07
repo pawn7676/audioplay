@@ -129,15 +129,17 @@
     showPlayers: true,
 
     // The rating beside each name, split off from showPlayers
-    // at w69 because the owner wanted the two decisions
-    // separately and they ARE two decisions: a name tells you
+    // at w69 because they are two decisions: a name tells you
     // who is across the board, a rating tells you what to
-    // expect from them, and wanting the first without the
-    // second is an ordinary thing to want. Nested under
-    // showPlayers - with players off there is nothing for a
-    // rating to sit beside, so the row is simply absent and
-    // this switch does nothing, which is the honest behaviour
-    // rather than a second empty row.
+    // expect from them. DEPENDENT, NOT INDEPENDENT (w72):
+    // w71 let a rating render alone when players were off -
+    // the strictest reading of the two switches, and the
+    // owner's verdict was that it sucks. A rating without a
+    // name is a number floating beside a clock. So players
+    // off forces ratings off, and ratings cannot be switched
+    // on while players are off - enforced in the panel, and
+    // repaired below in loadSettings for a stored pair that
+    // disagrees, the same shape as the message-channel rule.
     showRatings: true,
 
     // The move row on the clock overlay. The cost is digit
@@ -197,6 +199,10 @@
     // question hang silently. Voice is the channel that
     // works with the eyes closed, so it is the one
     // restored.
+    // ratings need a name to sit beside (w72): a stored
+    // players-off/ratings-on pair - saved under w71, which
+    // allowed it - reads as ratings off.
+    if (!out.showPlayers) out.showRatings = false;
     if (!out.clockSpeakMessages && !out.clockShowMessages) {
       out.clockSpeakMessages = true;
     }

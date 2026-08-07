@@ -181,13 +181,23 @@
                display: flex; flex-direction: column;
                justify-content: center; }
   .sideGap { height: 18px; }
-  .sideClock { font-size: 1.6rem; font-weight: 700; letter-spacing: .02em;
-               font-family: Menlo, "SF Mono", monospace; line-height: 1.2; }
-  .sideClock .cbox { display: inline-block; padding: 3px 14px;
+  /* SIZED AND SET LIKE THE LICHESS CLOCK (w72): big plain
+     sans digits at regular weight, not small bold monospace.
+     tabular-nums keeps them from wobbling as they count
+     without needing a monospace face. No webfont - rule 3 -
+     so the system sans stands in for theirs. */
+  .sideClock { font-size: 2.4rem; font-weight: 400;
+               font-family: -apple-system, "Helvetica Neue",
+                            Roboto, Arial, sans-serif;
+               font-variant-numeric: tabular-nums;
+               letter-spacing: .04em; line-height: 1.15; }
+  .sideClock .cbox { display: inline-block; padding: 2px 16px;
                      border-radius: 6px; color: #fff;
                      background: #2e2b27; }
   .sideClock .cbox.turn { background: #3a5a2a; }
   .sideClock .cbox.low { background: #8c3a30; }
+  /* dim is orthogonal to colour (w72): the waiting side keeps
+     its box colour - red stays red - just noticeably darker */
   .sideClock .cbox.idle, .sideName .idle { opacity: .55; }
   .sideName { font-family: Menlo, "SF Mono", monospace; font-size: .8rem;
               line-height: 1.5; margin: 2px 0; }
