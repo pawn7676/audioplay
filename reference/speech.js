@@ -402,10 +402,10 @@
   }
 
   // iOS fires onend while the audio is still playing. If the
-  // next chunk is handed over then, the engine queues it
+  // next chunk is handed over then, the synthesizer queues it
   // internally and plays it back to back, so the gap elapses
   // silently underneath chunk one and is never heard. Wait for
-  // the engine to actually go quiet before timing the gap.
+  // the synthesizer to actually go quiet before timing the gap.
   function waitUntilQuiet(ceiling, cb) {
     var synth = window.speechSynthesis;
     var t0 = Date.now();

@@ -244,7 +244,7 @@
 
   // SPOKEN TEXT IS WRITTEN FOR THE EAR (v134): lower case
   // throughout, colors and pieces included, because that is
-  // what reads naturally out of a TTS engine and because
+  // what reads naturally out of a speech synthesizer and because
   // every string was written when speech was the only
   // output. On the strip it looks unfinished - "checkmate.
   // white wins." - so the first letter of each sentence is

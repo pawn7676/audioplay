@@ -186,8 +186,9 @@
    * 1. FAIR PLAY. This file contains a legal-move generator
    *    and nothing else: no evaluation, no search, no
    *    opening book, no move recommendation. Lichess bans
-   *    analysis assistance. The word "engine" is
-   *    deliberately absent; it is called RULES. Section 13
+   *    analysis assistance. The usual word for a program
+   *    that CHOOSES moves is deliberately absent; it is
+   *    called RULES. Section 13
    *    is the whole of it, and it may only answer which
    *    moves are LEGAL and what they are CALLED.
    *

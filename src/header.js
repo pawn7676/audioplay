@@ -70,10 +70,27 @@
    *  1. FAIR PLAY. rules.js is a legal-move generator and
    *     nothing else: no evaluation, no search, no opening
    *     book, no move recommendation. Lichess bans analysis
-   *     assistance and would ban the owner for it. The word
-   *     "engine" is deliberately absent; it is called
-   *     RULES, and it may only answer which moves are LEGAL
-   *     and what they are CALLED.
+   *     assistance and would ban the owner for it. It is
+   *     called RULES, and it may only answer which moves are
+   *     LEGAL and what they are CALLED.
+   *
+   *     AND THE USUAL WORD FOR A PROGRAM THAT CHOOSES MOVES
+   *     APPEARS NOWHERE IN THIS CODEBASE - not in the code,
+   *     not in a comment, not in a log line. This rule is as
+   *     old as the project and it DRIFTED (w67): it was
+   *     restated here using the word, which made it
+   *     unenforceable, and the word then reappeared in the
+   *     speech layer, where it meant the iOS SYNTHESIZER and
+   *     nothing else. Harmless in itself - and it printed,
+   *     "resetting the ___", into the log this project asks
+   *     users to paste when something goes wrong. The reader
+   *     of a pasted log has no way to tell which sense was
+   *     meant, and the one they would assume is the one that
+   *     gets the owner banned. Say synthesizer, or speech
+   *     synthesis, or the voice. The harness now greps
+   *     everything that ships and fails on a single hit,
+   *     which is why this paragraph does not name the word
+   *     either.
    *
    *  2. NO DOM SCRAPING. Everything comes from the Lichess
    *     Board API. An earlier version scraped the move list

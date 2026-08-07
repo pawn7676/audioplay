@@ -1736,9 +1736,66 @@ const sleep = ms =>
   check("VERSION is a w-number at runtime (" + ver + ")",
         /^w\d+$/.test(ver));
 
+  // ---- w67: the fair-play word appears nowhere that ships ----
+  // Constraint 1 has banned it since the userscript, and it
+  // drifted anyway: restated in header.js USING the word, which
+  // made it unenforceable, and it then turned up in the speech
+  // layer meaning the iOS synthesizer - including in a LOG LINE,
+  // in the log this project asks users to paste. The reader of a
+  // pasted log cannot tell which sense was meant.
+  //
+  // GREPPING IS RIGHT HERE, and it is the one place it is. The
+  // usual rule - ask the built DOM, never grep the source (w27)
+  // - is about testing BEHAVIOUR, where a string's presence
+  // proves nothing about whether the feature works. This claim
+  // IS about the text: the property is "this word does not
+  // appear", and reading the text is the only way to check it.
+  //
+  // THE WHOLE REPO, not just what ships. Comments reach the
+  // page anyway (build.js concatenates and strips nothing), but
+  // HISTORY.md and reference/ are just as readable to anyone who
+  // opens the repository, and the rule was asked for as a rule
+  // about the project, not about the bundle.
+  //
+  // The needle is spelled in two halves so this file can be
+  // scanned along with everything else. Cute, but the
+  // alternative is exempting the harness, and an exemption is
+  // how the rule drifted the first time.
+  const NEEDLE = new RegExp("eng" + "ine", "i");
+  // The ONE exception, and it is forced: the frozen v137
+  // artifact is sha-locked a few hundred lines above this. The
+  // lock is the point of freezing it, editing it breaks that
+  // check, and re-stamping the sha to allow an edit would throw
+  // away the guarantee to fix a comment. It carries the word in
+  // four comments and never LOGS it, so nothing it can produce
+  // reaches a pasted log.
+  const SHA_LOCKED = "frozen-userscript/lichess_audioplay.js";
+  const TEXTY = /\.(js|html|md|txt|yml|yaml|json)$/;
+  const banned = [];
+  (function walk(dir) {
+    fs.readdirSync(dir, { withFileTypes: true }).forEach(ent => {
+      const p = (dir === "." ? "" : dir + "/") + ent.name;
+      if (ent.name === ".git" || ent.name === "node_modules") return;
+      if (ent.isDirectory()) return walk(p);
+      if (!TEXTY.test(ent.name)) return;
+      if (p === SHA_LOCKED) return;
+      if (p === "index.html") return;      // gitignored build output
+      fs.readFileSync(p, "utf8").split("\n").forEach((line, i) => {
+        // substring, not word-boundary: a reader scanning for
+        // this does not stop to check whether it is part of a
+        // longer word, and a rule needing a careful reader is
+        // the rule that drifted
+        if (NEEDLE.test(line)) banned.push(p + ":" + (i + 1));
+      });
+    });
+  })(".");
+  check("the fair-play word appears nowhere in the repo (" +
+        (banned.join(", ") || "clean, one sha-locked exception") + ")",
+        banned.length === 0);
+
   // ================= w63: RESILIENCE =================
 
-  // 102: a wedged synthesis engine is reset, not walked past.
+  // 102: a wedged synthesizer is reset, not walked past.
   // The guard firing with tStart still 0 means the utterance
   // NEVER STARTED - the one uncovered permanent-silence path.
   vm.runInContext(`
@@ -1757,7 +1814,7 @@ const sleep = ms =>
     pumpSpeech();
   `, sandbox);
   await sleep(4300);            // the real 1.4s guard, unscaled
-  check("a never-started utterance resets the engine (" +
+  check("a never-started utterance resets speech synthesis (" +
         vm.runInContext("__ttsCancels", sandbox) + " cancel, " +
         vm.runInContext("__ttsResumes", sandbox) + " resume)",
         vm.runInContext("__ttsCancels", sandbox) === 1 &&
