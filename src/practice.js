@@ -49,6 +49,7 @@
     try { if (eventAbort) eventAbort.abort(); } catch (e) {}
     clearTimeout(eventTimer);
     cancelSeek();
+    cancelChallenge();      /* an open challenge dies with practice too (w61) */
     clearTimeout(reconnectTimer);
     clearInterval(pollTimer);
     clearDialogue();

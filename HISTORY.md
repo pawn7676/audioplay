@@ -1515,3 +1515,66 @@ All five mutation-tested. The checklist for the remaining batches (92-123,
 128-129) lives with the review; next is the humans batch - challenge
 keep-alive, blitz seek presets, opponent-gone.
 
+
+### w61
+
+THE OTHER PLAYER IS A HUMAN. Second batch from the targeted review
+(92-94, 96-98 on the checklist), and every item is the same discovery
+from a different angle: this page has only ever played maia, and maia
+is a flattering opponent - it accepts a challenge within a second,
+never disconnects, never starts a bullet game from its phone, and
+never plays chess960. Each of those kindnesses was hiding a hole.
+
+A CHALLENGE QUIETLY DIED AT TWENTY SECONDS. The spec is verbatim about
+it: realtime challenges "expire after 20s if not accepted. To prevent
+that, use the keepAliveStream flag." The page never sent the flag,
+said "waiting.", and a human who took half a minute to notice was
+accepting a challenge that no longer existed while the eyes-free user
+waited on it. The flaw was exactly the size of the gap between a bot
+opponent and a human one. The challenge now streams and lives as long
+as the connection is held, the seek's own lifecycle handled the seek's
+own way - and aborting the stream CANCELS the challenge, which is what
+sign-out and practice should do to one anyway, and now do. The final
+"done" line is logged, not spoken: decline arrives as challengeDeclined
+and accept as gameStart, and both already speak.
+
+AN OPPONENT WHO LEAVES IS NOW HEARD ABOUT. The stream has always sent
+opponentGone with the claim-victory countdown; the page logged the
+event type and did nothing - in an app whose own header worries about
+that window from the other side. A sighted player watches the banner;
+an eyes-free one heard silence while their clock was the only one
+moving. Spoken once per departure, and when the window opens it becomes
+"you can claim the win. say yes to claim it, no to keep waiting" -
+through the same CONFIRMS machinery as resign and the draw, so the
+answer paths, the displacement rules and w60's status handling all
+apply for free. Declining is declining, not snoozing: the question only
+re-arms on a fresh departure.
+
+A REFUSED SEEK NOW SAYS WHY, AND BLITZ IS TOLD THE WAY OUT. The
+challenge path has parsed Lichess's {error} body since w1; the seek
+path said "HTTP 400" and left the user to guess a rule they could not
+guess: the Board API accepts only RAPID AND SLOWER for public seeks,
+while blitz is fine for direct challenges. So half the preset row -
+3+0, 3+2, 5+0, 5+3 - was refusable at one button and fine at the one
+beside it. A blitz 400 now ends "Blitz seeks are not allowed -
+challenge someone instead." The presets themselves stay: they are
+legitimate for challenges, and the board API remains the only truth
+about what a seek may be.
+
+AND A GAME THIS APP CANNOT PLAY IS NAMED, NOT MANGLED. gameStart
+carries compat.board for games the Board API will not accept moves
+for - a bullet game started from the phone app used to auto-join and
+then 400 every single move, which reads as the grammar breaking, not
+as the game being out of scope. It is refused out loud now, before the
+join. Variants the same: chess960 castling arriving as king-takes-rook
+would have hit the illegal-uci resync on every event, a loop of ERR
+lines over a board that cannot be trusted. "This app plays standard
+chess only. play it on lichess." fromPosition stays playable - it is
+standard chess from a custom start, and initialFen already handles it.
+The gameStart handler also reads gameId before the legacy id field,
+per spec.
+
+All five mutation-tested. Still unreachable by the harness: a real
+human taking real seconds to accept - the twenty-second expiry can
+only truly be confirmed by challenging one.
+
