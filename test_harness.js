@@ -399,20 +399,24 @@ const sleep = ms =>
   check("a deleted setting is dropped from a stored save (" + dropped + ")",
         dropped[0] === false && dropped[1] === true);
 
-  // ---- w10/w12, revised w76: one account button, the way ----
-  // in AND out. w12's "tapping the name does nothing" held
-  // while Sign out had its own button; merged, the label
-  // carries the action. Both directions are driven through
-  // the built button, twice over - a feature used twice is a
-  // different feature (w37).
+  // ---- w10/w12/w76/w77: one account button; the sign-out ----
+  // is a question first. At rest the signed-in button is the
+  // NAME alone; the first tap asks, the second answers, and
+  // the question cancels on a tap elsewhere or on its timer
+  // (rule 5: a question must be cancellable). Every leg is
+  // driven through the built button - a feature used twice
+  // is a different feature (w37).
   vm.runInContext(`
     api.myId = "pawn76"; api.myName = "pawn76";
     renderAccount();
   `, sandbox);
   const btn = () => vm.runInContext(
     'document.getElementById("btnSignIn").textContent', sandbox);
-  check("signed in: the button is the name AND says the way out (" +
-        btn() + ")", btn() === "pawn76 — Sign out");
+  const btnCls = (n) => vm.runInContext(
+    'document.getElementById("btnSignIn").classList.contains("' +
+    n + '")', sandbox);
+  check("signed in, at rest: the button is just the name (" + btn() + ")",
+        btn() === "pawn76" && btnCls("on") && !btnCls("confirm"));
   vm.runInContext('api.myId = null; api.myName = null; renderAccount();',
                   sandbox);
   check("signed out: the button invites sign-in",
@@ -435,10 +439,54 @@ const sleep = ms =>
     api.myId = "pawn76"; api.myName = "pawn76"; renderAccount();
     document.getElementById("btnSignIn").on_click();
   `, sandbox);
-  check("signed in: tapping it signs out, not in again",
-        vm.runInContext("__signOutCalls", sandbox) === 1 &&
-        vm.runInContext("__signInCalls", sandbox) === 1);
+  check("signed in, first tap: asks, signs nothing out (" + btn() + ")",
+        btn() === "Sign out?" && btnCls("confirm") && !btnCls("on") &&
+        vm.runInContext("__signOutCalls", sandbox) === 0);
+  // the twice-a-second repaint tick redraws through
+  // renderAccount; it must not un-ask the standing question
+  vm.runInContext("renderAccount();", sandbox);
+  check("the question survives a repaint (" + btn() + ")",
+        btn() === "Sign out?" && btnCls("confirm"));
+  // a tap ANYWHERE ELSE is one cancel - the w69 tap-outside
+  // pattern, fired through the document's real listener
+  vm.runInContext(
+    'document.__fireClick({ target: document.body });', sandbox);
+  check("a tap elsewhere cancels back to the name (" + btn() + ")",
+        btn() === "pawn76" && btnCls("on") &&
+        vm.runInContext("__signOutCalls", sandbox) === 0);
+  // and a tap on the BUTTON while armed must not self-cancel
+  // through that same document listener
   vm.runInContext(`
+    document.getElementById("btnSignIn").on_click();
+    document.__fireClick({
+      target: document.getElementById("btnSignIn") });
+  `, sandbox);
+  check("the document handler leaves the button's own tap alone",
+        btn() === "Sign out?");
+  // asked and answered: the second tap on the question acts
+  vm.runInContext('document.getElementById("btnSignIn").on_click();',
+                  sandbox);
+  check("second tap on the question signs out",
+        vm.runInContext("__signOutCalls", sandbox) === 1 &&
+        vm.runInContext("__signInCalls", sandbox) === 1 &&
+        btn() === "pawn76");
+  // the timer is the other cancel; shrink it rather than wait
+  const timedOut = await vm.runInContext(`
+    (function () {
+      SIGNOUT_ARM_MS = 20;
+      document.getElementById("btnSignIn").on_click();
+      return new Promise(function (res) {
+        setTimeout(function () {
+          res(document.getElementById("btnSignIn").textContent);
+        }, 120);
+      });
+    })()
+  `, sandbox);
+  check("unanswered, the question times out to the name (" + timedOut + ")",
+        timedOut === "pawn76" &&
+        vm.runInContext("__signOutCalls", sandbox) === 1);
+  vm.runInContext(`
+    SIGNOUT_ARM_MS = 4000;
     api.myId = null; api.myName = null; renderAccount();
     signIn = __realSignIn; signOut = __realSignOut;
   `, sandbox);

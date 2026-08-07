@@ -109,6 +109,14 @@
     background: var(--button-on); color: #e6efe0;
     border-color: var(--button-on);
   }
+  /* THE ARMED QUESTION (w77): the account button while
+     "Sign out?" stands. Filled like .primary because it
+     means the same thing - this tap ACTS - and in the warn
+     colour because the act is a leaving. */
+  .panel button.confirm {
+    background: var(--warn); color: var(--bg);
+    border-color: var(--warn);
+  }
   /* THE VOICE ROW MATCHES THE PAGE (w32). The shared UI
      builds these buttons with its own inline sizing, which
      is right where it lives (floating over lichess.org) and
@@ -265,8 +273,8 @@
        re-parented in here by buildWebUI (w21); the sign-in
        button below is moved to the END of that row - the
        far-from-the-voice-button reasoning that placed
-       Practice (w31), because signed in, a tap here is
-       Sign out. -->
+       Practice (w31), because signed in, this is where
+       Sign out lives (asked first - w77, in ui.js). -->
   <button id="btnSignIn" class="primary">Sign in with Lichess</button>
 </div>
 
@@ -373,8 +381,8 @@
   to allow this site to do 3 things on your behalf: read
   challenges, send and accept challenges, and play games.
   You can revoke this site's access any time under
-  Preferences &rarr; Security on Lichess, or by signing out
-  here.</p>
+  Preferences &rarr; Security on Lichess, or by tapping your
+  name here to sign out.</p>
   <p class="hint">Sign in once and the page waits for a
   game — one started here, in the Lichess app, or by a
   friend's challenge. Nothing else to set up.</p>
