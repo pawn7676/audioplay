@@ -1,13 +1,16 @@
   /*========================== KEEP-ALIVE ==========================*/
 
   var keepAlive = null;
+  var keepAliveWanted = false;   // w63: did WE stop it, or the OS?
   // A WebAudio oscillator does not hold the iOS audio
   // session; a PLAYING media element does. Without one, iOS
   // tears the session down between utterances and the next
   // one starts quiet while the route is re-established.
   // This is why the first announcements sound faint and it
-  // settles after a few. Builds a 1 second silent WAV rather
-  // than carrying a large base64 blob in the file.
+  // settles after a few. Builds a half-second silent WAV
+  // (w63: this said "1 second" while the code and the last
+  // line of this comment both said half) rather than
+  // carrying a large base64 blob in the file.
   // Safari rejected an 8-bit WAV with "operation is not
   // supported", so this builds 16-bit PCM, which every
   // browser decodes. Half a second, looped.
@@ -48,6 +51,7 @@
   }
 
   function startKeepAlive() {
+    keepAliveWanted = true;
     try {
       if (!keepAlive) {
         keepAlive = document.createElement("audio");
@@ -56,6 +60,23 @@
         keepAlive.loop = true;
         keepAlive.volume = 0.02;
         keepAlive.setAttribute("playsinline", "");
+        // THE OS CAN PAUSE THIS TOO, AND USED TO WIN (w63).
+        // Siri, a phone call, another app taking the audio
+        // session: iOS pauses the element, nothing observed
+        // it, and the layer whose whole job is keeping the
+        // session alive was silently dead until the next tap
+        // of the voice button - with Control Center no help,
+        // since the media-session "pause" key is mapped to
+        // repeatLast. If the pause was not OURS, ask to play
+        // again; a refusal is logged and the next user gesture
+        // still heals it, as before.
+        keepAlive.addEventListener("pause", function () {
+          if (!keepAliveWanted) return;
+          log("AUD", "session holder paused externally - resuming");
+          keepAlive.play().catch(function (e) {
+            log("AUD", "resume blocked: " + e.message);
+          });
+        });
         document.body.appendChild(keepAlive);
         log("AUD", "audio session holder created");
       }
@@ -76,6 +97,7 @@
   }
 
   function stopKeepAlive() {
+    keepAliveWanted = false;      /* w63: OUR pause, not the OS's */
     try { if (keepAlive) keepAlive.pause(); } catch (e) {}
   }
 

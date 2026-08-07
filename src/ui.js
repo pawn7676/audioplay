@@ -239,6 +239,7 @@
       if (clockOverlay) {
         try { clockOverlay.remove(); } catch (e) {}
         clockOverlay = null;
+        clockHalves = null; clockMsgEl = null;  /* w63: all three */
       }
     });
     // the message pair (v129). Any three of the four

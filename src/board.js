@@ -1,5 +1,5 @@
 /*  audioplay-web — board.js
- *  Read the app.js header first: it carries the project
+ *  Read the header.js front door first: it carries the project
  *  story, the hard constraints, and the file map.
  *
  *  BoardEye's mini-board canvas renderer, ported with the
@@ -51,6 +51,12 @@ function bakePieces() {
         'viewBox="0 0 45 45" width="' + MINI_CELL + '" height="' +
         MINI_CELL + '">' + ser.serializeToString(g) + "</svg>";
       var img = new Image();
+      // a piece that fails to bake stays absent silently; the
+      // start position doubling as proof-the-art-loaded is the
+      // real guard, but the log should still say which (w63)
+      img.onerror = function () {
+        log("ERR", "piece art failed to load: " + id);
+      };
       img.onload = function () {
         var cv = document.createElement("canvas");
         cv.width = MINI_CELL; cv.height = MINI_CELL;
@@ -138,6 +144,14 @@ function renderMiniBoard() {
 
 // Before any game is connected the board shows the start
 // position, which doubles as proof the piece art loaded.
+// ORIENTATION-BLIND ON PURPOSE, and safe only by a coupling
+// worth naming (w63): black is drawn on the top grid rows
+// regardless of flip, which would be wrong if the board could
+// be flipped with no position - but every path that sets
+// myColor sets pos in the same breath (joinGame, gameFull,
+// pollOnce, signOut, dryStart), so a flipped, position-less
+// board cannot currently exist. If that coupling ever
+// loosens, apply boardFlipped() here too.
 var START_BACK = ["r", "n", "b", "q", "k", "b", "n", "r"];
 function startPieceAt(i) {
   var r = Math.floor(i / 8), f = i % 8;
