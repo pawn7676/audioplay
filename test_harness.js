@@ -2205,6 +2205,41 @@ const sleep = ms =>
         (compoundClean.join(" ") || "none") + ")",
         compoundClean.length === 0);
 
+  // ---- w66: knight+e, spelled the way Safari writes it ----
+  // The fusion was already accepted, as "knightie" - the one
+  // spelling Safari will not produce, since it writes knight
+  // as "night" everywhere else in this project's evidence.
+  // Same board discipline as the rugby pair, and it took two
+  // goes here as well. A knight AND a queen both reach e4, so
+  // the piece word decides which. But with one knight on the
+  // board the drifted parse - piece n, no file, the 4 read as
+  // a from-rank - still landed on Ne4, so "nightie four"
+  // passed with the entry deleted. A SECOND knight, reaching
+  // a4, makes "the knight move to rank 4" two moves and the
+  // drift ambiguous, so only the real split answers.
+  const NIGHTIE = "7k/8/8/6N1/8/8/1N6/K3Q3 w - - 0 1";
+  await onBoard(NIGHTIE, "echo four",
+                /no pawn can go there.*say queen, or knight/i,
+                "with two pieces on e4 the bare square is not decided");
+  await onBoard(NIGHTIE, "nightie four", /knight echo 4/i,
+                '"nightie four" splits into knight + e-file');
+  await onBoard(NIGHTIE, "nighty four", /knight echo 4/i,
+                '"nighty four" does too');
+  // the original spelling still works - this replaced nothing
+  await onBoard(NIGHTIE, "knightie four", /knight echo 4/i,
+                '"knightie" is still understood');
+  // WITHOUT the entry these do not fail loudly, they DRIFT:
+  // the fuzzy matcher rescues "nightie" as "nights" (piece n)
+  // and the e-file simply evaporates, leaving the 4 to be read
+  // as a from-rank. Asserting the destination square is what
+  // catches that - a test that only asked "is it a knight"
+  // would pass on the broken parse.
+  const drift = vm.runInContext(
+    'JSON.stringify(parseTranscript("nightie four").squares || [])',
+    sandbox);
+  check('"nightie four" names e4 as the destination (' + drift + ")",
+        drift === '["e4"]');
+
   // ============ w58: "QUEEN CHECK", FROM A REAL GAME ==========
   // Game w56-1: "queen check" said twice, refused twice with
   // "that is not a legal move", and Qa4+ was available the
