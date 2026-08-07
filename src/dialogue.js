@@ -694,6 +694,13 @@
     if (req.toFile) bits.push(SPOKEN_FILE[req.toFile] || req.toFile);
     if (req.toRank) bits.push("rank " + req.toRank);
     if (req.trailingPiece) bits.push(PIECE_NAME[req.trailingPiece]);
+    // LAST, BECAUSE IT IS SAID LAST (w58). "Queen check" was
+    // read back as "I heard queen" - the same w44 fault from
+    // the swallowing side, and it appeared twice in one game
+    // log while the owner was trying to find a move that the
+    // program was in fact refusing for a different reason.
+    if (req.saidMate) bits.push("checkmate");
+    else if (req.saidCheck) bits.push("check");
     return bits.join(" ") || "that";
   }
 

@@ -287,7 +287,17 @@
                 fromFile: null, fromRank: null, trailingPiece: null,
                 promoKw: false, victim: null,
                 takeAt: -1, fromBeforeTake: false,
-                toFile: null, toRank: null };
+                toFile: null, toRank: null,
+                /* w58: a check or mate word was SAID. It
+                 * constrains nothing here - it is a fact about
+                 * the position after the move, and the repairs
+                 * test it with saysCheck/saysMate over every
+                 * reading - but the read-back has to be able to
+                 * repeat it. Before this the word vanished in
+                 * the token loop and "queen check" was read
+                 * back as "I heard queen", dropping a word the
+                 * user had said. */
+                saidCheck: false, saidMate: false };
     var syms = [], i, tk;
     for (i = 0; i < toks.length; i++) {
       tk = toks[i];
@@ -320,6 +330,20 @@
         continue;
       }
       if (TAKE_WORDS[tk]) { syms.push({ t: "take" }); continue; }
+      // A CHECK WORD IS NOTED, NOT PARSED (w58). It pushes no
+      // symbol, exactly as before - check is a fact about the
+      // position AFTER the move, so it constrains nothing the
+      // constraint set can hold. It used to fall all the way
+      // through this loop and off the end, which is why the
+      // read-back could not repeat it.
+      if (CHECK_WORDS[tk]) {
+        req.saidCheck = true;
+        if (MATE_WORDS[tk] ||
+            ((tk === "check" || tk === "checks") && toks[i + 1] === "me")) {
+          req.saidMate = true;
+        }
+        continue;
+      }
       /* Bare "a" is usually the article, since the a-file is
        * normally spoken as "alpha". It counts as the FILE only
        * when a rank or a capture word follows it:

@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w57";
+  VERSION = "w58";
 
   var RULES = makeRules();
 
