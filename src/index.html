@@ -180,7 +180,33 @@
   #boardSide { flex: 1 1 150px; min-width: 150px; max-width: 260px;
                display: flex; flex-direction: column;
                justify-content: center; }
+  .sideBlock { display: flex; flex-direction: column; }
   .sideGap { height: 18px; }
+  /* PORTRAIT SPLITS THE CLOCKS AROUND THE BOARD (w73), as
+     Lichess does on a phone: the far player's bar ABOVE the
+     board, yours BELOW, each nearest its own pieces - not
+     both wrapped underneath, which is what the plain flex
+     wrap did and what the owner's iPhone screenshots showed
+     against Lichess's portrait layout. display:contents
+     dissolves the rail so its blocks become items of the
+     column, and order sends the far one above the canvas.
+     Each bar goes horizontal, name left and clock right,
+     Lichess's own arrangement. 600px is where the wide
+     layout would have wrapped anyway (360 board + 150 rail
+     + gaps + panel padding). */
+  @media (max-width: 600px) {
+    #boardRow { flex-direction: column; gap: 8px; }
+    #boardRow #mini { flex: 0 0 auto; margin: 0 auto; }
+    #boardSide { display: contents; }
+    .sideGap { display: none; }
+    #sideTop { order: -1; }
+    .sideBlock { flex-direction: row; align-items: center;
+                 justify-content: space-between; gap: 10px; }
+    /* sideTop's DOM order is clock-then-name (right for the
+       wide rail); the bar wants name left, clock right. Two
+       items, so reversing cannot re-trip w31's wrap trap. */
+    #sideTop { flex-direction: row-reverse; }
+  }
   /* SIZED AND SET LIKE THE LICHESS CLOCK (w72): big plain
      sans digits at regular weight, not small bold monospace.
      tabular-nums keeps them from wobbling as they count
@@ -248,14 +274,23 @@
        the clock boxes carry the turn, and the game-over word
        lives in the Lichess panel's status line, which said it
        already. -->
+  <!-- Each side's clock and name are one BLOCK (w73), so the
+       narrow layout can move the far block ABOVE the board -
+       Lichess's portrait shape, each player's bar nearest
+       their own pieces - instead of both wrapping underneath.
+       The renderers only know the four inner ids. -->
   <div id="boardRow">
     <canvas id="mini" width="768" height="768"></canvas>
     <div id="boardSide">
-      <div class="sideClock" id="clockTop"></div>
-      <div class="sideName" id="nameTop"></div>
+      <div class="sideBlock" id="sideTop">
+        <div class="sideClock" id="clockTop"></div>
+        <div class="sideName" id="nameTop"></div>
+      </div>
       <div class="sideGap"></div>
-      <div class="sideName" id="nameBottom"></div>
-      <div class="sideClock" id="clockBottom"></div>
+      <div class="sideBlock" id="sideBottom">
+        <div class="sideName" id="nameBottom"></div>
+        <div class="sideClock" id="clockBottom"></div>
+      </div>
     </div>
   </div>
   </details>

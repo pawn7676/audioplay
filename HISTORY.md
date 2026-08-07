@@ -2150,3 +2150,32 @@ at regular weight (2.4rem) instead of small bold monospace, with
 tabular-nums holding the columns steady as the digits count - the
 job the monospace face was doing, done without it. No webfont, rule
 3: the system sans stands in for theirs.
+
+### w73
+
+PORTRAIT SPLITS THE CLOCKS AROUND THE BOARD. The owner put an iPhone
+in portrait next to Lichess's portrait layout and the difference
+argued for itself: Lichess gives each player a bar nearest their own
+pieces - the far player's clock and name above the board, yours below
+- where this page's rail simply wrapped, dumping both clocks
+underneath. The wide layout keeps the w70 rail; below 600px (where
+the wrap was happening anyway) the rail dissolves - display:contents,
+so its two blocks become items of the board column - and order sends
+the far block above the canvas. Each bar goes horizontal, name left
+and clock right, which is Lichess's own arrangement.
+
+The markup grew one wrapper per side to make that possible: clock and
+name were five loose siblings in the rail, and a block that can be
+MOVED as a unit has to BE a unit. The renderers are untouched - they
+only ever knew the four inner ids.
+
+sideTop's bar is row-reversed to put the name left (its DOM order is
+clock-first, which is what the wide rail wants). w31's rule is that
+reversing a flex row is wrong the moment it wraps; two items that
+cannot wrap is the case it does not reach, and the comment says so
+where the next reader will hit the rule.
+
+The shape tests read the media query's OWN text, not the stylesheet
+as one string - a rule drifting outside the query would otherwise
+still match. Two mutations: order:-1 deleted (the far bar quietly
+stays below, exactly the bug being fixed) and the whole query deleted.
