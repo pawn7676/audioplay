@@ -288,6 +288,22 @@
         readBackMine(c.san, uci, true);
       } else {
         armedUci = null;     /* rejected: nothing to read back */
+        // A DEAD TOKEN IS NOT A BAD MOVE (w60). Mid-game
+        // revocation used to speak "Lichess rejected that
+        // move. error 401" per move - true words, wrong
+        // diagnosis, and the one useful instruction (sign in
+        // again) never said. noteAuthFailure says it once and
+        // stops the retrying that cannot work.
+        if (r.status === 401 || r.status === 403) {
+          // noteAuthFailure speaks the full sentence ONCE; a
+          // silent true on later calls would leave this move
+          // answered with nothing, so the repeat case gets a
+          // short answer of its own.
+          var firstAuthFail = !authGone;
+          noteAuthFailure(new Error("move HTTP " + r.status));
+          if (!firstAuthFail) speak("still signed out. sign in again.");
+          return;
+        }
         var msg = (r.body && r.body.error) ? String(r.body.error) : ("error " + r.status);
         speak("Lichess rejected that move. " + msg);
       }
@@ -304,8 +320,26 @@
    * and nothing to fail, so it just says the line. */
   function confirmedAction(path, saidWhenSent) {
     if (dryRun) { speak(saidWhenSent); return; }
-    postAction(path).then(function () {
-      speak(saidWhenSent);
+    postAction(path).then(function (r) {
+      if (r.ok) { speak(saidWhenSent); return; }
+      // THE STATUS IS PART OF THE ANSWER (w60). Lichess 400s
+      // these paths in ordinary play - resign in the abortable
+      // phase, a takeback the opponent just withdrew, a draw
+      // offer that expired - and this spoke "resigning." over
+      // every one of them. A refused token routes through the
+      // same sentence the streams use, instead of pretending
+      // the action happened.
+      if (r.status === 401 || r.status === 403) {
+        var firstFail = !authGone;
+        noteAuthFailure(new Error("action HTTP " + r.status));
+        if (!firstFail) speak("still signed out. sign in again.");
+        return;
+      }
+      var why = "";
+      try { why = String(JSON.parse(r.body).error || ""); } catch (e) {}
+      log("ERR", "action " + path + " refused: " + r.status +
+          (why ? " " + why : ""));
+      speak("lee chess refused that." + (why ? " " + why : ""));
     }).catch(function (e) {
       log("ERR", "action " + path + ": " + e.message);
       speak("could not reach lee chess. that did not go through.");
@@ -367,7 +401,15 @@
       return m + " " + (s < 10 ? "oh " + s : s);
     }
     var mine = fmt(myRemainingMs());
-    var theirs = fmt(api.myColor === "w" ? api.btime : api.wtime);
+    // EXTRAPOLATED LIKE MINE (w60). This read the opponent's
+    // raw base value, so asking "clock" during their think -
+    // exactly when you would ask - reported their time as of
+    // the LAST server event, overstating it by their whole
+    // think so far. remainingMs already knows how to do both
+    // colours; the overlay has always used it for both. Found
+    // independently by two reviewers, which is what a fault at
+    // a seam deserves.
+    var theirs = fmt(remainingMs(api.myColor === "w" ? "b" : "w"));
     if (mine || theirs) {
       speak(colorWord(api.myColor) + " " + (mine || "unknown") + ". " +
             colorWord(api.myColor === "w" ? "b" : "w") + " " +

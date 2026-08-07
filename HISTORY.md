@@ -1450,3 +1450,68 @@ reading raised a question rather than playing, as w49 requires. A half-heard
 twenty minutes of play was a word the microphone did not deliver, and the only
 fix available for that is the table.
 
+
+### w60
+
+WHAT THE PAGE SAYS MUST BE TRUE. A targeted review of the four thin spots
+the big review left behind - request construction against the Lichess spec,
+the three untested device-bound files, the poll fallback, and clock.js -
+produced thirty-nine more findings (91-129 on the running checklist). This
+is the first batch: the five where something SPOKEN or SHOWN could be false.
+For an eyes-free player the spoken answer is not a report about the state,
+it IS the state; each of these was a place the two could disagree.
+
+A REFUSED ACTION WAS ANNOUNCED AS DONE. postAction logged the HTTP status
+and resolved with nothing, so confirmedAction could only tell "network
+worked" from "network failed" - and spoke "resigning." over a 400. The
+Board API 400s these paths in ordinary play: resign during the abortable
+first moves, a takeback accepted after the opponent withdrew it, a draw
+accepted after the offer expired. Each was announced as having happened.
+w50 made the answer wait for the POST, and waited for the wrong half - the
+catch, not the status. It now speaks Lichess's own reason ("lee chess
+refused that. Cannot resign, game is aborting"), and a dead token routes
+through noteAuthFailure's sentence instead of pretending, on actions and
+moves both - with the repeat case answered by a short "still signed out"
+rather than swallowed, because noteAuthFailure speaks only once and a
+silent true would have traded one rule-5 violation for another.
+
+PRACTICE INHERITED A REAL GAME'S CLOCK. dryStart set both clocks to ten
+minutes but never touched api.clockAt - which every real-game clock event
+sets and nothing cleared. remainingMs extrapolates whenever clockAt is set,
+so practice AFTER a real game showed the user's half at a red 0:00 - a
+flagged clock in a mode that has no clock - while practice on a fresh page
+showed the frozen "10 / 10" the owner knows. The difference between the two
+is one stale timestamp. clockAt is nulled in dryStart, cleared in signOut,
+and declared in the api initializer so its lifecycle is visible - it had
+been born dynamically, which is how it escaped every reset.
+
+THE SPOKEN "CLOCK" OVERSTATED THE OPPONENT'S TIME. speakClocks extrapolated
+the user's clock through remainingMs and read the opponent's RAW base - so
+asking during their think, which is when you ask, reported their time as of
+the last server event, overstating it by their whole think so far. The
+overlay has always extrapolated both sides through the same function; the
+spoken path now does too. Two reviewers found this independently, which is
+what a fault sitting on a seam deserves.
+
+THE GLANCE BOARD SHOWED WHITE AT THE BOTTOM AFTER SAYING "YOU ARE BLACK".
+repaintTick's fingerprint carried neither api.myColor nor api.pos, and
+handleGameFull triggers no repaint - so joining as black, the tick that
+consumed the gameId change painted an unflipped start position, and nothing
+repainted until the first move bumped moves.length. The board's whole job
+is confirming the pipeline and Lichess agree; orientation is part of what
+it confirms. Both fields are in the fingerprint now.
+
+AND ONE IGNORED QUESTION MADE EVERY LATER MESSAGE STICKY. questionOpen
+tested the raw pieceAsk/partialAsk variables, but those are deliberately
+left set when overtaken - dialogue.js makes them inert with a ply check
+rather than nulling them. So after one repair question the user answered by
+just saying a different move, the strip held every subsequent passing
+message forever, against its own stated contract. questionOpen now applies
+the same ply test dialogue.js does, so the strip and the dialogue agree
+about what "open" means - w54 fixed this function's LIST of states, and
+this fixes their LIVENESS, which is the second half of the same lesson.
+
+All five mutation-tested. The checklist for the remaining batches (92-123,
+128-129) lives with the review; next is the humans batch - challenge
+keep-alive, blitz seek presets, opponent-gone.
+

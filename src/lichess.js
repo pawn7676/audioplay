@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w59";
+  VERSION = "w60";
 
   var RULES = makeRules();
 
@@ -48,6 +48,11 @@
     moves: [],            // uci list already applied
     lastSan: "", lastSanW: "", lastSanB: "",
     wtime: null, btime: null,
+    clockAt: null,        // when wtime/btime were last true (w60:
+                          // declared here so its lifecycle is
+                          // visible; it was born dynamically and
+                          // cleared by nothing, which is how
+                          // practice inherited a real game's clock)
     over: false
   };
 
@@ -202,6 +207,7 @@
     api.pos = null;
     api.moves = [];
     api.over = false;
+    api.wtime = null; api.btime = null; api.clockAt = null;  /* w60 */
     uiStatus("Signed out.");
     uiGameChanged();
   }
@@ -264,12 +270,24 @@
       .then(done, function (e) { done(); throw e; });
   }
 
+  /* RESOLVES WITH WHAT HAPPENED, not with nothing (w60). This
+   * used to log the status and resolve undefined whatever came
+   * back, so its one caller - confirmedAction - could only
+   * distinguish "the network worked" from "the network failed",
+   * and spoke "resigning." on an HTTP 400. The Board API 400s
+   * these paths in ordinary play: resign during the abortable
+   * first moves, a takeback accepted after the opponent
+   * withdrew it, a draw accepted after the offer expired. Each
+   * was announced as done. w50 made the answer wait for the
+   * POST; it waited for the wrong half - the catch, not the
+   * status. */
   function postAction(action) {
     var url = "https://lichess.org/api/board/game/" + api.gameId + "/" + action;
     log("PST", action);
     return fetch(url, { method: "POST", headers: authHeaders() })
       .then(function (r) { return r.text().then(function (t) {
         log("PST", action + " -> " + r.status + " " + t.slice(0, 120));
+        return { ok: r.ok, status: r.status, body: t };
       }); });
   }
 

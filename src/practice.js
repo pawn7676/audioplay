@@ -60,6 +60,17 @@
     api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
     api.wtime = 600000;
     api.btime = 600000;
+    // AND NO TICKING (w60). remainingMs extrapolates for the
+    // side to move whenever clockAt is set - and clockAt is set
+    // by every real-game clock event and was cleared by
+    // NOTHING. Play a real game, practice later, enter clock
+    // mode: white's "10:00" had minutes-or-hours of elapsed
+    // time subtracted and clamped to a red 0:00 - a flagged
+    // clock in a mode that has no clock. Never seen only
+    // because practice has always been a fresh signed-out page.
+    // Null here, both halves show a frozen 10, which is what a
+    // practice clock is.
+    api.clockAt = null;
     log("DRY", "practice mode ON - nothing will be sent to Lichess");
     speakWhenAudioSettled("Practice mode. You are white.");
   }

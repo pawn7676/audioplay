@@ -1715,6 +1715,118 @@ const sleep = ms =>
   check("VERSION is a w-number at runtime (" + ver + ")",
         /^w\d+$/.test(ver));
 
+  // ========= w60: WHAT THE PAGE SAYS MUST BE TRUE =========
+
+  // 91: a refused action is never announced as done. The Board
+  // API 400s these in ordinary play (resign in the abortable
+  // phase, a withdrawn takeback) and the old path spoke
+  // "resigning." over the 400.
+  vm.runInContext("__realPA = postAction;", sandbox);
+  heard();
+  vm.runInContext(`
+    dryRun = false; authGone = false;
+    api.gameId = "G"; api.over = false; api.moves = [];
+    api.pos = new RULES.Position(); api.myColor = "w";
+    postAction = function () {
+      return Promise.resolve({ ok: false, status: 400,
+        body: '{"error":"Cannot resign, game is aborting"}' });
+    };
+    confirmAction = "resign";
+  `, sandbox);
+  say("yes");
+  await sleep(80);
+  const refused = heard().join(" | ");
+  check("a 400 action is not announced as done (" + refused + ")",
+        !/resigning/i.test(refused));
+  check("and the refusal carries Lichess's reason",
+        /refused that\. Cannot resign/i.test(refused));
+
+  // ...and a dead token speaks the sign-out sentence, once,
+  // with the repeat case still answered
+  heard();
+  vm.runInContext(`
+    authGone = false;
+    postAction = function () {
+      return Promise.resolve({ ok: false, status: 401, body: "" });
+    };
+    confirmAction = "resign";
+  `, sandbox);
+  say("yes");
+  await sleep(80);
+  const auth1 = heard().join(" | ");
+  vm.runInContext('confirmAction = "resign";', sandbox);
+  say("yes");
+  await sleep(80);
+  const auth2 = heard().join(" | ");
+  check("a 401 action speaks the sign-out sentence (" + auth1 + ")",
+        /signed you out|sign in again/i.test(auth1) && !/resigning/i.test(auth1));
+  check("and a repeat is still answered, not swallowed (" + auth2 + ")",
+        /still signed out/i.test(auth2));
+  vm.runInContext("postAction = __realPA; authGone = false;", sandbox);
+
+  // 124: practice never inherits a real game's clock anchor
+  vm.runInContext(`
+    api.clockAt = Date.now() - 300000;   // a real game, 5 min ago
+    dryRun = true; running = true;
+    dryStart();
+  `, sandbox);
+  await sleep(40); heard();
+  check("practice clears the clock anchor",
+        vm.runInContext("api.clockAt", sandbox) === null);
+  check("so the practice clock is frozen at 10 minutes, not ticking",
+        vm.runInContext('remainingMs("w")', sandbox) === 600000);
+
+  // 127: the opponent's spoken clock is extrapolated too
+  heard();
+  vm.runInContext(`
+    dryRun = false; api.myColor = "w"; api.over = false;
+    api.pos = new RULES.Position(); api.pos.applyUci("e2e4"); // black to move
+    api.moves = ["e2e4"];
+    api.wtime = 600000; api.btime = 60000;
+    api.clockAt = Date.now() - 15000;    // black thinking 15s
+  `, sandbox);
+  say("clock");
+  await sleep(80);
+  const clkSaid = heard().join(" | ");
+  check("the opponent's clock is spoken extrapolated (" + clkSaid + ")",
+        /black 4[0-5] seconds/i.test(clkSaid));
+  vm.runInContext("api.clockAt = null; dryRun = true;", sandbox);
+
+  // 104: the glance board repaints when the colour is learned
+  const flipRepaint = vm.runInContext(`
+    (function () {
+      var real = uiGameChanged, calls = 0;
+      uiGameChanged = function () { calls++; };
+      api.gameId = "GB"; api.myColor = null; api.pos = null;
+      repaintTick();                       // consumes the join
+      var afterJoin = calls;
+      api.myColor = "b"; api.pos = new RULES.Position();  // gameFull lands
+      repaintTick();
+      var afterColour = calls;
+      uiGameChanged = real;
+      return { join: afterJoin, colour: afterColour };
+    })()
+  `, sandbox);
+  check("learning the colour repaints the board (" +
+        flipRepaint.join + " -> " + flipRepaint.colour + ")",
+        flipRepaint.colour === flipRepaint.join + 1);
+
+  // 126: a stale ply-guarded ask no longer holds the strip
+  const stale = vm.runInContext(`
+    (function () {
+      clearDialogue();
+      api.moves = [];
+      pieceAsk = { ply: 0, moves: [] };
+      var live = questionOpen();
+      api.moves = ["e2e4"];               // the game moved on
+      var dead = questionOpen();
+      clearDialogue(); api.moves = [];
+      return { live: live, dead: dead };
+    })()
+  `, sandbox);
+  check("a current repair question holds the strip", stale.live === true);
+  check("an overtaken one lets messages expire again", stale.dead === false);
+
   // ---- w59: "clean" is a queen (game w58-1) ----
   // Safari returned "Clean check" for "queen check" twice
   // running. The fuzzy matcher could not have saved it -
@@ -2219,7 +2331,7 @@ const sleep = ms =>
   await sleep(60);
   check("nothing is claimed while the action is still in flight",
         !/resigning/i.test(heard().join(" | ")));
-  vm.runInContext("__release();", sandbox);
+  vm.runInContext('__release({ ok: true, status: 200, body: "" });', sandbox);
   await sleep(60);
   check("and it is claimed once the post lands",
         /resigning/i.test(heard().join(" | ")));

@@ -228,8 +228,18 @@
   // strip while they were still waiting to be answered. A list
   // of states is only right until the next state is added;
   // this one is now the same list dialogue.js keeps.
+  // ...and the two ply-guarded states count only while their
+  // ply is CURRENT (w60). pieceAsk and partialAsk are
+  // deliberately left set when overtaken - dialogue.js makes
+  // them inert with a ply check instead of nulling them - so
+  // testing the raw variables here meant one ignored repair
+  // question turned every later passing message sticky for the
+  // rest of the game. Same ply test dialogue.js applies, so the
+  // strip and the dialogue agree about what "open" means.
   function questionOpen() {
-    return !!(pending || confirmAction || pieceAsk || partialAsk);
+    return !!(pending || confirmAction ||
+              (pieceAsk && pieceAsk.ply === api.moves.length) ||
+              (partialAsk && partialAsk.ply === api.moves.length));
   }
 
   // SPOKEN TEXT IS WRITTEN FOR THE EAR (v134): lower case
