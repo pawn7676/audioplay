@@ -72,6 +72,9 @@ function element(id) {
     // fell back to grepping ui.js. on_<name>() still works: it
     // is now the dispatcher rather than the one handler.
     _listeners: {},
+    _attrs: {},
+    setAttribute(k, v) { this._attrs[k] = String(v); },
+    getAttribute(k) { return k in this._attrs ? this._attrs[k] : null; },
     addEventListener(name, fn) {
       var list = this._listeners[name] || (this._listeners[name] = []);
       list.push(fn);
@@ -1714,6 +1717,108 @@ const sleep = ms =>
   const ver = vm.runInContext("VERSION", sandbox);
   check("VERSION is a w-number at runtime (" + ver + ")",
         /^w\d+$/.test(ver));
+
+  // ================= w63: RESILIENCE =================
+
+  // 102: a wedged synthesis engine is reset, not walked past.
+  // The guard firing with tStart still 0 means the utterance
+  // NEVER STARTED - the one uncovered permanent-silence path.
+  vm.runInContext(`
+    __ttsCancels = 0; __ttsResumes = 0;
+    __realSynth = speechSynthesis;
+    speechSynthesis = {
+      getVoices: function () { return []; },
+      speak: function (u) { /* wedged: no onstart, no onend */ },
+      cancel: function () { __ttsCancels++; },
+      resume: function () { __ttsResumes++; },
+      speaking: false, paused: false, pending: false
+    };
+    // the harness stubs speak() itself, so drive the REAL
+    // queue underneath it
+    speakQueue.push({ text: "hi", gap: 0 });
+    pumpSpeech();
+  `, sandbox);
+  await sleep(4300);            // the real 1.4s guard, unscaled
+  check("a never-started utterance resets the engine (" +
+        vm.runInContext("__ttsCancels", sandbox) + " cancel, " +
+        vm.runInContext("__ttsResumes", sandbox) + " resume)",
+        vm.runInContext("__ttsCancels", sandbox) === 1 &&
+        vm.runInContext("__ttsResumes", sandbox) === 1);
+  check("and the queue is free to carry on",
+        vm.runInContext("speaking", sandbox) === false);
+  vm.runInContext("speechSynthesis = __realSynth;", sandbox);
+  heard();
+
+  // 103: a keep-alive paused by the OS resumes itself; one
+  // paused by US stays paused
+  const kaOut = vm.runInContext(`
+    (function () {
+      startKeepAlive();
+      var plays = 0;
+      keepAlive.play = function () { plays++; return Promise.resolve(); };
+      keepAlive.on_pause();          // the OS pauses it
+      var afterOs = plays;
+      stopKeepAlive();               // OUR pause
+      keepAlive.on_pause();
+      var afterOurs = plays;
+      startKeepAlive();              // wanted again (also plays)
+      return { os: afterOs, ours: afterOurs };
+    })()
+  `, sandbox);
+  check("an OS pause of the keep-alive is resumed", kaOut.os === 1);
+  check("a deliberate stop is respected", kaOut.ours === 1);
+
+  // 125: a wake lock that resolves after exit is released, not
+  // kept forever
+  const lockOut = await vm.runInContext(`
+    (function () {
+      var released = 0, grant = null;
+      var realNav = navigator.wakeLock;
+      navigator.wakeLock = { request: function () {
+        return new Promise(function (res) {
+          grant = function () {
+            res({ release: function () { released++;
+                                         return Promise.resolve(); } });
+          };
+        });
+      } };
+      clockLock = null;
+      enterClockMode();
+      exitClockMode(true);           // tapped out before the grant
+      grant();                       // the lock arrives late
+      return new Promise(function (res) {
+        setTimeout(function () {
+          navigator.wakeLock = realNav;
+          res({ released: released, held: clockLock !== null });
+        }, 60);
+      });
+    })()
+  `, sandbox);
+  check("a wake lock granted after exit is released at once",
+        lockOut.released === 1);
+  check("and nothing is left holding the screen", lockOut.held === false);
+
+  // 95: a 429 asks for patience instead of inviting a retry
+  heard();
+  vm.runInContext(`
+    dryRun = false; api.gameId = "G"; api.over = false; busy = false;
+    api.pos = new RULES.Position(); api.myColor = "w"; api.moves = [];
+    __realFetch6 = fetch;
+    fetch = function () {
+      return Promise.resolve({ ok: false, status: 429,
+        json: function () { return Promise.resolve({}); },
+        text: function () { return Promise.resolve(""); } });
+    };
+    acceptMove({ m: api.pos.legalMoves()[0], san: "e4" });
+  `, sandbox);
+  await sleep(80);
+  const rl = heard().join(" | ");
+  check("a rate-limited move asks for patience (" + rl + ")",
+        /slow down/i.test(rl) && !/rejected/i.test(rl));
+  vm.runInContext(
+    "fetch = __realFetch6; busy = false; dryRun = true; api.gameId = null;",
+    sandbox);
+  heard();
 
   // ========= w61: THE OTHER PLAYER IS A HUMAN =========
   // seek and challenge both refuse without a token, so one is

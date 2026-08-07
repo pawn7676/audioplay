@@ -1646,3 +1646,75 @@ whole cluster remains provable only down to the harness's stubs: no real
 browser without a streaming body has ever run this page, and until one
 does, this is the best that reading and simulation can do.
 
+
+### w63
+
+RESILIENCE, AND THE END OF THE SECOND CHECKLIST. Fourth and last batch from
+the targeted review: the failures that arrive from OUTSIDE - an OS
+interruption, a rate limit, a promise resolving after its moment has passed -
+plus the nitpick sweep. With this, everything actionable from findings 91-129
+is done or explicitly declined below.
+
+A WEDGED SPEECH ENGINE IS RESET, NOT WALKED PAST. An iOS audio-session
+interruption mid-utterance - Siri, a call, an alarm - can leave
+speechSynthesis stuck, with new utterances queued inside it and never
+started. Every item then died the same way: onstart never fired, the guard
+advanced past it, and the page went PERMANENTLY SILENT while looking, to
+every test it has, like it was speaking - the worst rule-5 failure this
+program could have, because it defeats the very watchdog meant to prevent
+it. The detection signal was already computed for the debug log and used for
+nothing: the guard firing with tStart still 0 means the utterance NEVER
+STARTED. That branch now cancels and resumes the engine - our own queue is
+untouched, items being handed over one at a time - and says so in the log.
+
+THE KEEP-ALIVE FIGHTS BACK. The OS can pause the session-holder audio too -
+same interruptions - and nothing observed it: the layer whose whole job is
+keeping the audio session alive was silently dead until the next tap, and
+Control Center could not resume it because the media-session pause key is
+mapped to repeatLast. A pause listener now distinguishes OUR pause from the
+OS's by a one-flag handshake and asks to play again. Writing its test found
+a harness hole worth recording: the element stub had no setAttribute, so
+startKeepAlive has been THROWING mid-setup in every harness run since w20 -
+caught, logged, invisible - and the keep-alive tests were exercising a
+half-built element. The stub carries attributes now.
+
+A WAKE LOCK GRANTED AFTER EXIT IS RELEASED. Enter clock mode, tap straight
+out, and the lock request resolved with the overlay already down: release()
+had found null and done nothing, the lock landed in the sentinel anyway, and
+the screen never slept again - with the next enter overwriting and orphaning
+it besides. The grant now checks the mode is still on, releases itself if
+not, and releases any predecessor before taking the slot.
+
+A 429 ASKS FOR PATIENCE. Lichess's rate limit asks for a minute's grace, and
+this page answered it with the two worst possible responses: "Lichess
+rejected that move" - which invites saying the move again immediately - and
+reconnect ladders whose early rungs are exactly the eager retrying being
+objected to. A rate-limited move or action now says "lee chess asks us to
+slow down", and all three retry paths - both streams and the poll - jump
+their ladders straight to the cap.
+
+THE SWEEP: the inter-chunk speech gap can no longer be skipped by a
+concurrently arriving sentence (speaking stays held across the gap); a
+browser with no speechSynthesis at all now says so in the log it tells
+users to paste; the piece art logs which glyph failed to load; board.js's
+header pointed at a file that has never existed ("app.js"); startPieceAt's
+orientation-blindness is documented with the coupling that makes it safe;
+the keep-alive header said "1 second" over half-second code; the clock
+teardown nulls all three of its references, not one; and the four remaining
+hardcoded origins spell LICHESS_BASE.
+
+DECLINED, WITH REASONS, so the next reader does not re-open them: the OAuth
+state parameter and sessionStorage verifier (finding 99) - doc-recommended,
+but sign-in is the one flow the harness cannot test at all, and churning it
+to add login-CSRF protection to an app whose server-side state is one
+Lichess token was judged a bad trade; revisit if sign-in is ever touched for
+its own reasons. Two tabs fighting over the event stream (101) - real,
+spec-documented, and inherent to one token per stream; a comment marks it.
+And the strip-on-entry and portrait-width observations (129) stay
+observations: both are device-look questions, and w56's rule stands - do
+not retune what you have not measured on the machine that matters.
+
+Four mutation tests. The second checklist closes at thirty-nine findings:
+thirty-two fixed, four documented as deliberate, three declined with the
+reasoning above.
+

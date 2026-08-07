@@ -5,7 +5,7 @@
   var SPOKEN_PIECE = { K: "king", Q: "queen", R: "rook", B: "bishop", N: "knight" };
 
   var speechReady = false, speakQueue = [], speaking = false, speakGuard = null;
-  var voicePicked = null, spokeOnce = false;
+  var voicePicked = null, spokeOnce = false, noSynthLogged = false;
   var missLogged = null;
 
   // iOS often returns an empty voice list until speech has
@@ -180,7 +180,18 @@
 
   function pumpSpeech() {
     if (speaking || !speakQueue.length) return;
-    if (!window.speechSynthesis) { speakQueue = []; return; }
+    if (!window.speechSynthesis) {
+      // nothing can be spoken here, but the panel this project
+      // tells users to paste should say so rather than the
+      // queue just emptying (w63)
+      if (!noSynthLogged) {
+        noSynthLogged = true;
+        log("TTS", "no speechSynthesis in this browser - " +
+            "spoken output is off");
+      }
+      speakQueue = [];
+      return;
+    }
     speaking = true;
     if (!MIC_ALWAYS_ON) pauseMic();
     var item = speakQueue.shift();
@@ -190,10 +201,32 @@
     var tStart = 0;
     var settled = false;
 
-    var advance = function () {
+    var advance = function (guardFired) {
       if (settled) return;
       settled = true;
       clearTimeout(speakGuard);
+      // A WEDGED ENGINE IS RESET, NOT WALKED PAST (w63). An iOS
+      // audio-session interruption mid-utterance - Siri, a
+      // call, an alarm - can leave speechSynthesis stuck:
+      // speaking forever, new utterances queued inside it and
+      // never started. Every item here then died the same way:
+      // onstart never fired, the guard advanced past it, and
+      // the page went PERMANENTLY SILENT while looking, to
+      // every test we have, like it was speaking. The detection
+      // signal was already computed for the debug log and used
+      // for nothing: the guard firing with tStart still 0 means
+      // this utterance NEVER STARTED. cancel() flushes the
+      // engine's internal backlog (our own queue is untouched -
+      // items are handed over one at a time), resume() clears a
+      // stuck paused flag, and the cancelled utterance's late
+      // onerror lands on `settled` harmlessly.
+      if (guardFired && tStart === 0) {
+        log("TTS", "utterance never started - resetting the engine");
+        try {
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.resume();
+        } catch (e) {}
+      }
       var ceiling = Math.max(2500, text.length * 140);
       waitUntilQuiet(ceiling, function () {
         speaking = false;
@@ -205,7 +238,15 @@
               "ms, spoke " + (Date.now() - t0) + "ms, gap " +
               gap + "ms  \"" + text + "\"");
         }
-        if (speakQueue.length) { setTimeout(pumpSpeech, gap); }
+        if (speakQueue.length) {
+          // speaking stays TRUE across the gap (w63): it was
+          // cleared above first, so a speak() arriving inside
+          // the gap window pumped immediately and the
+          // engineered pause between chunks was lost. The
+          // delayed pump clears it itself.
+          speaking = true;
+          setTimeout(function () { speaking = false; pumpSpeech(); }, gap);
+        }
         else {
           if (!MIC_ALWAYS_ON) resumeMicSoon();
           // THE MIC MAY NEVER HAVE STARTED (v105, game17,
@@ -243,7 +284,8 @@
       u.onend = advance;
       u.onerror = advance;
       window.speechSynthesis.speak(u);
-      speakGuard = setTimeout(advance, 1200 + text.length * 90);
+      speakGuard = setTimeout(function () { advance(true); },
+                              1200 + text.length * 90);
     } catch (err) { advance(); }
   }
 

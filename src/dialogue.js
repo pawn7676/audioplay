@@ -311,6 +311,13 @@
           if (!firstAuthFail) speak("still signed out. sign in again.");
           return;
         }
+        if (r.status === 429) {
+          // the one wrong answer to a 429 is trying again at
+          // once, and "rejected" invites exactly that (w63)
+          speak("lee chess asks us to slow down. " +
+                "wait a moment, then say the move again.");
+          return;
+        }
         var msg = (r.body && r.body.error) ? String(r.body.error) : ("error " + r.status);
         speak("Lichess rejected that move. " + msg);
       }
@@ -340,6 +347,10 @@
         var firstFail = !authGone;
         noteAuthFailure(new Error("action HTTP " + r.status));
         if (!firstFail) speak("still signed out. sign in again.");
+        return;
+      }
+      if (r.status === 429) {
+        speak("lee chess asks us to slow down. try that again in a moment.");
         return;
       }
       var why = "";

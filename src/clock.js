@@ -328,6 +328,22 @@
         return;
       }
       navigator.wakeLock.request("screen").then(function (lock) {
+        // THE REQUEST CAN OUTLIVE THE MODE (w63). Enter, tap
+        // straight out, and this promise resolves with the
+        // overlay already down: release() found null and did
+        // nothing, then the lock landed here - held forever,
+        // screen never sleeping. Worse, the next enter
+        // OVERWROTE the sentinel and orphaned it. If the mode
+        // is gone, let the lock go; if one is somehow already
+        // held, release it before taking this one.
+        if (!clockModeOn()) {
+          try { lock.release(); } catch (e) {}
+          log("CLK", "wake lock arrived after exit - released");
+          return;
+        }
+        if (clockLock && clockLock !== lock) {
+          try { clockLock.release(); } catch (e) {}
+        }
         clockLock = lock;
         log("CLK", "wake lock held");
       }).catch(function (e) {

@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w62";
+  VERSION = "w63";
 
   var RULES = makeRules();
 
@@ -223,7 +223,7 @@
   }
 
   function apiGet(path) {
-    return fetch("https://lichess.org" + path, { headers: authHeaders() })
+    return fetch(LICHESS_BASE + path, { headers: authHeaders() })
       .then(function (r) {
         if (!r.ok) throw new Error(path + " -> HTTP " + r.status);
         return r.json();
@@ -255,7 +255,7 @@
   var MOVE_POST_TIMEOUT_MS = 12000;
 
   function postMove(uci) {
-    var url = "https://lichess.org/api/board/game/" + api.gameId + "/move/" + uci;
+    var url = LICHESS_BASE + "/api/board/game/" + api.gameId + "/move/" + uci;
     log("PST", "move " + uci);
     var timer = null;
     var live = fetch(url, { method: "POST", headers: authHeaders() })
@@ -288,7 +288,7 @@
    * POST; it waited for the wrong half - the catch, not the
    * status. */
   function postAction(action) {
-    var url = "https://lichess.org/api/board/game/" + api.gameId + "/" + action;
+    var url = LICHESS_BASE + "/api/board/game/" + api.gameId + "/" + action;
     log("PST", action);
     return fetch(url, { method: "POST", headers: authHeaders() })
       .then(function (r) { return r.text().then(function (t) {
@@ -597,7 +597,7 @@
     var opts = { headers: authHeaders() };
     if (streamAbort) opts.signal = streamAbort.signal;
 
-    fetch("https://lichess.org/api/board/game/stream/" + api.gameId, opts)
+    fetch(LICHESS_BASE + "/api/board/game/stream/" + api.gameId, opts)
       .then(function (r) {
         if (!r.ok) throw new Error("stream HTTP " + r.status);
         if (!r.body || !r.body.getReader) throw new Error("no streaming body");
@@ -645,6 +645,13 @@
         // two seconds, for as long as the game lasted.
         if (String(e.name) === "AbortError") return;
         log("ERR", "stream: " + e.message);
+        /* a 429 jumps the ladder straight to its cap (w63):
+         * the spec asks for a minute's grace, and the early
+         * rungs of the ladder are exactly the eager retrying
+         * it is asking us to stop */
+        if (/HTTP 429/.test(String(e.message))) {
+          streamFails = Math.max(streamFails, 5);
+        }
         if (String(e.message).indexOf("no streaming body") >= 0) startPolling();
         else if (!noteAuthFailure(e)) scheduleReconnect();
       });
@@ -908,6 +915,9 @@
        * telling the user nothing - was untouched in the one
        * transport that has no stream. Same sentence, same halt. */
       if (noteAuthFailure(e)) { stopPolling(); return; }
+      if (/HTTP 429/.test(String(e.message))) {
+        pollFails = Math.max(pollFails, 4);      /* w63: back off now */
+      }
       log("ERR", "poll: " + e.message);
     });
   }
@@ -977,6 +987,9 @@
         if (String(e.message).indexOf("no streaming body") >= 0) {
           startPolling();
           return;
+        }
+        if (/HTTP 429/.test(String(e.message))) {
+          eventFails = Math.max(eventFails, 4);   /* w63: cap, not eager */
         }
         if (!noteAuthFailure(e)) scheduleEventReconnect();
       });
