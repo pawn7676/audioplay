@@ -172,6 +172,52 @@
       "font-family:-apple-system,system-ui,sans-serif;" +
       "-webkit-user-select:none;user-select:none;";
 
+    /* THE PANEL OUTLIVED ITS OWN BUTTON (w69). It is
+     * position:fixed, so it rides the viewport and stays put
+     * while the page scrolls under it. Its button does NOT:
+     * buildWebUI moves the whole button row off the fixed
+     * wrapper and into the Voice panel at the top of the page,
+     * where it scrolls away like any other content. Scroll
+     * down with the panel open and the only control that can
+     * close it is somewhere above the fold - the panel sits
+     * over the board with no way out but scrolling back up.
+     * Neither half is wrong on its own, which is why this
+     * survived from w21 to here.
+     *
+     * A PANEL MUST CARRY ITS OWN EXIT. Anchoring it to the
+     * scrolling button was the alternative and it is worse:
+     * the panel would then scroll off the top with the button,
+     * which fixes the trap by hiding the settings. So: a Done
+     * button at the head of the panel, always in reach because
+     * it is IN the thing that needs closing, plus tap-outside,
+     * which is what everyone tries first. Both go through
+     * closeSettings so there is one way to shut, not three.
+     */
+    function closeSettings() {
+      if (!setPanel || setPanel.style.display === "none") return;
+      setPanel.style.display = "none";
+      renderButton();
+    }
+
+    var setHead = document.createElement("div");
+    setHead.style.cssText =
+      "display:flex;align-items:center;justify-content:space-between;" +
+      "gap:12px;margin-bottom:2px;";
+    var setTitle = document.createElement("div");
+    setTitle.textContent = "Settings";
+    setTitle.style.cssText =
+      "color:#c9c2b8;font-size:13px;font-weight:600;";
+    var setDone = document.createElement("button");
+    setDone.textContent = "Done";
+    setDone.style.cssText =
+      "font-size:11px;min-width:52px;padding:5px 0;text-align:center;" +
+      "border-radius:10px;border:1px solid #3a3530;" +
+      "background:" + BUTTON_OFF + ";color:#91bddf;";
+    setDone.addEventListener("click", closeSettings);
+    setHead.appendChild(setTitle);
+    setHead.appendChild(setDone);
+    setPanel.appendChild(setHead);
+
     function settingHeader(text) {
       var h = document.createElement("div");
       h.textContent = text;
@@ -233,6 +279,9 @@
     settingRow("showPlayers", "show players", function () {
       renderPlayers();
     });
+    settingRow("showRatings", "show ratings", function () {
+      renderPlayers();
+    });
     settingHeader("voice mode");
     settingRow("readBackMine", "speak my move");
     settingHeader("clock mode");
@@ -269,6 +318,23 @@
       keepOneMessageChannel("clockSpeakMessages");
     });
     document.body.appendChild(setPanel);
+
+    // The other half of the w69 exit: a tap anywhere that is
+    // not the panel and not the button that opens it. Guarded
+    // on BOTH, because a tap on the button is already a toggle
+    // and closing here too would close-then-reopen (or worse,
+    // reopen-then-close) depending on listener order. Attached
+    // once, at build, and cheap: it returns immediately while
+    // the panel is down, which is nearly always.
+    document.addEventListener("click", function (e) {
+      if (!setPanel || setPanel.style.display === "none") return;
+      var t = e.target;
+      while (t) {
+        if (t === setPanel || t === settingsBtn) return;
+        t = t.parentNode;
+      }
+      closeSettings();
+    });
 
     if (practiceBtn) row.appendChild(practiceBtn);
     row.appendChild(logBtn);
@@ -548,7 +614,14 @@
     function side(colour) {
       var left = remainingMs(colour);
       var isMine = colour === mine;
-      var low = isMine && left != null && left < 60000;
+      // EITHER SIDE, NOT JUST YOURS (w69). The red was mine-only
+      // because it doubled as a marker for which clock was
+      // yours - but the brass "mine" colour already does that
+      // job on its own, and it survives here (low overrides the
+      // colour, not the class). The owner's reason is the
+      // better one and it is about the GAME, not the panel: an
+      // opponent about to flag is something you want to know.
+      var low = left != null && left < 60000;
       return '<span class="' + (isMine ? "mine" : "") +
         (low ? " low" : "") + '">' + colourLabel(colour) + " " +
         fmtClock(left) + "</span>";
@@ -587,7 +660,7 @@
       return '<span class="' + (colour === mine ? "mine" : "") + '">' +
         (pl.title ? '<span class="title">' + esc(pl.title) + "</span> " : "") +
         esc(pl.name) +
-        (pl.rating != null
+        (pl.rating != null && CFG.showRatings
           ? ' <span class="rating">' + esc(pl.rating) + "</span>" : "") +
         "</span>";
     }

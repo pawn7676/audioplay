@@ -84,13 +84,21 @@ function element(id) {
       };
     },
     // real parent/child, so a test can ask which element
-    // actually got styled instead of grepping the source
+    // actually got styled instead of grepping the source.
+    // THE LINK POINTS BOTH WAYS since w69: appendChild set the
+    // child but never the parent, so any code walking UP the
+    // tree - the settings panel's tap-outside test, which is
+    // exactly "is this tap inside the panel" - saw every node
+    // as a root and could not be tested at all on the case
+    // that matters, a tap on a pill INSIDE the panel.
     children: [],
+    parentNode: null,
     appendChild(c) {
       if (!c) return c;
       const i = this.children.indexOf(c);
       if (i >= 0) this.children.splice(i, 1);   // a real move
       this.children.push(c);
+      c.parentNode = this;
       return c;
     },
     insertBefore(c, ref) {
@@ -100,6 +108,7 @@ function element(id) {
       const at = ref ? this.children.indexOf(ref) : -1;
       if (at >= 0) this.children.splice(at, 0, c);
       else this.children.push(c);
+      c.parentNode = this;
       return c;
     },
     get firstChild() { return this.children[0] || null; },
@@ -195,7 +204,18 @@ const sandbox = {
     },
     body: element("body"),
     documentElement: element("html"),
-    addEventListener() {},
+    // w69: the document's own listeners are REAL now. The
+    // settings panel closes on a tap anywhere outside it, and
+    // that handler lives here - dropped on the floor by the
+    // old no-op stub, so the fix would have been untestable.
+    _listeners: {},
+    addEventListener(name, fn) {
+      (this._listeners[name] || (this._listeners[name] = [])).push(fn);
+    },
+    __fireClick(ev) {
+      (this._listeners.click || []).slice()
+        .forEach(function (f) { f(ev); });
+    },
     hidden: false
   },
   innerHeight: 800
@@ -829,6 +849,76 @@ const sleep = ms =>
   check("and it lets go of the corner it was pinned to " +
         "(right " + anchored.right + ", bottom " + anchored.bottom + ")",
         anchored.right === "auto" && anchored.bottom === "auto");
+
+  // ---- w69: the panel carries its own exit ----
+  // It is position:fixed and its button is not - buildWebUI
+  // moves the row into the Voice panel, which scrolls. Open the
+  // panel, scroll down, and the only control that could close
+  // it is above the fold. Both exits are asked of the built
+  // panel, by clicking what a finger would click.
+  const setOpen = () => vm.runInContext(
+    'setPanel.style.display', sandbox) === "block";
+  const findDone = () => vm.runInContext(`
+    (function () {
+      var head = setPanel.children[0];
+      var kids = (head && head.children) || [];
+      for (var i = 0; i < kids.length; i++) {
+        if (kids[i].textContent === "Done") return kids[i];
+      }
+      return null;
+    })()
+  `, sandbox);
+  vm.runInContext('setPanel.style.display = "none"; settingsBtn.on_click();',
+                  sandbox);
+  check("the panel has a Done button of its own", !!findDone());
+  // guarded on on_click EXISTING, so a Done button that was
+  // never wired FAILS this check instead of throwing out of
+  // the harness - a crash names the wrong thing and takes the
+  // remaining 300 tests with it
+  vm.runInContext(`
+    (function () {
+      var head = setPanel.children[0], kids = head.children;
+      for (var i = 0; i < kids.length; i++) {
+        if (kids[i].textContent === "Done" && kids[i].on_click) {
+          kids[i].on_click();
+        }
+      }
+    })()
+  `, sandbox);
+  check("and Done closes it without reaching for the button",
+        setOpen() === false);
+
+  // tap-outside, the thing everyone tries first. The guard is
+  // that a tap ON the button must NOT run this - that is
+  // already a toggle, and closing here too would fight it.
+  vm.runInContext('settingsBtn.on_click();', sandbox);
+  check("panel is open again for the outside-tap test", setOpen() === true);
+  vm.runInContext(`
+    document.__fireClick({ target: document.body });
+  `, sandbox);
+  check("a tap outside closes it", setOpen() === false);
+  vm.runInContext('settingsBtn.on_click();', sandbox);
+  vm.runInContext(`
+    document.__fireClick({ target: setPanel });
+  `, sandbox);
+  check("a tap INSIDE the panel does not", setOpen() === true);
+  vm.runInContext(`
+    document.__fireClick({ target: settingsBtn });
+  `, sandbox);
+  check("nor does the document handler fight the button's own toggle",
+        setOpen() === true);
+  // THE CASE THAT ACTUALLY MATTERS: a tap on a PILL, nested
+  // inside the panel rather than being the panel. Flipping a
+  // setting must not shut the panel you are flipping it in.
+  // This is why the element stub grew real parent links (w69) -
+  // without them every node looks like a root and this reads
+  // as "outside".
+  vm.runInContext(`
+    document.__fireClick({ target: setPanel.children[2].children[1] });
+  `, sandbox);
+  check("nor a tap on a pill nested inside the panel",
+        setOpen() === true);
+  vm.runInContext('setPanel.style.display = "none";', sandbox);
 
   // ---- w33: time controls are presets ----
   // w34: the row is clean at load. Checked FIRST, before any
@@ -2142,6 +2232,78 @@ const sleep = ms =>
   check("practice mode shows no opponent (" +
         (playersHtml() || "empty") + ")", playersHtml() === "");
   vm.runInContext("dryRun = false;", sandbox);
+
+  // ---- w69: ratings are their own switch ----
+  // A name tells you who is across the board, a rating tells
+  // you what to expect from them; wanting the first without
+  // the second is an ordinary thing to want.
+  vm.runInContext(`
+    api.gameId = "P3"; api.over = false;
+    CFG.showPlayers = true; CFG.showRatings = true;
+    handleGameFull({
+      white: { id: "me", name: "pawn76", rating: 1500 },
+      black: { id: "maia1", name: "maia1", title: "BOT", rating: 1900 },
+      state: { moves: "" } });
+    uiGameChanged();
+  `, sandbox);
+  await sleep(40);
+  vm.runInContext("CFG.showRatings = false; renderPlayers();", sandbox);
+  const noRatings = playersHtml();
+  check("ratings off keeps the names (" + noRatings + ")",
+        /pawn76/.test(noRatings) && /maia1/.test(noRatings));
+  check("and drops both numbers",
+        !/1500/.test(noRatings) && !/1900/.test(noRatings));
+  check("but not the title - a BOT is not a rating",
+        /BOT/.test(noRatings));
+  // players off wins over ratings on: with no row there is
+  // nothing for a rating to sit beside
+  vm.runInContext(
+    "CFG.showPlayers = false; CFG.showRatings = true; renderPlayers();",
+    sandbox);
+  check("players off leaves nothing for a rating to sit beside",
+        playersHtml() === "");
+  vm.runInContext(
+    "CFG.showPlayers = true; CFG.showRatings = true; renderPlayers();",
+    sandbox);
+
+  // ---- w69: EITHER clock reddens under a minute ----
+  // The owner's reason is about the game, not the panel: an
+  // opponent about to flag is something you want to know.
+  const clockHtml = () => vm.runInContext(
+    'document.getElementById("clockLine").innerHTML', sandbox);
+  vm.runInContext(`
+    api.myColor = "w"; api.clockAt = null;
+    api.wtime = 30000; api.btime = 300000; renderPageClocks();
+  `, sandbox);
+  check("my clock reddens under a minute (" + clockHtml() + ")",
+        /class="mine low"/.test(clockHtml()));
+  vm.runInContext(`
+    api.wtime = 300000; api.btime = 30000; renderPageClocks();
+  `, sandbox);
+  const oppLow = clockHtml();
+  check("and so does the OPPONENT'S (" + oppLow + ")",
+        /class=" low"/.test(oppLow));
+  check("while mine, with time to spare, does not redden",
+        /class="mine"/.test(oppLow));
+
+  // ---- w69: the game id is for the log, not the panel ----
+  heard();
+  vm.runInContext(`
+    api.gameId = null; dryRun = false;
+    handleAccountEvent({ type: "gameStart",
+      game: { gameId: "TAhPmwYI", compat: { board: false } } });
+  `, sandbox);
+  await sleep(40);
+  const tooFast = vm.runInContext(
+    'document.getElementById("lichessLine").textContent', sandbox);
+  check("a too-fast game says what to do (" + tooFast + ")",
+        /too fast/i.test(tooFast) && /lichess/i.test(tooFast));
+  check("and does not put the game id on the panel",
+        !/TAhPmwYI/.test(tooFast));
+  check("but the LOG still carries it, for a pasted log",
+        vm.runInContext(
+          'LOG.filter(function (l) { return /TAhPmwYI/.test(l); }).length',
+          sandbox) >= 1);
 
   vm.runInContext(
     "api.gameId = null; api.over = false; dryRun = true; clearToken();",

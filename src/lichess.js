@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w68";
+  VERSION = "w69";
 
   var RULES = makeRules();
 
@@ -1068,7 +1068,15 @@
         log("EVT", "game " + gid + " is not Board-API compatible");
         speak("a game has started that this app cannot play. " +
               "it is too fast. play it on lichess.");
-        uiStatus("Game " + gid + " cannot be played here (too fast).");
+        // THE ID IS FOR THE LOG, NOT THE PANEL (w69). This
+        // read "Game TAhPmwYI cannot be played here" - eight
+        // characters of noise in the one line the page uses to
+        // explain itself, naming a game the reader cannot act
+        // on and would never type. The log line above keeps it,
+        // which is where an id earns its place: a pasted log
+        // has to identify WHICH game. The panel says what
+        // happened and what to do instead.
+        uiStatus("That game is too fast to play here. Play it on Lichess.");
         return;
       }
       // A REAL GAME OUTRANKS PRACTICE, AND SAYS SO (w50).

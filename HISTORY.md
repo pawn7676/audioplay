@@ -1947,3 +1947,70 @@ a shorter eye path from across a room than a side rail, and the whole
 page is one column on purpose. Reopen it on the device, not here - w56's
 rule, do not retune what you have not measured on the machine that
 matters.
+
+### w69
+
+FOUR THINGS FROM ONE EVENING ON THE DEVICE, two of them bugs the owner
+hit and two of them answers to w68's open questions.
+
+THE SETTINGS PANEL COULD NOT BE CLOSED. Open it, scroll down, and it
+sits over the board with no way out but scrolling back up. The cause is
+a mismatch neither half of which is wrong on its own: the panel is
+position:fixed, so it rides the viewport - and its BUTTON is not,
+because buildWebUI moves the whole button row off the fixed wrapper and
+into the Voice panel at the top of the page, where it scrolls away like
+any other content. The panel outlived the only control that could shut
+it. That has been true since w21 and took a scroll to find.
+
+A PANEL MUST CARRY ITS OWN EXIT. Anchoring it to the scrolling button
+was the obvious alternative and it is worse - the panel would then
+scroll off the top too, fixing the trap by hiding the settings. So: a
+Done button at the head of the panel, always in reach because it is IN
+the thing that needs closing, plus tap-outside, which is what everyone
+tries first. Both go through one closeSettings.
+
+The tap-outside guard is on the panel AND the button: a tap on the
+button is already a toggle, and closing here as well would fight it,
+with the outcome depending on which listener happened to run first.
+
+THE HARNESS STUB GREW REAL PARENT LINKS to test that. appendChild set
+the child and never the parent, so anything walking UP the tree saw
+every node as a root - and "is this tap inside the panel" is exactly
+that walk. The case that matters, a tap on a PILL inside the panel,
+could not have been tested at all: flipping a setting must not shut the
+panel you are flipping it in. document.addEventListener became real in
+the same breath, having been a no-op that dropped handlers on the
+floor.
+
+THE GAME ID IS FOR THE LOG, NOT THE PANEL. "Game TAhPmwYI cannot be
+played here" - eight characters of noise in the one line the page uses
+to explain itself, naming a game the reader cannot act on and would
+never type. The panel now says what happened and what to do instead;
+the log keeps the id, which is where an id earns its place, since a
+pasted log has to say WHICH game.
+
+EITHER CLOCK REDDENS UNDER A MINUTE, not just yours. The red was
+mine-only because it doubled as a marker for which clock was yours -
+but the brass "mine" colour does that job by itself and survives here.
+The owner's reason is the better one and it is about the GAME rather
+than the panel: an opponent about to flag is something you want to
+know.
+
+RATINGS ARE THEIR OWN SWITCH, split off from showPlayers because the
+owner wanted the two decisions separately and they ARE two decisions. A
+name tells you who is across the board; a rating tells you what to
+expect from them. Nested: with players off there is nothing for a
+rating to sit beside, so the row is absent and the switch does nothing,
+rather than a second empty row.
+
+Five mutation tests. One of them crashed the harness rather than
+failing - an unwired Done button threw out of a test that called
+on_click unguarded, which names the wrong thing and takes the other 350
+tests with it. Guarded, so it fails where the fault is.
+
+STILL OPEN: the clocks beside the board. The owner overruled w68's
+"leave it stacked" with a reason w68 did not have - it is not about
+reading them from across the room, which is what clock mode is for, but
+about the page LOOKING like the thing it talks to. That is a good
+reason and it changes the answer. Its own version, because it moves the
+one thing on the page a game is actually watched through.
