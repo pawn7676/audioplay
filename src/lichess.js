@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w70";
+  VERSION = "w71";
 
   var RULES = makeRules();
 
@@ -1178,10 +1178,45 @@
 
   var seekAbort = null;
 
+  /* REFUSED HERE, NOT BY THE SERVER (w71). Lichess sizes a
+   * game as limit + 40 x increment seconds and the Board API
+   * spec draws two lines with it: "Time controls: Rapid,
+   * Classical and Correspondence only. For direct challenges,
+   * games vs AI, and bulk pairing, Blitz is also possible."
+   * So seeks need >= 480s estimated, challenges >= 180s - and
+   * a bullet CHALLENGE is the nasty one, because Lichess
+   * ACCEPTS it (the restriction is on our API, not the
+   * opponent's), the game is created, compat.board:false
+   * arrives, and this page walks away from a live game. The
+   * owner hit exactly that with 2+1 against maia: refused
+   * here, one bot move on Lichess, auto-aborted only because
+   * nobody moved for white... for black. Refusing BEFORE the
+   * POST means no game exists to abandon. */
+  function speedGate(minutes, increment, seeking) {
+    var est = minutes * 60 + 40 * increment;
+    var floor = seeking ? 480 : 180;
+    if (est >= floor) return null;
+    var name = est < 180 ? "bullet" : "blitz";
+    var out = minutes + "+" + increment + " is " + name + " - ";
+    if (est < 180) {
+      out += "too fast for this app. Blitz or slower for challenges, " +
+             "rapid or slower to find an opponent.";
+    } else {
+      out += "seeks need rapid or slower. Challenge someone instead.";
+    }
+    return out;
+  }
+
   function startSeek(minutes, increment, rated) {
     if (!storedToken() || seekAbort) return;
     minutes = Math.max(1, Number(minutes) || 15);
     increment = Math.max(0, Number(increment) || 0);
+    var slow = speedGate(minutes, increment, true);
+    if (slow) {
+      log("API", "seek refused before posting: " + slow);
+      uiStatus(slow);
+      return;
+    }
     var body = "rated=" + (rated ? "true" : "false") +
       "&time=" + minutes + "&increment=" + increment +
       "&variant=standard";
@@ -1308,6 +1343,12 @@
     if (!who) { uiStatus("Name an opponent."); return; }
     minutes = Math.max(1, Number(minutes) || 15);
     increment = Math.max(0, Number(increment) || 0);
+    var slow = speedGate(minutes, increment, false);
+    if (slow) {
+      log("API", "challenge refused before posting: " + slow);
+      uiStatus(slow);
+      return;
+    }
     var body = "rated=" + (rated ? "true" : "false") +
       "&clock.limit=" + (minutes * 60) +
       "&clock.increment=" + increment +

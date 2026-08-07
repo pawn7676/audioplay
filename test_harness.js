@@ -574,27 +574,15 @@ const sleep = ms =>
         /clockShowMessages=(on|off)/.test(bootLine) &&
         /voice=(system|\S+)/.test(bootLine));
 
-  // ---- w21: first device findings ----
-  vm.runInContext(`
-    api.myColor = "w"; api.over = false;
-    api.pos = { turn: "w" };
-    renderTurn();
-  `, sandbox);
-  const turn = vm.runInContext(
-    'document.getElementById("turnLine").textContent', sandbox);
-  check('turn line: capitalised colour, no "that is you" (' + turn + ')',
-        turn === "White to move." && !/that is you/.test(turn));
-
-  // ---- w39/w70: the clocks name colours; the RAIL follows
-  // the board ----
-  // w39 put White first in a horizontal line, where left and
-  // right mean nothing. w70 moved the clocks into a rail
-  // beside the board, where top and bottom DO mean something,
-  // and the order became board-relative: the far side on top,
-  // yours at the bottom, because the board next to it is drawn
-  // from your side. Both orientations are checked - a rail
-  // that had simply been frozen white-on-top would pass the
-  // first and fail the second.
+  // ---- w70/w71: the rail follows the board; the CLOCK BOX
+  // is the turn indicator ----
+  // w70 put the clocks in a rail beside the board, far side on
+  // top, yours at the bottom. w71 removed the White/Black
+  // captions (the board next to them says it) and made the box
+  // colour carry the turn, as on Lichess: green = to move,
+  // red = to move AND low, grey+dim = waiting. Both
+  // orientations are checked - a rail frozen white-on-top
+  // would pass the first and fail the second.
   const rail = () => vm.runInContext(`
     (function () {
       renderPageClocks();
@@ -603,29 +591,40 @@ const sleep = ms =>
     })()
   `, sandbox);
   vm.runInContext(`
-    api.myColor = "b"; api.wtime = 65000; api.btime = 30000;
+    api.myColor = "b"; api.over = false; api.clockAt = null;
+    api.wtime = 65000; api.btime = 30000;
     api.pos = { turn: "w" };
   `, sandbox);
   const asBlack = rail();
-  check("clocks still name the colours, not you-and-them (" +
+  check("bare digits, no colour captions, no you-and-them (" +
         (asBlack.top + " / " + asBlack.bottom).replace(/<[^>]+>/g, "") + ")",
-        /White 1:05/.test(asBlack.top) && /Black 0:30/.test(asBlack.bottom) &&
-        !/you|them/i.test(asBlack.top + asBlack.bottom));
-  check("playing black, MY clock is the bottom one and is marked",
-        /class="mine[^"]*">Black/.test(asBlack.bottom) &&
-        !/mine/.test(asBlack.top));
-  check("and marked low under a minute",
-        /low[^"]*">Black/.test(asBlack.bottom));
+        /1:05/.test(asBlack.top) && /0:30/.test(asBlack.bottom) &&
+        !/White|Black|you|them/i.test(asBlack.top + asBlack.bottom));
+  check("white to move: the far box is green, mine grey and dimmed",
+        /cbox turn/.test(asBlack.top) && /cbox idle/.test(asBlack.bottom));
+  // my clock is LOW but it is not my turn: w71 ties red to the
+  // running clock, so it stays a dimmed grey
+  check("a low clock that is not running is not red",
+        !/low/.test(asBlack.bottom));
+  vm.runInContext('api.pos = { turn: "b" };', sandbox);
+  const myMove = rail();
+  check("black to move: my low running clock is red, theirs dims",
+        /cbox low/.test(myMove.bottom) && /cbox idle/.test(myMove.top));
   // the same board from the other side: the rail turns over
-  vm.runInContext('api.myColor = "w";', sandbox);
+  vm.runInContext('api.myColor = "w"; api.pos = { turn: "w" };', sandbox);
   const asWhite = rail();
   check("playing white, the rail turns over (" +
         (asWhite.top + " / " + asWhite.bottom).replace(/<[^>]+>/g, "") + ")",
-        /Black 0:30/.test(asWhite.top) && /White 1:05/.test(asWhite.bottom));
-  check("and MY clock is the bottom one again",
-        /class="mine[^"]*">White/.test(asWhite.bottom) &&
-        !/mine/.test(asWhite.top));
-  vm.runInContext('api.myColor = "b";', sandbox);
+        /0:30/.test(asWhite.top) && /1:05/.test(asWhite.bottom));
+  check("and the green follows the turn to the bottom",
+        /cbox turn/.test(asWhite.bottom) && /cbox idle/.test(asWhite.top));
+  // a finished game: two plain grey boxes, nobody waiting
+  vm.runInContext('api.over = true;', sandbox);
+  const overRail = rail();
+  check("game over: plain boxes, no green, no dimming",
+        /cbox"/.test(overRail.top) && /cbox"/.test(overRail.bottom) &&
+        !/turn|idle|low/.test(overRail.top + overRail.bottom));
+  vm.runInContext('api.over = false; api.myColor = "b";', sandbox);
 
   // w70: the rail is BESIDE the board, not under it. The
   // renderers above prove the contents; this proves the shape
@@ -901,41 +900,29 @@ const sleep = ms =>
   // panel, by clicking what a finger would click.
   const setOpen = () => vm.runInContext(
     'setPanel.style.display', sandbox) === "block";
-  const findDone = () => vm.runInContext(`
-    (function () {
-      var head = setPanel.children[0];
-      var kids = (head && head.children) || [];
-      for (var i = 0; i < kids.length; i++) {
-        if (kids[i].textContent === "Done") return kids[i];
-      }
-      return null;
-    })()
-  `, sandbox);
+  // The w69 header - title and Done button - was deleted by
+  // the owner at w71: tap-outside already closes the panel, so
+  // the header spent a row restating the tap that opened it.
+  // The panel must NOT contain a Done button any more, and the
+  // first child must be a settings row, not a header.
   vm.runInContext('setPanel.style.display = "none"; settingsBtn.on_click();',
                   sandbox);
-  check("the panel has a Done button of its own", !!findDone());
-  // guarded on on_click EXISTING, so a Done button that was
-  // never wired FAILS this check instead of throwing out of
-  // the harness - a crash names the wrong thing and takes the
-  // remaining 300 tests with it
-  vm.runInContext(`
+  const doneCount = vm.runInContext(`
     (function () {
-      var head = setPanel.children[0], kids = head.children;
-      for (var i = 0; i < kids.length; i++) {
-        if (kids[i].textContent === "Done" && kids[i].on_click) {
-          kids[i].on_click();
-        }
-      }
+      var n = 0;
+      (function walk(el) {
+        if (el.textContent === "Done") n++;
+        (el.children || []).forEach(walk);
+      })(setPanel);
+      return n;
     })()
   `, sandbox);
-  check("and Done closes it without reaching for the button",
-        setOpen() === false);
+  check("the w69 Done button is gone (owner's call, w71)", doneCount === 0);
 
-  // tap-outside, the thing everyone tries first. The guard is
+  // tap-outside is therefore the WHOLE exit. The guard is
   // that a tap ON the button must NOT run this - that is
   // already a toggle, and closing here too would fight it.
-  vm.runInContext('settingsBtn.on_click();', sandbox);
-  check("panel is open again for the outside-tap test", setOpen() === true);
+  check("panel is open for the outside-tap test", setOpen() === true);
   vm.runInContext(`
     document.__fireClick({ target: document.body });
   `, sandbox);
@@ -2072,14 +2059,44 @@ const sleep = ms =>
   check("sign-out cancels an open challenge",
         vm.runInContext("__chAborted", sandbox) === 1 &&
         vm.runInContext("challengeAbort", sandbox) === null);
+
+  // w71: THE CHALLENGE BUTTON IS ITS OWN CANCEL. A human can
+  // take minutes to accept, and while the challenge waited the
+  // page offered no way to take it back - this button answered
+  // "Still waiting on the last challenge." Driven as a finger
+  // would: the label while waiting, the click, the aftermath.
+  vm.runInContext(`
+    __chAborted = 0;
+    challengeAbort = { abort: function () { __chAborted++; } };
+    renderAccount();
+  `, sandbox);
+  check("while a challenge waits, the button says so",
+        vm.runInContext('challengeBtn.textContent', sandbox) ===
+          "Cancel challenge");
+  vm.runInContext("challengeBtn.on_click();", sandbox);
+  check("and clicking it cancels the challenge",
+        vm.runInContext("__chAborted", sandbox) === 1 &&
+        vm.runInContext("challengeAbort", sandbox) === null &&
+        /cancelled/i.test(vm.runInContext(
+          'document.getElementById("lichessLine").textContent', sandbox)));
+  check("after which it is a Challenge button again",
+        vm.runInContext('challengeBtn.textContent', sandbox) === "Challenge");
   vm.runInContext("fetch = __realFetch4;", sandbox);
 
   // 93: a refused seek says why, and blitz gets the way out
   const seekLine = () => vm.runInContext(
     'document.getElementById("lichessLine").textContent', sandbox);
+  // w71: TOO-FAST IS REFUSED BEFORE THE POST, because the
+  // trap was never the error message - it was the bullet
+  // CHALLENGE, which Lichess accepts (the restriction is on
+  // our API, not the opponent's), creating a real game this
+  // page then walks away from. The owner hit it with 2+1
+  // against maia. The gate means no request leaves the page,
+  // which is what the fetch counter proves.
   vm.runInContext(`
-    __realFetch5 = fetch;
+    __realFetch5 = fetch; __gateFetches = 0;
     fetch = function (url, opts) {
+      __gateFetches++;
       return Promise.resolve({
         ok: false, status: 400,
         json: function () {
@@ -2092,14 +2109,30 @@ const sleep = ms =>
   `, sandbox);
   await sleep(60);
   const blitzMsg = seekLine();
-  check("a refused seek carries Lichess's reason (" + blitzMsg + ")",
-        /Invalid time control/.test(blitzMsg));
-  check("and a blitz control is told the way out",
-        /challenge someone instead/i.test(blitzMsg));
+  check("a blitz seek is refused with the way out (" + blitzMsg + ")",
+        /blitz/.test(blitzMsg) && /challenge someone instead/i.test(blitzMsg));
+  vm.runInContext("seekAbort = null; startSeek(2, 1, false);", sandbox);
+  await sleep(60);
+  check("a bullet seek is named bullet, not blitz (" + seekLine() + ")",
+        /bullet/.test(seekLine()));
+  vm.runInContext(
+    'sendChallenge("maia1", 2, 1, false, "random");', sandbox);
+  await sleep(60);
+  check("a bullet CHALLENGE is refused too - no game to abandon (" +
+        seekLine() + ")",
+        /bullet/.test(seekLine()) && /too fast/i.test(seekLine()));
+  check("and none of the three ever reached the network",
+        vm.runInContext("__gateFetches", sandbox) === 0);
+  // a rapid control passes the gate; a server-side refusal
+  // still carries Lichess's reason, without the blitz hint
   vm.runInContext("seekAbort = null; startSeek(15, 10, false);", sandbox);
   await sleep(60);
-  check("a rapid refusal gets the reason without the blitz hint",
+  check("a rapid refusal gets the server's reason, no blitz hint (" +
+        seekLine() + ")",
+        /Invalid time control/.test(seekLine()) &&
         !/challenge someone instead/i.test(seekLine()));
+  check("which did reach the network",
+        vm.runInContext("__gateFetches", sandbox) === 1);
   vm.runInContext("fetch = __realFetch5; seekAbort = null;", sandbox);
 
   // 94: an opponent who leaves is heard about, once, and the
@@ -2248,11 +2281,17 @@ const sleep = ms =>
 
   // OFF LEAVES THE ROW OUT, not blank-but-present, and the
   // flip repaints on the spot - the setting's whole effect is
-  // something already on screen.
-  vm.runInContext("CFG.showPlayers = false; renderPlayers();", sandbox);
-  check("showPlayers off empties the row without a game event",
+  // something already on screen. (Ratings off too here, so the
+  // row is genuinely empty; their independence has its own
+  // tests below.)
+  vm.runInContext(
+    "CFG.showPlayers = false; CFG.showRatings = false; renderPlayers();",
+    sandbox);
+  check("both switches off empty the row without a game event",
         playersHtml() === "");
-  vm.runInContext("CFG.showPlayers = true; renderPlayers();", sandbox);
+  vm.runInContext(
+    "CFG.showPlayers = true; CFG.showRatings = true; renderPlayers();",
+    sandbox);
   check("and back on restores it", /pawn76/.test(playersHtml()));
 
   // A Lichess AI opponent has aiLevel and NO name at all - the
@@ -2299,37 +2338,22 @@ const sleep = ms =>
         !/1500/.test(noRatings) && !/1900/.test(noRatings));
   check("but not the title - a BOT is not a rating",
         /BOT/.test(noRatings));
-  // players off wins over ratings on: with no row there is
-  // nothing for a rating to sit beside
+  // PLAYERS OFF, RATINGS ON SHOWS THE RATING ALONE (w71).
+  // w69 nested ratings under players and the owner called the
+  // result half-baked, rightly: that combination showed
+  // nothing at all. The clock above the row says whose rating
+  // it is - that is what the rail ordering is for.
   vm.runInContext(
     "CFG.showPlayers = false; CFG.showRatings = true; renderPlayers();",
     sandbox);
-  check("players off leaves nothing for a rating to sit beside",
-        playersHtml() === "");
+  const ratingOnly = playersHtml();
+  check("players off, ratings on: the numbers stand alone (" +
+        ratingOnly + ")",
+        /1500/.test(ratingOnly) && /1900/.test(ratingOnly) &&
+        !/pawn76|maia1|BOT/.test(ratingOnly));
   vm.runInContext(
     "CFG.showPlayers = true; CFG.showRatings = true; renderPlayers();",
     sandbox);
-
-  // ---- w69: EITHER clock reddens under a minute ----
-  // The owner's reason is about the game, not the panel: an
-  // opponent about to flag is something you want to know.
-  const clockHtml = () => vm.runInContext(
-    'document.getElementById("clockTop").innerHTML +\n' +
-    ' document.getElementById("clockBottom").innerHTML', sandbox);
-  vm.runInContext(`
-    api.myColor = "w"; api.clockAt = null;
-    api.wtime = 30000; api.btime = 300000; renderPageClocks();
-  `, sandbox);
-  check("my clock reddens under a minute (" + clockHtml() + ")",
-        /class="mine low"/.test(clockHtml()));
-  vm.runInContext(`
-    api.wtime = 300000; api.btime = 30000; renderPageClocks();
-  `, sandbox);
-  const oppLow = clockHtml();
-  check("and so does the OPPONENT'S (" + oppLow + ")",
-        /class=" low"/.test(oppLow));
-  check("while mine, with time to spare, does not redden",
-        /class="mine"/.test(oppLow));
 
   // ---- w69: the game id is for the log, not the panel ----
   heard();
@@ -3507,8 +3531,10 @@ const sleep = ms =>
     // the two most worth watching. Both refuse while a game is
     // on, so the game has to be put down first.
     api.gameId = null; api.over = false; seekAbort = null;
-    swallow(startSeek(5, 3, false));
+    swallow(startSeek(15, 10, false));      /* w71: gate allows rapid */
     seekAbort = null;
+    /* 5+3 is blitz: the challenge gate must let it through -
+       this doubles as the proof blitz challenges still post */
     swallow(sendChallenge("maia1", 5, 3, false, "random"));
   `, sandbox);
   await sleep(120);

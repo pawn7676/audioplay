@@ -38,8 +38,12 @@
     // land with gameId and moves.length both already settled,
     // so nothing else in this list would move and the names
     // would sit blank under a board that is otherwise right.
+    // challengeAbort joined at w71: the Challenge button is
+    // its own cancel while one waits, so its label follows
+    // this flag - which flips when the OTHER side accepts or
+    // declines, not only when we act.
     var now = [api.gameId, api.moves.length, api.over,
-               api.myName, !!seekAbort, running, dryRun,
+               api.myName, !!seekAbort, !!challengeAbort, running, dryRun,
                api.myColor, !!api.pos,
                (api.players.w && api.players.w.name) || "",
                (api.players.b && api.players.b.name) || ""].join("|");
