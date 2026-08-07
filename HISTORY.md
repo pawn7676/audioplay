@@ -2179,3 +2179,34 @@ The shape tests read the media query's OWN text, not the stylesheet
 as one string - a rule drifting outside the query would otherwise
 still match. Two mutations: order:-1 deleted (the far bar quietly
 stays below, exactly the bug being fixed) and the whole query deleted.
+
+STILL OPEN AFTER w73, written down here because both were found in
+conversation and neither is in the code's own comments:
+
+1. A TOO-FAST GAME THAT ARRIVES FROM ELSEWHERE IS STILL ABANDONED.
+   w71 stopped this page CREATING one, which was the trap the owner
+   hit. It did nothing for a compat.board:false game that starts
+   somewhere else - the Lichess app, a friend's bullet challenge.
+   handleAccountEvent still says it out loud and returns, leaving a
+   live game running with nobody moving. Lichess aborts a game where
+   one side never moves, which is why the owner's 2+1 cost nothing,
+   but that is luck, not handling: the page could abort or resign it
+   deliberately. Not done because it is the one path here that ENDS
+   a game the user did not ask to end, and that is the owner's call
+   to make, not a cleanup to slip in.
+
+2. THE w61 SEEK HINT IS NOW UNREACHABLE. It fires on a 400 when the
+   estimated seconds are under 480 - and w71's gate refuses exactly
+   that before the POST, from the same clamped values and the same
+   formula. So "Blitz seeks are not allowed - challenge someone
+   instead." can no longer be printed. w71's entry says the hint
+   "stays for whatever still gets through", which is wrong: nothing
+   does. Left in place rather than deleted, since it is one branch
+   and it is the correct behaviour if the gate is ever loosened -
+   but it is dead today, and a reader should not spend time working
+   out when it fires. If it is ever deleted, delete the test with it.
+
+Also unverified on the device at the time of writing: w73's portrait
+split (iPhone), and whether w72's 2.4rem clock digits read right at
+arm's length. w56's rule applies to the second - measure before
+retuning.
