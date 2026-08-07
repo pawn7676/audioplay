@@ -2332,3 +2332,24 @@ states, and the useful fact is whether the mic is live. Clock was
 weighed for "Full-screen Clock" in the same conversation and stays
 Clock: a fact learned permanently on the first press does not earn
 the row's widest label.
+
+### w77
+
+THE SIGN-OUT IS A QUESTION FIRST. w76's merged button wrote the
+action into the resting label - "name - Sign out" - and the owner
+felt both costs the same day: a stray tap signed you out on the
+spot, and the label said two things at once, neither quite right.
+Moving the button to the panel's far edge was weighed and dropped -
+it defends only the wide layout (the phone wraps the row anyway),
+and only against taps aimed at the neighbours, not at the button.
+So the defence is in time, not space: at rest the button is the
+NAME alone - w12's label, made honest - and the first tap only
+asks. "Sign out?" stands in the warn colour for four seconds; the
+second tap answers, and any other tap or the timer cancels,
+because a question that can be asked must be cancellable (rule 5).
+The Copy button's timed revert, the challenge button doubling as
+its own cancel (w71) and the settings panel's tap-outside exit
+(w69) were the precedents, one apiece. The armed flag is consulted
+BY renderAccount rather than painted over it, so the repaint tick
+cannot un-ask the question - the w37 shape, guarded against
+before it shipped this time.

@@ -721,32 +721,57 @@
   // to be typed out twice.
   var signInBtn, seekBtn, seekCancelBtn, challengeBtn;
 
+  // THE SIGN-OUT IS A QUESTION FIRST (w77). w76 merged
+  // sign-in and sign-out into this one button and wrote the
+  // action into the resting label - "name - Sign out" -
+  // which fixed the dead button (w12's tappable-but-inert
+  // name) and cost two smaller things: a stray tap signed
+  // you out on the spot, and the label said two things at
+  // once. Both end the same way: at rest the button is the
+  // NAME alone - w12's label, made honest - and the first
+  // tap only ASKS. "Sign out?" stands for SIGNOUT_ARM_MS;
+  // the second tap answers, and any other tap or the timer
+  // cancels, because a question that can be asked must be
+  // cancellable (rule 5). Precedents: the Copy button's
+  // timed revert, the challenge button doubling as its own
+  // cancel (w71), the settings panel's tap-outside (w69).
+  // The flag is CONSULTED BY renderAccount, not painted
+  // over it, so the twice-a-second repaint tick cannot
+  // un-ask the question.
+  var signOutArmed = false;
+  var signOutArmTimer = null;
+  var SIGNOUT_ARM_MS = 4000;
+
+  function disarmSignOut() {
+    clearTimeout(signOutArmTimer);
+    signOutArmTimer = null;
+    if (!signOutArmed) return;
+    signOutArmed = false;
+    renderAccount();
+  }
+
+  function armSignOut() {
+    signOutArmed = true;
+    clearTimeout(signOutArmTimer);
+    signOutArmTimer = setTimeout(disarmSignOut, SIGNOUT_ARM_MS);
+    renderAccount();
+  }
+
   function renderAccount() {
     var signedIn = !!storedToken();
     if (signInBtn) {
-      // ONE control, all the account facts (w9/w12, revised
-      // w76). Signed out it is the way in and says so. Signed
-      // in it is the account AND the way out: w12 ruled that
-      // tapping a name should do nothing, and that held while
-      // Sign out had its own button beside it - but merged
-      // into the top row there is no second button, and a
-      // control that can be pressed and does nothing reads as
-      // broken. The label carries the ACTION so the tap is
-      // never a surprise - the name alone invites nothing,
-      // "name - Sign out" says exactly what pressing it does.
-      // A stray tap is cheap besides: signing back in is two
-      // taps on lichess.org (PKCE). The name is not repeated
-      // in the status line: that line says what is HAPPENING,
-      // this says WHO.
-      // BOTH STATES BY CLASS (w54): the page's colour
-      // language, blue primary = press me, green on =
-      // running - the same rule as the voice button, not the
-      // same hex typed twice.
-      signInBtn.textContent = api.myName
-        ? api.myName + " — Sign out"
-        : "Sign in with Lichess";
+      // Signed out, the way in, and says so (w9/w12). Signed
+      // in, the name - not repeated in the status line: that
+      // line says what is HAPPENING, this says WHO - or the
+      // standing question while armed. WHICH state is a
+      // class; what each looks like is the stylesheet's
+      // (w54): blue primary = press me, green on = running,
+      // warn confirm = this tap acts, and it is a leaving.
+      signInBtn.textContent = !api.myName ? "Sign in with Lichess"
+        : (signOutArmed ? "Sign out?" : api.myName);
       signInBtn.classList.toggle("primary", !api.myName);
-      signInBtn.classList.toggle("on", !!api.myName);
+      signInBtn.classList.toggle("on", !!api.myName && !signOutArmed);
+      signInBtn.classList.toggle("confirm", !!api.myName && signOutArmed);
     }
     var inGame = !!api.gameId && api.gameId !== "PRACTICE" && !api.over;
     if (seekBtn) seekBtn.disabled = !signedIn || inGame || !!seekAbort;
@@ -918,11 +943,26 @@
     challengeBtn = el("btnChallenge");
 
     // The tap is the whole account UI (w76): the way in when
-    // signed out, the way out when signed in. renderAccount's
-    // label says which, so the press is never a guess.
+    // signed out; signed in, the first tap asks and the
+    // second answers (w77) - armSignOut, by renderAccount.
     signInBtn.addEventListener("click", function () {
-      if (api.myName) signOut();
-      else signIn();
+      if (!api.myName) { signIn(); return; }
+      if (signOutArmed) { disarmSignOut(); signOut(); }
+      else armSignOut();
+    });
+    // The question's tap-anywhere cancel - the settings
+    // panel's w69 exit, on the same reasoning: guarded on
+    // the button itself, whose own listener above already
+    // owns what a tap on it means. Cheap while disarmed,
+    // which is nearly always.
+    document.addEventListener("click", function (e) {
+      if (!signOutArmed) return;
+      var t = e.target;
+      while (t) {
+        if (t === signInBtn) return;
+        t = t.parentNode;
+      }
+      disarmSignOut();
     });
 
     seekBtn.addEventListener("click", function () {
@@ -1030,7 +1070,7 @@
       // LAST, furthest from the button pressed every game:
       // Practice quietly stops moves reaching Lichess, and
       // the account button (from the markup, joined at w76)
-      // is Sign out once signed in, at the very end.
+      // is the door to Sign out once signed in, at the end.
       // appendChild moves a node that already has a parent,
       // so re-appending in order IS the reorder - and it is
       // also how the sign-in button leaves the markup spot
