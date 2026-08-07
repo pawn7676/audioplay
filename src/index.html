@@ -258,9 +258,16 @@
 </defs></svg>
 
 <div class="panel" id="panelControls">
-  <h2>Voice</h2>
-  <!-- the shared UI's button row is re-parented in here by
-       buildWebUI (w21); empty in the markup on purpose -->
+  <!-- NO HEADING since w76: the account button joined the row,
+       so VOICE stopped naming what the panel holds, and the
+       noun moved into the voice button's own label instead
+       (see paintVoiceButton). The shared UI's button row is
+       re-parented in here by buildWebUI (w21); the sign-in
+       button below is moved to the END of that row - the
+       far-from-the-voice-button reasoning that placed
+       Practice (w31), because signed in, a tap here is
+       Sign out. -->
+  <button id="btnSignIn" class="primary">Sign in with Lichess</button>
 </div>
 
 <div class="panel" id="panelBoard">
@@ -297,13 +304,15 @@
 </div>
 
 <div class="panel" id="panelLichess">
+  <!-- GAMES since w76, named for what is left in it: the
+       account moved into the top row as ONE button that is
+       sign-in and sign-out both. The id stays panelLichess -
+       the open/closed state is remembered under it (w19), and
+       renaming the id would silently forget every device's
+       saved choice. -->
   <details open>
-  <summary>Lichess</summary>
-  <div class="row">
-    <button id="btnSignIn" class="primary">Sign in with Lichess</button>
-    <button id="btnSignOut" disabled>Sign out</button>
-  </div>
-  <div class="stats" id="lichessLine">Not signed in.</div>
+  <summary>Games</summary>
+  <div class="stats" id="lichessLine">Sign in to play.</div>
   <div class="row">
     <!-- Time controls as PRESETS (w33): the pairs anyone
          recognises from Lichess's own quick-pairing grid,
@@ -369,7 +378,7 @@
   <p class="hint">Sign in once and the page waits for a
   game — one started here, in the Lichess app, or by a
   friend's challenge. Nothing else to set up.</p>
-  <p class="hint">One tap on the Start button starts the
+  <p class="hint">One tap on the Voice Mode button starts the
   microphone and the speech — iOS requires the tap. Then
   walk to your board: say moves like "echo four", "knight
   takes delta five", "castle kingside". "repeat" re-speaks

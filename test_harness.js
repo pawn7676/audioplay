@@ -399,32 +399,52 @@ const sleep = ms =>
   check("a deleted setting is dropped from a stored save (" + dropped + ")",
         dropped[0] === false && dropped[1] === true);
 
-  // ---- w10/w12: the account button is the identity ----
+  // ---- w10/w12, revised w76: one account button, the way ----
+  // in AND out. w12's "tapping the name does nothing" held
+  // while Sign out had its own button; merged, the label
+  // carries the action. Both directions are driven through
+  // the built button, twice over - a feature used twice is a
+  // different feature (w37).
   vm.runInContext(`
     api.myId = "pawn76"; api.myName = "pawn76";
     renderAccount();
   `, sandbox);
   const btn = () => vm.runInContext(
     'document.getElementById("btnSignIn").textContent', sandbox);
-  check("signed in: the button shows the name", btn() === "pawn76");
+  check("signed in: the button is the name AND says the way out (" +
+        btn() + ")", btn() === "pawn76 — Sign out");
   vm.runInContext('api.myId = null; api.myName = null; renderAccount();',
                   sandbox);
   check("signed out: the button invites sign-in",
         btn() === "Sign in with Lichess");
+  // count both real functions through stubs, and RESTORE them
+  // after - a stub that outlives its test silently disarms
+  // every later one that touches the same name (see the
+  // startSeek lesson further down).
+  vm.runInContext(`
+    __realSignIn = signIn; __realSignOut = signOut;
+    __signInCalls = 0; __signOutCalls = 0;
+    signIn = function () { __signInCalls++; };
+    signOut = function () { __signOutCalls++; };
+    document.getElementById("btnSignIn").on_click();
+  `, sandbox);
+  check("signed out: tapping it signs in, not out",
+        vm.runInContext("__signInCalls", sandbox) === 1 &&
+        vm.runInContext("__signOutCalls", sandbox) === 0);
   vm.runInContext(`
     api.myId = "pawn76"; api.myName = "pawn76"; renderAccount();
-    __signInCalls = 0;
-    signIn = function () { __signInCalls++; };
     document.getElementById("btnSignIn").on_click();
   `, sandbox);
-  check("signed in: tapping the name does nothing",
-        vm.runInContext("__signInCalls", sandbox) === 0);
+  check("signed in: tapping it signs out, not in again",
+        vm.runInContext("__signOutCalls", sandbox) === 1 &&
+        vm.runInContext("__signInCalls", sandbox) === 1);
   vm.runInContext(`
     api.myId = null; api.myName = null; renderAccount();
-    document.getElementById("btnSignIn").on_click();
+    signIn = __realSignIn; signOut = __realSignOut;
   `, sandbox);
-  check("signed out: tapping it does sign in",
-        vm.runInContext("__signInCalls", sandbox) === 1);
+  check("the separate sign-out button is gone from the page",
+        vm.runInContext('document.getElementById("btnSignOut")',
+                        sandbox) === null);
 
   // ---- w13: the status line follows the game ----
   const status = () => vm.runInContext(
@@ -436,7 +456,7 @@ const sleep = ms =>
     renderStatus();
   `, sandbox);
   check("game start replaces the challenge message (" + status() + ")",
-        /Tap the Start button/.test(status()));
+        /Tap the Voice Mode button/.test(status()));
   vm.runInContext('running = true; renderStatus();', sandbox);
   check("voice on: plain playing state (" + status() + ")",
         status() === "Playing.");
@@ -683,19 +703,19 @@ const sleep = ms =>
         /#sideTop\s*\{[^}]*order:\s*-1/.test(narrowCss));
   check("each bar goes horizontal, name and clock on one line",
         /\.sideBlock\s*\{[^}]*flex-direction:\s*row/.test(narrowCss));
-  // press Start with no token and listen, rather than
-  // grepping the source for the string
+  // press the voice button with no token and listen, rather
+  // than grepping the source for the string
   vm.runInContext(`
     running = false; dryRun = false;
     localStorage.removeItem("audioplay_lichess_token");
     TOKEN = "";
-    // the Start button has no id - it is the first control
+    // the voice button has no id - it is the first control
     // in the voice row, which is exactly how a finger finds
     // it too (w31 put it there)
     wrapEl.firstChild.children[0].on_click();
   `, sandbox);
   const startSaid = heard().join(" | ");
-  check("signed out, Start says it for the EAR (" + startSaid + ")",
+  check("signed out, the voice button says it for the EAR (" + startSaid + ")",
         /lee chess/.test(startSaid) && !/lichess/.test(startSaid));
   vm.runInContext("running = false; renderButton();", sandbox);
   // ---- w57: the manifest names every source, and only sources ----
@@ -744,8 +764,17 @@ const sleep = ms =>
         /^<!doctype html>/i.test(tmpl.split("\n")[0].trim()));
   check("page button CSS is scoped to .panel",
         !/\n  button \{/.test(tmpl) && /\.panel button \{/.test(tmpl));
-  check("the Voice panel hosts the buttons",
+  check("the top panel hosts the buttons",
         tmpl.includes('id="panelControls"'));
+  // w76: the account is one button in the top panel; the games
+  // panel is named for what is left in it, under its OLD id -
+  // the panel memory (w19) is keyed by id, and renaming it
+  // would forget every device's saved open/closed choice.
+  check("the games panel is named Games, keeping its id",
+        /<summary>Games<\/summary>/.test(tmpl) &&
+        tmpl.includes('id="panelLichess"'));
+  check("and the template carries no separate sign-out button",
+        !tmpl.includes("btnSignOut"));
   // ASK THE BUILT TREE (w54). This grepped ui.js for the
   // string 'el("panelControls")', which would pass on a page
   // that never called it, and is answered properly ten lines
@@ -803,8 +832,9 @@ const sleep = ms =>
   // template (tmpl is read further up).
   vm.runInContext("running = false; renderButton();", sandbox);
   const offBtn = btnState();
-  check("off: says what to do (" + offBtn.text + ")",
-        /^\u25B6 Start$/.test(offBtn.text));
+  check("off: names the mode behind the start triangle (" +
+        offBtn.text + ")",
+        /^\u25B6 Voice Mode$/.test(offBtn.text));
   check("off: marked as the page's primary control",
         offBtn.primary === true && offBtn.on === false);
   vm.runInContext("running = true; listening = true; renderButton();",
@@ -837,13 +867,13 @@ const sleep = ms =>
         sized.w === "" && sized.h === "" && sized.r === "" &&
         sized.fs === "" && sized.flex === "0 0 auto");
   check("only the width the stylesheet cannot know is set",
-        sized.min === "124px");
+        sized.min === "140px");
   const others = vm.runInContext(`
     wrapEl.firstChild.children.slice(1).map(function (b) {
       return [b.style.fontSize, b.style.padding, b.style.flex].join("|");
     })
   `, sandbox);
-  check("the other four are sized by the stylesheet too",
+  check("the other five are sized by the stylesheet too",
         others.every(s => s === "||0 0 auto"));
   vm.runInContext("running = false; listening = false; renderButton();",
                   sandbox);
@@ -884,22 +914,28 @@ const sleep = ms =>
       };
     })()
   `, sandbox);
-  check("the row holding the buttons has all five " +
-        "(" + styled.innerKids + " children)", styled.innerKids === 5);
+  check("the row holding the buttons has all six " +
+        "(" + styled.innerKids + " children)", styled.innerKids === 6);
   // w31: order is DOM order, so it survives wrapping
   const rowOrder = vm.runInContext(`
     wrapEl.firstChild.children.map(function (c) { return c.textContent; })
   `, sandbox);
-  check("Start is first in the DOM (" + rowOrder.join(", ") + ")",
-        /Start/.test(rowOrder[0]));
+  check("the voice button is first in the DOM (" + rowOrder.join(", ") + ")",
+        /Voice Mode/.test(rowOrder[0]));
   // ask the built row, NOT the source: the first draft of
   // this check grepped ui.js for "row-reverse" and failed
   // on its own explanatory comment
   check("no row-reverse trick left - it wraps wrong on a phone",
         styled.innerDir !== "row-reverse");
-  check("Practice sits furthest from Start (" +
+  // w76: the two riskiest taps sit at the far end - Practice
+  // swallows moves, and the account button signs out once
+  // signed in. Sign-out takes the very end.
+  check("the account button sits furthest from the voice button (" +
         rowOrder[rowOrder.length - 1] + ")",
-        /Practice/.test(rowOrder[rowOrder.length - 1]));
+        /Sign in/.test(rowOrder[rowOrder.length - 1]));
+  check("with Practice beside it (" +
+        rowOrder[rowOrder.length - 2] + ")",
+        /Practice/.test(rowOrder[rowOrder.length - 2]));
 
   // ---- w24: the settings panel anchors to its button ----
   // ASK THE BUILT PANEL. This grepped ui.js for four strings
@@ -934,7 +970,7 @@ const sleep = ms =>
 
   // ---- w69: the panel carries its own exit ----
   // It is position:fixed and its button is not - buildWebUI
-  // moves the row into the Voice panel, which scrolls. Open the
+  // moves the row into the top panel, which scrolls. Open the
   // panel, scroll down, and the only control that could close
   // it is above the fold. Both exits are asked of the built
   // panel, by clicking what a finger would click.

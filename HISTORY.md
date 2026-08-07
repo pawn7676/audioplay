@@ -2300,3 +2300,35 @@ setting deleted at v132.
 
 Three mutation tests: the render ignoring showRatings, the pill losing
 its repaint, and showPlayers resurrected as a default.
+
+### w76
+
+THE ACCOUNT IS ONE BUTTON, AND IT LIVES WITH THE OTHER BUTTONS. w12
+ruled that tapping a signed-in name should do nothing, and that held
+as long as Sign out stood beside it doing the leaving. On the device
+it read differently: the biggest control in the panel could be
+pressed and nothing happened, which is not a label, it is a dead
+button. The two are now one control that always answers - signed out
+it is "Sign in with Lichess", signed in it is the name with "Sign
+out" written on it, so the tap is never a surprise. No confirmation
+step: a stray tap costs two taps on lichess.org to undo (PKCE
+remembers), which is cheaper than asking every deliberate one.
+
+With the account row gone the Lichess panel held only ways to start
+a game, so it is named GAMES for what it holds - the id stays
+panelLichess, because the open/closed memory (w19) is keyed by id
+and renaming it would silently forget every device's saved choice.
+The button itself joined the top row at the far end, by the w31
+reasoning that placed Practice: the risky taps sit furthest from
+the button pressed every game.
+
+That row's panel lost its VOICE heading - with the account in it,
+the name no longer covered the contents. Which pulled the thread
+w30 left: the button said only "Start" BECAUSE the heading above
+said VOICE. The noun moved into the label, "Voice Mode" behind the
+triangle that already carries "start" - the owner's wording. The
+on-states stay "Listening" and "On", for w30's reason: they are
+states, and the useful fact is whether the mic is live. Clock was
+weighed for "Full-screen Clock" in the same conversation and stays
+Clock: a fact learned permanently on the first press does not earn
+the row's widest label.
