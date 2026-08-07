@@ -75,7 +75,13 @@
 
   var PIECES = expand({
     k: "king kings kin",
-    q: "queen queens green quean creed quinn",
+    // "clean" joined at w59 from game w58-1, where "queen
+    // check" came back as "Clean check" twice running. The
+    // fuzzy matcher could never have reached it: "clean" is
+    // three edits from "queen" and two from "quean", and a
+    // five-letter word is only allowed one. Exact-only below,
+    // because it is an everyday word with everyday neighbours.
+    q: "queen queens green quean creed quinn clean",
     r: "rook rooks rock rocks brook ruck roof rooke brooke ruts",
     b: "bishop bishops bishoff bishup fish fisher fishop ship bish " +
        "vision visions bitch",
@@ -241,7 +247,15 @@
     // that is an everyday word, and the worst-shaped one:
     // "channels", "chapel", "change" and "chancel" are all
     // one or two edits away and none of them is the file.
-    "channel");
+    "channel " +
+    // w59, game w58-1. "clean" is the first QUEEN spelling
+    // that is an everyday word, and it is badly shaped: six
+    // ordinary words sit one edit away - clear, clan, lean,
+    // glean, cleans, cleat - and "clear" and "lean" are both
+    // things a person says at a board. As a fuzzy target it
+    // would turn all six into queens; named as a spelling it
+    // matches when spoken and seeds nothing.
+    "clean");
 
   // Ordinary words sit one edit from vocabulary words and
   // were being converted silently: "good" became "gold", a

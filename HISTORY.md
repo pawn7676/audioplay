@@ -1420,3 +1420,33 @@ move, which was the mate, so both repairs gave the same answer. The claim is
 about WHICH REPAIR ANSWERED, so that is what it asserts now - the log names
 it. A test that cannot tell the two branches apart is not testing the branch.
 
+
+### w59
+
+"CLEAN" IS A QUEEN. Game w58-1: "queen check" came back from Safari as "Clean
+check", twice running. The move was recovered anyway - the second time a rival
+reading had it right, and w49's rule let that raise a question - so the log
+shows the safety net working rather than a move lost. But the net should not
+have been needed.
+
+THE FUZZY MATCHER COULD NEVER HAVE SAVED IT, which is the part worth knowing:
+"clean" is THREE edits from "queen" and two from "quean", and a five-letter
+word is allowed one. No amount of near-miss tolerance reaches it. Only a named
+spelling does, which is what this table is for and why it only ever grows from
+real logs.
+
+AND IT IS EXACT-ONLY, because it is the first queen spelling that is an
+everyday English word, and it is badly shaped: clear, clan, lean, glean,
+cleans and cleat all sit ONE edit away, and "clear" and "lean" are both things
+a person says at a board. As a fuzzy target it would turn all six into queens.
+Named as a spelling it matches when spoken and seeds nothing - the v121 and
+v134 treatment, for the same reason both of those got it.
+
+WHAT THE LOG ALSO SHOWS, and it is the reason this entry is short: everything
+else in that game worked. The check repair from w58 played Nc6+ from "Night
+check" and Qa4+ from "Queen check" the moment the word landed cleanly. A rival
+reading raised a question rather than playing, as w49 requires. A half-heard
+"97 | Night seven" recovered through the rank question. The only fault in
+twenty minutes of play was a word the microphone did not deliver, and the only
+fix available for that is the table.
+
