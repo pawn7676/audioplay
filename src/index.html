@@ -160,32 +160,41 @@
   }
   .hint { color: var(--dim); font-size: .82rem; margin-top: 8px; line-height: 1.4; }
   #lichessLine { margin-top: 6px; }
-  #turnLine { margin-top: 6px; font-weight: 700; }
-  /* BOARD AND RAIL (w70). align-items:stretch so the rail is
-     exactly as tall as the board and its two clocks can be
-     pushed to the ends; wrap so a narrow screen drops the
-     rail underneath instead of squeezing the board. The
-     board keeps its own max-width and stops centring itself
-     once it has a neighbour. */
-  #boardRow { display: flex; flex-wrap: wrap; gap: 14px;
+  /* BOARD AND RAIL (w70), RESHAPED TO THE LICHESS LOOK (w71).
+     w70 stretched the rail to the board's full height and
+     pushed the clocks to its ends, which left a vacant middle
+     the owner disliked on sight. Now the cluster sits together
+     at the rail's vertical centre, and THE CLOCK IS THE TURN
+     INDICATOR, as on the site this page talks to: white digits
+     always, in a box whose colour says whose move it is -
+     dark grey when it is not that side's turn (and dimmed),
+     green when it is, red when it is their turn AND they are
+     under a minute. The colour words White/Black are gone from
+     beside the digits, and the turn line under the board went
+     with them - the green box says it without a sentence.
+     Wrap so a narrow screen drops the rail underneath instead
+     of squeezing the board. */
+  #boardRow { display: flex; flex-wrap: wrap; gap: 16px;
               align-items: stretch; justify-content: center; }
   #boardRow #mini { margin: 0; flex: 0 1 360px; }
   #boardSide { flex: 1 1 150px; min-width: 150px; max-width: 260px;
-               display: flex; flex-direction: column; }
-  /* the gap between the two halves is what pushes them apart,
-     so no fixed heights are needed and the rail matches
-     whatever the board's aspect-ratio works out to */
-  .sideGap { flex: 1 1 auto; min-height: 10px; }
+               display: flex; flex-direction: column;
+               justify-content: center; }
+  .sideGap { height: 18px; }
   .sideClock { font-size: 1.6rem; font-weight: 700; letter-spacing: .02em;
                font-family: Menlo, "SF Mono", monospace; line-height: 1.2; }
+  .sideClock .cbox { display: inline-block; padding: 3px 14px;
+                     border-radius: 6px; color: #fff;
+                     background: #2e2b27; }
+  .sideClock .cbox.turn { background: #3a5a2a; }
+  .sideClock .cbox.low { background: #8c3a30; }
+  .sideClock .cbox.idle, .sideName .idle { opacity: .55; }
   .sideName { font-family: Menlo, "SF Mono", monospace; font-size: .8rem;
               line-height: 1.5; margin: 2px 0; }
-  /* the same brass marks YOUR side on clock and name alike, so
-     the pair reads as one block (w68). The title is dimmer
+  /* brass still marks YOUR name (w68); the title is dimmer
      than the name because it qualifies it - BOT, GM - and at a
      glance the name is what is wanted. */
-  .sideClock .mine, .sideName .mine { color: var(--brass); }
-  .sideClock .low { color: var(--bad); }
+  .sideName .mine { color: var(--brass); }
   .sideName .title { opacity: .65; }
   .sideName .rating { opacity: .65; }
   input.whoin { width: 9em; padding: 4px; font: inherit; }
@@ -224,10 +233,11 @@
   <!-- THE LICHESS SHAPE (w70): board left, a rail on the
        right carrying the far player's clock and name at the
        top and yours at the bottom. Ordered by the BOARD, not
-       by colour - see renderBoardSide. The rail wraps under
-       the board on a narrow screen; the turn line stays full
-       width below both, being a sentence rather than part of
-       the rail. -->
+       by colour - see sideOf in ui.js. The rail wraps under
+       the board on a narrow screen. No text lines: since w71
+       the clock boxes carry the turn, and the game-over word
+       lives in the Lichess panel's status line, which said it
+       already. -->
   <div id="boardRow">
     <canvas id="mini" width="768" height="768"></canvas>
     <div id="boardSide">
@@ -238,7 +248,6 @@
       <div class="sideClock" id="clockBottom"></div>
     </div>
   </div>
-  <div class="stats" id="turnLine"></div>
   </details>
 </div>
 

@@ -2053,3 +2053,63 @@ which is exactly the mutation that was run. The other mutation takes
 the flex row away - the renderers would still fill the rail correctly
 while it stacked under the board looking just like w69, so the shape
 is asserted from the template separately from its contents.
+
+### w71
+
+THE FIRST REAL GAME AGAINST THE w70 RAIL, and the owner sent five
+findings back the same morning. All five are here.
+
+TOO-FAST GAMES ARE REFUSED BEFORE THE POST. The 2+1 against maia laid
+the trap bare: the spec's line is "Rapid, Classical and Correspondence
+only. For direct challenges, games vs AI, and bulk pairing, Blitz is
+also possible" - so seeks need an estimated 480s (limit + 40 x
+increment) and challenges 180s, and a bullet CHALLENGE is the nasty
+case because Lichess ACCEPTS it. The restriction is on this API, not
+the opponent: the game was created, compat.board:false arrived, and
+this page walked away from a live game. (It auto-aborted after maia's
+single move, because a game where one side never moves is aborted by
+Lichess - the owner watched that happen - but that is luck-shaped:
+refusing before the POST means no game ever exists to abandon.) Both
+gates name the speed and the way out, and the w61 server-side hint
+stays for whatever still gets through.
+
+A WAITING CHALLENGE CAN BE TAKEN BACK. A human opponent, unlike maia,
+can take minutes to accept, and all that time the page offered no way
+out - the Challenge button answered "Still waiting on the last
+challenge." It IS the way out now: while a challenge waits it reads
+"Cancel challenge" and cancels it, which aborting the keep-alive
+stream does for real on Lichess's side (w61). The repaint fingerprint
+gained challengeAbort so the label follows the OTHER side's answer
+too, not only our own actions.
+
+THE CLOCK BOX IS THE TURN INDICATOR, as on the site this page talks
+to: white digits always, box colour carrying the state - green for
+the side to move, red for the side to move under a minute, dark grey
+dimmed for the side waiting, plain grey for a finished game. The
+White/Black captions went (the board is right there, and the rail is
+ordered by it), the stretched gap went with the vacant middle the
+owner disliked (the cluster sits together at the rail's centre), and
+w69's red is now tied to the RUNNING clock: a low clock that is not
+ticking is not an emergency. The turn line under the board went too -
+the green box says it without a sentence, and "Game over." was
+printed twice on one screen, once in each panel. The Lichess panel
+keeps it.
+
+THE w69 SETTINGS HEADER LASTED ONE DAY. Title and Done button both
+deleted by the owner: tap-outside already closes the panel, and the
+header spent a row restating the tap that opened it. Tap-outside is
+the whole exit now, which makes the button-guard in the document
+listener load-bearing rather than belt-and-braces.
+
+RATINGS STAND ALONE. w69 nested showRatings under showPlayers and the
+owner called it half-baked, rightly: players off + ratings on showed
+nothing at all. Each switch now owns its fragment - the row is the
+sum of what is on, and a rating with names off sits alone under its
+clock, which says whose it is; that is what the rail ordering is for.
+
+Five mutation tests: the challenge gate (the abandoned-game trap),
+the seek floor, the re-nested ratings, red-without-turn, and the
+cancel branch. The gate test counts FETCHES - the claim is that no
+request leaves the page, so the proof is the counter staying at zero
+while three refusals land, then reading exactly one when a rapid
+control passes through to the stubbed server.

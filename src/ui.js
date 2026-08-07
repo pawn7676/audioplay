@@ -199,24 +199,13 @@
       renderButton();
     }
 
-    var setHead = document.createElement("div");
-    setHead.style.cssText =
-      "display:flex;align-items:center;justify-content:space-between;" +
-      "gap:12px;margin-bottom:2px;";
-    var setTitle = document.createElement("div");
-    setTitle.textContent = "Settings";
-    setTitle.style.cssText =
-      "color:#c9c2b8;font-size:13px;font-weight:600;";
-    var setDone = document.createElement("button");
-    setDone.textContent = "Done";
-    setDone.style.cssText =
-      "font-size:11px;min-width:52px;padding:5px 0;text-align:center;" +
-      "border-radius:10px;border:1px solid #3a3530;" +
-      "background:" + BUTTON_OFF + ";color:#91bddf;";
-    setDone.addEventListener("click", closeSettings);
-    setHead.appendChild(setTitle);
-    setHead.appendChild(setDone);
-    setPanel.appendChild(setHead);
+    // The w69 header - a "Settings" title and a Done button -
+    // lasted one day on the device: the owner deleted both,
+    // because tap-outside already closes the panel and the
+    // header spent a row saying what the tap that opened it
+    // just said. Tap-outside is the whole exit now, which
+    // makes the guard on the button in the document listener
+    // below load-bearing rather than belt-and-braces.
 
     function settingHeader(text) {
       var h = document.createElement("div");
@@ -577,16 +566,7 @@
     paintVoiceButton();
   }
 
-  // colorWord (parsing.js) is the SPOKEN form and stays lower
-  // case - a voice does not read capitals. This is the same
-  // word for the eye, where a colour is a proper name on a
-  // score sheet.
-  function colourLabel(c) {
-    var w = colorWord(c);
-    return w.charAt(0).toUpperCase() + w.slice(1);
-  }
-
-  var statusLine, turnLine;
+  var statusLine;
   var clockTop, clockBottom, nameTop, nameBottom;   /* w70 rail */
 
   function uiStatus(text) {
@@ -616,12 +596,17 @@
    * kind: top and bottom here DO mean something, because the
    * board next to it is drawn from your side and flips with
    * your colour. A rail that ignored that would put your clock
-   * level with their pieces. Colour is still named on every
-   * clock, so what w39 was protecting is not lost.
+   * level with their pieces.
+   *
+   * THE COLOUR WORDS ARE GONE (w71). w70 wrote White and
+   * Black beside the digits and the owner called it
+   * superfluous on sight - the board is right there, and the
+   * rail is ordered by it. What w39 was protecting (never
+   * "you/them") is not betrayed; the sides are simply not
+   * captioned at all, as on Lichess itself.
    *
    * ONE PAIR OF FUNCTIONS FOR BOTH ROWS, because clocks and
-   * names are one block: they share the mine/low marking and
-   * they are positioned relative to each other.
+   * names are one block, positioned relative to each other.
    */
   function sideOf(top) {
     var mine = api.myColor || "w";
@@ -637,19 +622,21 @@
                     .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
+  /* THE CLOCK IS THE TURN INDICATOR (w71), as on Lichess:
+   * white digits always, box colour carrying the state.
+   * Green = that side to move; red = to move AND under a
+   * minute (w69 made low-time both-sided; w71 ties it to the
+   * turn, since a low clock that is not running is not an
+   * emergency); dark grey and dimmed = waiting. A finished
+   * game shows two plain grey boxes at full brightness -
+   * nobody is to move, nobody is "waiting". */
   function clockCell(colour) {
     var left = remainingMs(colour);
-    var isMine = colour === (api.myColor || "w");
-    // EITHER SIDE, NOT JUST YOURS (w69). The red was mine-only
-    // because it doubled as a marker for which clock was
-    // yours - but the brass "mine" colour already does that
-    // job on its own, and it survives here (low overrides the
-    // colour, not the class). The owner's reason is the
-    // better one and it is about the GAME, not the panel: an
-    // opponent about to flag is something you want to know.
+    var toMove = !api.over && api.pos && api.pos.turn === colour;
     var low = left != null && left < 60000;
-    return '<span class="' + (isMine ? "mine" : "") +
-      (low ? " low" : "") + '">' + colourLabel(colour) + " " +
+    var state = toMove ? (low ? "low" : "turn")
+                       : (api.over ? "" : "idle");
+    return '<span class="cbox' + (state ? " " + state : "") + '">' +
       fmtClock(left) + "</span>";
   }
 
@@ -660,14 +647,32 @@
    * playing. */
   function nameCell(colour) {
     var pl = (api.players || {})[colour];
-    if (!pl || !CFG.showPlayers) return "";
+    if (!pl) return "";
     var isMine = colour === (api.myColor || "w");
-    return '<span class="' + (isMine ? "mine" : "") + '">' +
-      (pl.title ? '<span class="title">' + esc(pl.title) + "</span> " : "") +
-      esc(pl.name) +
-      (pl.rating != null && CFG.showRatings
-        ? ' <span class="rating">' + esc(pl.rating) + "</span>" : "") +
-      "</span>";
+    // EACH SWITCH OWNS ITS OWN FRAGMENT (w71). w69 nested
+    // showRatings under showPlayers, and the owner called the
+    // result half-baked, rightly: players off + ratings on
+    // showed nothing at all. Now the name row is the sum of
+    // what is switched on - name (with title) under
+    // showPlayers, rating under showRatings - and the rating
+    // stands alone beside the clock if names are off. The
+    // clock above it says whose it is; that is what the rail
+    // ordering is for.
+    var parts = [];
+    if (CFG.showPlayers) {
+      parts.push((pl.title
+        ? '<span class="title">' + esc(pl.title) + "</span> " : "") +
+        esc(pl.name));
+    }
+    if (CFG.showRatings && pl.rating != null) {
+      parts.push('<span class="rating">' + esc(pl.rating) + "</span>");
+    }
+    if (!parts.length) return "";
+    var toMove = !api.over && api.pos && api.pos.turn === colour;
+    var cls = (isMine ? "mine" : "") +
+              (!toMove && !api.over ? " idle" : "");
+    return '<span class="' + cls.trim() + '">' +
+      parts.join(" ") + "</span>";
   }
 
   function renderPageClocks() {
@@ -682,16 +687,6 @@
     var live = api.pos && (api.players.w || api.players.b);
     nameTop.innerHTML = live ? nameCell(sideOf(true)) : "";
     nameBottom.innerHTML = live ? nameCell(sideOf(false)) : "";
-  }
-
-  function renderTurn() {
-    if (!turnLine) return;
-    if (!api.pos) { turnLine.textContent = ""; return; }
-    if (api.over) { turnLine.textContent = "Game over."; return; }
-    // "- that is you" REMOVED at w21 by the owner: the board
-    // is drawn from your side and the clocks say you/them, so
-    // the suffix repeated what the whole panel already shows.
-    turnLine.textContent = colourLabel(api.pos.turn) + " to move.";
   }
 
   // Once a game exists, THE GAME IS THE STATUS (w13). Seek and
@@ -720,7 +715,6 @@
     renderMiniBoard();
     renderPageClocks();
     renderPlayers();
-    renderTurn();
     renderAccount();
     renderButton();
     renderStatus();
@@ -763,7 +757,21 @@
     var inGame = !!api.gameId && api.gameId !== "PRACTICE" && !api.over;
     if (seekBtn) seekBtn.disabled = !signedIn || inGame || !!seekAbort;
     if (seekCancelBtn) seekCancelBtn.disabled = !seekAbort;
-    if (challengeBtn) challengeBtn.disabled = !signedIn || inGame;
+    // THE SAME BUTTON IS THE WAY OUT (w71). While a challenge
+    // waited - and a human, unlike maia, can take a while to
+    // accept - the page offered no way to take it back: this
+    // button answered "Still waiting on the last challenge."
+    // The seek row has a whole second button for this; the
+    // challenge row's own button was sitting there disabled-in-
+    // spirit, so it becomes the cancel, labelled for what it
+    // now does. cancelChallenge aborts the keep-alive stream,
+    // which is what actually revokes the challenge on Lichess
+    // (w61), so the label is the truth.
+    if (challengeBtn) {
+      challengeBtn.disabled = !signedIn || inGame;
+      challengeBtn.textContent = challengeAbort
+        ? "Cancel challenge" : "Challenge";
+    }
   }
 
   function el(id) { return document.getElementById(id); }
@@ -906,7 +914,6 @@
   function buildWebUI() {
     buildUI();                    // the shared button row et al
     statusLine = el("lichessLine");
-    turnLine = el("turnLine");
     clockTop = el("clockTop");
     clockBottom = el("clockBottom");
     nameTop = el("nameTop");
@@ -967,6 +974,12 @@
     oppOther.addEventListener("change", syncOpponent);
 
     challengeBtn.addEventListener("click", function () {
+      if (challengeAbort) {          /* w71: the button is the cancel */
+        cancelChallenge();
+        uiStatus("Challenge cancelled.");
+        renderAccount();
+        return;
+      }
       var tc = selectedTimeControl();
       if (!tc) {
         uiStatus(pickedTime ? "Custom time looks like 10+5."
@@ -975,6 +988,7 @@
       }
       sendChallenge(opponentName(), tc.minutes, tc.increment,
                     el("seekRated").checked, el("challengeColour").value);
+      renderAccount();
     });
 
     // WEB (w21): the button row joins the page. Floating
