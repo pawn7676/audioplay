@@ -2263,3 +2263,40 @@ challenges no longer exempt, and the wrong decline reason.
 
 Verified on the device: w73's portrait split and w72's digit size,
 both good, neither needing a retune.
+
+### w75
+
+SHOWPLAYERS IS DELETED, and the reasoning it was added on is the
+reasoning that killed it. w68 put it behind a switch because "the
+owner plays at a real board and looks at the iPad rarely, so anything
+permanent on screen has to earn the room". A name earns it every time.
+A week of it on the device turned up no occasion to turn it off:
+Lichess hides names behind Zen mode because Zen hides the whole
+interface, which is not a thing this page has. Names always show.
+
+THE RATING BECOMES FREE, which is the shape this pair was reaching for
+across four versions and kept missing. w69 split it off but nested it,
+so players-off/ratings-on showed nothing - half-baked. w71 read the
+two independently and a bare number floated beside a clock - sucks,
+and it did. w72 chained them, which was right given both existed.
+w75 deletes the thing it was chained to, and the chain goes with it:
+the panel coupling, the loadSettings repair, and the render guard are
+all gone, because there is no longer a state they could be protecting
+against. One switch, answering to nobody.
+
+That is three of the four landings undone by the fourth, and the
+lesson is not "we churned" - it is that a setting nobody turns off is
+not a setting, and the way to find that out was to ship it and use it.
+The rating IS turned off, so it stays.
+
+A STORED SETTING WHOSE SWITCH IS GONE MUST BE IGNORED, NOT OBEYED. A
+device that had saved showPlayers:false would otherwise hide the names
+forever with no control left to bring them back - the settings panel
+is the only way in, and its row no longer exists. loadSettings copies
+only keys present in SETTING_DEFAULTS, so a deleted key is dropped by
+construction; that property is now asserted rather than assumed,
+because the whole deletion rests on it. Same shape as the headphones
+setting deleted at v132.
+
+Three mutation tests: the render ignoring showRatings, the pill losing
+its repaint, and showPlayers resurrected as a default.

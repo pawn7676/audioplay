@@ -110,15 +110,23 @@
     // carry it instead, so it is a choice.
     clockSpeakOpponent: true,
 
-    // Names and ratings under the board, both sides. Lichess
-    // shows them by default and hides them behind Zen mode;
-    // this is the same choice with the sense reversed, because
-    // a setting reads better as the thing it turns ON. It was
-    // asked for as an OPTION rather than a fixture (w68) and
-    // that is the right shape: the owner plays at a real board
-    // and looks at the iPad rarely, so anything permanent on
-    // screen has to earn the room. Off leaves the row out
-    // entirely rather than blanking it, so nothing shifts.
+    // SHOWPLAYERS WAS DELETED AT w75, and the reasoning it
+    // was added on (w68) is the reasoning that killed it:
+    // "anything permanent on screen has to earn the room". A
+    // name earns it every time. The owner played with the
+    // switch for a week and found no occasion to turn it off -
+    // Lichess hides names behind Zen mode because it hides the
+    // whole interface, which is not a thing this page has. A
+    // stored value under this name is simply ignored, as the
+    // deleted headphones setting above is.
+    //
+    // The rating is a real choice and survives as one, now
+    // INDEPENDENT of anything else. It took four versions to
+    // find that shape: w69 split it off nested, w71 made it
+    // free and let a bare number float beside a clock, w72
+    // chained it back to showPlayers, and w75 removes the
+    // thing it was chained to. Names always; the number beside
+    // them optional.
     //
     // NOT A FAIR-PLAY QUESTION, and worth saying where the
     // next reader will look: constraint 1 is about MOVE
@@ -126,20 +134,6 @@
     // position, and no rating ever suggested a move. The move
     // list is the thing that would start to look like analysis
     // surface, and it is deliberately still absent.
-    showPlayers: true,
-
-    // The rating beside each name, split off from showPlayers
-    // at w69 because they are two decisions: a name tells you
-    // who is across the board, a rating tells you what to
-    // expect from them. DEPENDENT, NOT INDEPENDENT (w72):
-    // w71 let a rating render alone when players were off -
-    // the strictest reading of the two switches, and the
-    // owner's verdict was that it sucks. A rating without a
-    // name is a number floating beside a clock. So players
-    // off forces ratings off, and ratings cannot be switched
-    // on while players are off - enforced in the panel, and
-    // repaired below in loadSettings for a stored pair that
-    // disagrees, the same shape as the message-channel rule.
     showRatings: true,
 
     // The move row on the clock overlay. The cost is digit
@@ -199,10 +193,6 @@
     // question hang silently. Voice is the channel that
     // works with the eyes closed, so it is the one
     // restored.
-    // ratings need a name to sit beside (w72): a stored
-    // players-off/ratings-on pair - saved under w71, which
-    // allowed it - reads as ratings off.
-    if (!out.showPlayers) out.showRatings = false;
     if (!out.clockSpeakMessages && !out.clockShowMessages) {
       out.clockSpeakMessages = true;
     }
