@@ -382,6 +382,19 @@ const sleep = ms =>
   check("messages always keep one channel (" + chans + ")",
         chans[0] === true || chans[1] === true);
 
+  // the same shape for the w72 pair: a stored players-off /
+  // ratings-on save (legal under w71) must load repaired, not
+  // trusted - the panel can only guard taps it sees
+  const pairFix = vm.runInContext(`
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(
+      { showPlayers: false, showRatings: true }));
+    var c2 = loadSettings();
+    localStorage.removeItem(SETTINGS_KEY);
+    [c2.showPlayers, c2.showRatings];
+  `, sandbox);
+  check("a stored rating-without-name pair loads repaired (" + pairFix + ")",
+        pairFix[0] === false && pairFix[1] === false);
+
   // ---- w10/w12: the account button is the identity ----
   vm.runInContext(`
     api.myId = "pawn76"; api.myName = "pawn76";
@@ -600,16 +613,21 @@ const sleep = ms =>
         (asBlack.top + " / " + asBlack.bottom).replace(/<[^>]+>/g, "") + ")",
         /1:05/.test(asBlack.top) && /0:30/.test(asBlack.bottom) &&
         !/White|Black|you|them/i.test(asBlack.top + asBlack.bottom));
-  check("white to move: the far box is green, mine grey and dimmed",
-        /cbox turn/.test(asBlack.top) && /cbox idle/.test(asBlack.bottom));
-  // my clock is LOW but it is not my turn: w71 ties red to the
-  // running clock, so it stays a dimmed grey
-  check("a low clock that is not running is not red",
-        !/low/.test(asBlack.bottom));
+  // MY clock is LOW while THEIR side moves. w71 turned the red
+  // off here and the owner overruled it with Lichess as the
+  // precedent: below the threshold the box turns red and STAYS
+  // red - dimming is what says whose turn it is, and it is
+  // orthogonal, so the waiting box is a darker red, not grey.
+  check("white to move: the far box is green at full brightness",
+        /cbox turn/.test(asBlack.top) && !/idle/.test(asBlack.top));
+  check("my low waiting clock stays red - dimmed, not grey (" +
+        asBlack.bottom + ")",
+        /cbox low idle/.test(asBlack.bottom));
   vm.runInContext('api.pos = { turn: "b" };', sandbox);
   const myMove = rail();
-  check("black to move: my low running clock is red, theirs dims",
-        /cbox low/.test(myMove.bottom) && /cbox idle/.test(myMove.top));
+  check("black to move: my low running clock is bright red, theirs dims",
+        /cbox low"/.test(myMove.bottom) && /cbox idle/.test(myMove.top) &&
+        !/idle/.test(myMove.bottom));
   // the same board from the other side: the rail turns over
   vm.runInContext('api.myColor = "w"; api.pos = { turn: "w" };', sandbox);
   const asWhite = rail();
@@ -617,13 +635,14 @@ const sleep = ms =>
         (asWhite.top + " / " + asWhite.bottom).replace(/<[^>]+>/g, "") + ")",
         /0:30/.test(asWhite.top) && /1:05/.test(asWhite.bottom));
   check("and the green follows the turn to the bottom",
-        /cbox turn/.test(asWhite.bottom) && /cbox idle/.test(asWhite.top));
-  // a finished game: two plain grey boxes, nobody waiting
+        /cbox turn/.test(asWhite.bottom) && /low idle/.test(asWhite.top));
+  // a finished game: full brightness, nobody waiting - but a
+  // flagged clock keeps its red, as Lichess leaves the loser's
   vm.runInContext('api.over = true;', sandbox);
   const overRail = rail();
-  check("game over: plain boxes, no green, no dimming",
-        /cbox"/.test(overRail.top) && /cbox"/.test(overRail.bottom) &&
-        !/turn|idle|low/.test(overRail.top + overRail.bottom));
+  check("game over: no green, no dimming, red survives on the low side",
+        !/turn|idle/.test(overRail.top + overRail.bottom) &&
+        /cbox low/.test(overRail.top) && /cbox"/.test(overRail.bottom));
   vm.runInContext('api.over = false; api.myColor = "b";', sandbox);
 
   // w70: the rail is BESIDE the board, not under it. The
@@ -2338,22 +2357,55 @@ const sleep = ms =>
         !/1500/.test(noRatings) && !/1900/.test(noRatings));
   check("but not the title - a BOT is not a rating",
         /BOT/.test(noRatings));
-  // PLAYERS OFF, RATINGS ON SHOWS THE RATING ALONE (w71).
-  // w69 nested ratings under players and the owner called the
-  // result half-baked, rightly: that combination showed
-  // nothing at all. The clock above the row says whose rating
-  // it is - that is what the rail ordering is for.
-  vm.runInContext(
-    "CFG.showPlayers = false; CFG.showRatings = true; renderPlayers();",
-    sandbox);
-  const ratingOnly = playersHtml();
-  check("players off, ratings on: the numbers stand alone (" +
-        ratingOnly + ")",
-        /1500/.test(ratingOnly) && /1900/.test(ratingOnly) &&
-        !/pawn76|maia1|BOT/.test(ratingOnly));
+  // RATINGS CANNOT EXIST WITHOUT NAMES (w72). Third landing
+  // of this pair: w69 nested them (players off + ratings on
+  // showed nothing - "half-baked"), w71 let the rating stand
+  // alone ("sucks"), w72 makes the pair DEPENDENT, like the
+  // message channels: players off drags ratings off, and
+  // ratings cannot be switched on while players are off.
+  // Driven through the PANEL'S OWN PILLS, as a finger would,
+  // because the rule lives in the panel - a test that poked
+  // CFG directly would pass with the panel coupling deleted.
+  const tapPill = (label) => vm.runInContext(
+    '(function () {' +
+    '  var rows = setPanel.children;' +
+    '  for (var i = 0; i < rows.length; i++) {' +
+    '    var kids = rows[i].children || [];' +
+    '    if (kids.length === 2 && kids[0].textContent === ' +
+         JSON.stringify(label) + ') {' +
+    '      kids[1].on_click();' +
+    '      return true;' +
+    '    }' +
+    '  }' +
+    '  return false;' +
+    '})()', sandbox);
   vm.runInContext(
     "CFG.showPlayers = true; CFG.showRatings = true; renderPlayers();",
     sandbox);
+  check("the players pill exists and answers a tap",
+        tapPill("show players") === true);
+  check("players off drags ratings off with it",
+        vm.runInContext("CFG.showPlayers", sandbox) === false &&
+        vm.runInContext("CFG.showRatings", sandbox) === false);
+  check("and the row is empty - no floating numbers (" +
+        (playersHtml() || "empty") + ")", playersHtml() === "");
+  // trying to raise ratings while players are off snaps back
+  tapPill("show ratings");
+  check("ratings cannot rise while players are off",
+        vm.runInContext("CFG.showRatings", sandbox) === false);
+  check("and the log says why",
+        vm.runInContext(
+          'LOG.filter(function (l) { return /needs showPlayers/.test(l); })' +
+          '.length', sandbox) >= 1);
+  // even if a stray write reaches the bad state, the render
+  // guard is the last line: no rating without its name
+  vm.runInContext(
+    "CFG.showPlayers = false; CFG.showRatings = true; renderPlayers();",
+    sandbox);
+  check("the render guard never shows a rating without a name",
+        playersHtml() === "");
+  tapPill("show players");   /* back on, dragging nothing */
+  vm.runInContext("CFG.showRatings = true; renderPlayers();", sandbox);
 
   // ---- w69: the game id is for the log, not the panel ----
   heard();

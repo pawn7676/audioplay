@@ -265,10 +265,28 @@
     // effect is something already on screen, so a flip that
     // did nothing visible until the opponent moved would read
     // as a broken switch.
+    // RATINGS FOLLOW PLAYERS DOWN, AND CANNOT RISE WITHOUT
+    // THEM (w72). Same shape as keepOneMessageChannel below:
+    // the invariant lives here and in loadSettings, and the
+    // render just obeys. Turning players off drags ratings
+    // off with it; tapping ratings on while players are off
+    // snaps straight back, with the reason in the log.
     settingRow("showPlayers", "show players", function () {
+      if (!CFG.showPlayers && CFG.showRatings) {
+        CFG.showRatings = false;
+        saveSettings();
+        log("SET", "showRatings forced off: ratings need a name");
+        settingPaints.showRatings();
+      }
       renderPlayers();
     });
     settingRow("showRatings", "show ratings", function () {
+      if (CFG.showRatings && !CFG.showPlayers) {
+        CFG.showRatings = false;
+        saveSettings();
+        log("SET", "showRatings needs showPlayers on");
+        settingPaints.showRatings();
+      }
       renderPlayers();
     });
     settingHeader("voice mode");
@@ -624,20 +642,24 @@
 
   /* THE CLOCK IS THE TURN INDICATOR (w71), as on Lichess:
    * white digits always, box colour carrying the state.
-   * Green = that side to move; red = to move AND under a
-   * minute (w69 made low-time both-sided; w71 ties it to the
-   * turn, since a low clock that is not running is not an
-   * emergency); dark grey and dimmed = waiting. A finished
-   * game shows two plain grey boxes at full brightness -
+   * Green = that side to move; red = under a minute; dark
+   * grey = waiting. Dimming is ORTHOGONAL to colour (w72):
+   * the waiting side dims whatever colour its box is, so a
+   * low clock stays red through the opponent's move - just
+   * noticeably darker. w71 tied red to the running clock and
+   * the owner overruled it, with Lichess as the precedent:
+   * below the threshold the box turns red and STAYS red. A
+   * finished game shows its boxes at full brightness -
    * nobody is to move, nobody is "waiting". */
   function clockCell(colour) {
     var left = remainingMs(colour);
     var toMove = !api.over && api.pos && api.pos.turn === colour;
     var low = left != null && left < 60000;
-    var state = toMove ? (low ? "low" : "turn")
-                       : (api.over ? "" : "idle");
-    return '<span class="cbox' + (state ? " " + state : "") + '">' +
-      fmtClock(left) + "</span>";
+    var colourCls = low ? "low" : (toMove ? "turn" : "");
+    var dimCls = (!toMove && !api.over) ? "idle" : "";
+    var cls = ("cbox " + colourCls + " " + dimCls)
+      .replace(/\s+/g, " ").trim();
+    return '<span class="' + cls + '">' + fmtClock(left) + "</span>";
   }
 
   /* THE OPPONENT HAD NO NAME ANYWHERE until w68. gameFull has
@@ -649,25 +671,21 @@
     var pl = (api.players || {})[colour];
     if (!pl) return "";
     var isMine = colour === (api.myColor || "w");
-    // EACH SWITCH OWNS ITS OWN FRAGMENT (w71). w69 nested
-    // showRatings under showPlayers, and the owner called the
-    // result half-baked, rightly: players off + ratings on
-    // showed nothing at all. Now the name row is the sum of
-    // what is switched on - name (with title) under
-    // showPlayers, rating under showRatings - and the rating
-    // stands alone beside the clock if names are off. The
-    // clock above it says whose it is; that is what the rail
-    // ordering is for.
-    var parts = [];
-    if (CFG.showPlayers) {
-      parts.push((pl.title
-        ? '<span class="title">' + esc(pl.title) + "</span> " : "") +
-        esc(pl.name));
-    }
+    // THE RATING NEVER RENDERS WITHOUT ITS NAME (w72). This
+    // took three tries to land: w69 nested ratings under
+    // players so off/on showed nothing (half-baked, said the
+    // owner); w71 let the rating stand alone (sucks, said the
+    // owner, and a bare number floating by a clock does).
+    // The setting pair is now DEPENDENT - the panel and
+    // loadSettings both force ratings off with players off -
+    // so this render guard is the last line, not the rule.
+    if (!CFG.showPlayers) return "";
+    var parts = [(pl.title
+      ? '<span class="title">' + esc(pl.title) + "</span> " : "") +
+      esc(pl.name)];
     if (CFG.showRatings && pl.rating != null) {
       parts.push('<span class="rating">' + esc(pl.rating) + "</span>");
     }
-    if (!parts.length) return "";
     var toMove = !api.over && api.pos && api.pos.turn === colour;
     var cls = (isMine ? "mine" : "") +
               (!toMove && !api.over ? " idle" : "");
