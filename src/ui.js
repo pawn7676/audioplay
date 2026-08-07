@@ -749,7 +749,19 @@
         pickedTime = "custom";
       }
     } else if (parseTimeControl(saved)) {
-      pickedTime = saved;
+      // ONLY IF ITS BUTTON STILL EXISTS (w64). The blitz row
+      // was removed, and a device that had 5+3 saved would
+      // otherwise restore an INVISIBLE pick: nothing lit,
+      // selectedTimeControl() quietly 5+3, and the seek
+      // button refusing for a reason nothing on screen
+      // shows. A retired preset restores as never chosen.
+      var row = document.querySelectorAll("#timeRow button.tc");
+      for (var i = 0; i < row.length; i++) {
+        if (row[i].getAttribute("data-tc") === saved) {
+          pickedTime = saved;
+          break;
+        }
+      }
     }
     paintTimeRow();
   }

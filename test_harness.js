@@ -30,7 +30,7 @@ const vm = require("vm");
 
 const elements = {};   // declared before element(), which registers into it
 
-// the nine preset buttons the template carries, as real stub
+// the preset buttons the template carries, as real stub
 // elements with their data-tc, so wireTimeRow finds them
 const tcButtons = ((fsSrc) =>
   (fsSrc.match(/data-tc="([^"]+)"/g) || []).map(m => {
@@ -841,19 +841,25 @@ const sleep = ms =>
   check("no preset lit at load",
         tcButtons.every(b => b.classList._on === false));
 
+  // w64: blitz went too - the Board API refuses blitz for
+  // public seeks, so every preset must be rapid or slower
+  // (estimated seconds = 60*min + 40*inc, blitz < 480)
   const tcs = tcButtons.map(b => b.getAttribute("data-tc"));
-  check("nine presets, no bullet (" + tcs.join(" ") + ")",
-        tcs.length === 9 && !tcs.includes("1+0") && !tcs.includes("2+1"));
+  check("five presets, none bullet or blitz (" + tcs.join(" ") + ")",
+        tcs.length === 5 && tcs.every(tc => {
+          const [m, i] = tc.split("+").map(Number);
+          return m * 60 + 40 * i >= 480;
+        }));
   // picking one is remembered and read back as numbers
   const pick = tc => {
     tcButtons.find(b => b.getAttribute("data-tc") === tc).on_click();
   };
-  pick("5+3");
+  pick("10+5");
   check("picked preset becomes the selected control",
         JSON.stringify(vm.runInContext("selectedTimeControl()", sandbox))
-          === JSON.stringify({ minutes: 5, increment: 3 }));
+          === JSON.stringify({ minutes: 10, increment: 5 }));
   check("the picked one wears the green",
-        tcButtons.find(b => b.getAttribute("data-tc") === "5+3")
+        tcButtons.find(b => b.getAttribute("data-tc") === "10+5")
           .classList._on === true);
   // custom: typing a valid #+# selects it; invalid never crashes
   vm.runInContext(`
@@ -885,7 +891,7 @@ const sleep = ms =>
   const cust = boxEl();
   check("custom box marks itself picked by class",
         cust.picked === true && cust.bg === "" && cust.fg === "");
-  vm.runInContext('pickTime("5+0");', sandbox);
+  vm.runInContext('pickTime("15+10");', sandbox);
   check("and unmarks when a preset is picked",
         boxEl().picked === false);
   const tmplCss = fs.readFileSync("src/index.html", "utf8");
@@ -909,12 +915,12 @@ const sleep = ms =>
           === JSON.stringify({ minutes: 40, increment: 30 }));
   // an empty box must not steal the pick just by being tapped
   vm.runInContext(`
-    pickTime("5+0");
+    pickTime("15+10");
     document.getElementById("timeCustom").value = "";
     document.getElementById("timeCustom").on_focus();
   `, sandbox);
   check("focusing an empty box leaves the preset alone",
-        vm.runInContext("pickedTime", sandbox) === "5+0");
+        vm.runInContext("pickedTime", sandbox) === "15+10");
 
   // w35: a LATER visit restores what was chosen. A reload is
   // modelled as the two things a reload really does: fresh
@@ -955,6 +961,18 @@ const sleep = ms =>
   `, sandbox);
   check("unreadable storage reads as never chosen",
         reload().picked === null);
+  // w64: a preset saved by an earlier build whose button is
+  // gone (the blitz row) must ALSO read as never chosen. The
+  // value still parses as a time, which is exactly the trap:
+  // without the button check it restores an invisible pick -
+  // nothing lit, selectedTimeControl() quietly 5+3, and the
+  // seek refusing for a reason nothing on screen shows.
+  vm.runInContext(`
+    localStorage.setItem("audioplay.web.timecontrol", "5+3");
+  `, sandbox);
+  const retired = reload();
+  check("a retired preset restores as never chosen",
+        retired.picked === null && retired.tc === "null");
   vm.runInContext('localStorage.removeItem("audioplay.web.timecontrol");',
                   sandbox);
 

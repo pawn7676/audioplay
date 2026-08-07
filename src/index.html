@@ -216,16 +216,17 @@
     <!-- Time controls as PRESETS (w33): the pairs anyone
          recognises from Lichess's own quick-pairing grid,
          minus bullet - saying a move takes longer than a
-         bullet game can spare. (The owner doubts blitz too;
-         it stays until a real game settles it.) The chosen
+         bullet game can spare - and, since w64, minus blitz:
+         the Board API refuses blitz for public seeks (only
+         rapid and slower), so 3+0 through 5+3 were buttons
+         whose main use, Find an opponent, could only answer
+         "refused". Owner's call: SIMPLIFY. A blitz challenge
+         to a named opponent is still legal and still
+         possible - type the time into Custom. The chosen
          one is remembered; Custom is a box that takes the
          same #+# the presets show, selected the moment what
          is typed parses. -->
     <span id="timeRow">
-    <button class="tc" data-tc="3+0">3+0</button>
-    <button class="tc" data-tc="3+2">3+2</button>
-    <button class="tc" data-tc="5+0">5+0</button>
-    <button class="tc" data-tc="5+3">5+3</button>
     <button class="tc" data-tc="10+0">10+0</button>
     <button class="tc" data-tc="10+5">10+5</button>
     <button class="tc" data-tc="15+10">15+10</button>

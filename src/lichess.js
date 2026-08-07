@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w63";
+  VERSION = "w64";
 
   var RULES = makeRules();
 
@@ -1162,10 +1162,12 @@
         // said "HTTP 400" and left the user to guess. The guess
         // they could not make: the Board API only accepts
         // RAPID AND SLOWER for public seeks (blitz is fine for
-        // direct challenges), so half the preset row - 3+0,
-        // 3+2, 5+0, 5+3 - is refusable here and fine one
-        // button over. When a 400 lands on a blitz control,
-        // say which way out exists.
+        // direct challenges). At w61 half the preset row -
+        // 3+0, 3+2, 5+0, 5+3 - was refusable here and fine
+        // one button over; w64 removed those presets, but the
+        // Custom box can still say 5+3, so the hint stays.
+        // When a 400 lands on a blitz control, say which way
+        // out exists.
         return r.json().catch(function () { return {}; })
           .then(function (j) {
             var why = j.error ? " - " + j.error : " (HTTP " + r.status + ")";

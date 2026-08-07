@@ -1718,3 +1718,28 @@ Four mutation tests. The second checklist closes at thirty-nine findings:
 thirty-two fixed, four documented as deliberate, three declined with the
 reasoning above.
 
+
+### w64
+
+THE BLITZ PRESETS ARE GONE. w61 discovered the asymmetry - the Board
+API refuses blitz for public seeks and permits it for direct
+challenges - and answered with a spoken explanation, keeping the
+buttons because they were legitimate one button over. The owner, on
+learning what the message actually meant, drew the simpler line:
+almost every game here starts from the pool, so 3+0 through 5+3 were
+four buttons whose main use could only answer "refused". SIMPLIFY.
+The row is now 10+0 to 30+20, all seekable; the rare blitz challenge
+to a named opponent goes through Custom, which takes any #+# it always
+took, and the w61 hint stays for exactly that path. This also settles
+the doubt recorded in w33's template comment ("the owner doubts blitz
+too; it stays until a real game settles it") - settled by the API's
+rulebook rather than a game.
+
+One trap in the removal: the picked time is REMEMBERED by value, so a
+device that had 5+3 saved would restore an invisible pick - no button
+lit, selectedTimeControl() quietly blitz, the seek refusing for a
+reason nothing on screen shows. A saved preset now restores only if
+its button still exists; a retired one reads as never chosen, the same
+as junk in storage. The harness proves that path with a 5+3 planted in
+storage, and the preset-count test now derives blitz from Lichess's
+own formula (60*min + 40*inc < 480) instead of counting to nine.
