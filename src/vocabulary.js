@@ -82,7 +82,15 @@
     // five-letter word is only allowed one. Exact-only below,
     // because it is an everyday word with everyday neighbours.
     q: "queen queens green quean creed quinn clean",
-    r: "rook rooks rock rocks brook ruck roof rooke brooke ruts",
+    // "rug" joined at w65 from game w64-1, where Safari
+    // returned it four times in one game - "Rug B8", "Rug
+    // takes Echo for", "Rug D2", "Rug takes foxtrot five" -
+    // and every one survived only because a rival reading
+    // spelled the same move "Rock". Alone it would have been
+    // a lost move. Three letters, so the fuzzy matcher cannot
+    // reach it or seed from it either way (both ends of
+    // fuzzyToken require four).
+    r: "rook rooks rock rocks brook ruck roof rooke brooke ruts rug",
     b: "bishop bishops bishoff bishup fish fisher fishop ship bish " +
        "vision visions bitch",
     n: "knight knights night nights nite note notes",
@@ -106,10 +114,20 @@
   // into their parts is the only way to recover the move.
   // Left in its own shape: the value is a sequence, not a
   // single symbol, so it does not invert.
+  // w65, game w64-1: the same fusion, but onto BRAVO rather
+  // than the e-file. "Rook b8" came back as "Rugby" and
+  // "Rugby eight" - both readings of one utterance, so there
+  // was no undamaged rival to fall back on, and the move was
+  // simply lost ("Say again."). It is the most ordinary word
+  // this table will ever hold, which is the point: the fusion
+  // lands on a real English word and nothing about the sound
+  // says so.
   var COMPOUND = {
     rookie: [["piece", "r"], ["file", "e"]],
     rookies: [["piece", "r"], ["file", "e"]],
     rooky: [["piece", "r"], ["file", "e"]],
+    rugby: [["piece", "r"], ["file", "b"]],
+    rugbys: [["piece", "r"], ["file", "b"]],
     bishopy: [["piece", "b"], ["file", "e"]],
     knightie: [["piece", "n"], ["file", "e"]],
     politics: [["piece", "p"], ["take"]],
@@ -155,8 +173,17 @@
    * "a" works.
    */
   (function crossCheckVocabulary() {
+    // COMPOUND joined the check at w65, when the table grew
+    // "rugby" - an ordinary English word, and the first entry
+    // here that anyone might also reach for as a spelling of
+    // something else. It is consumed BEFORE all four of the
+    // others in parseTranscript, so a word in both wins here
+    // and the other meaning silently never happens: the
+    // loudest version of exactly the bug this guard exists
+    // for.
     var maps = { NATO: NATO, NUMS: NUMS, PIECES: PIECES,
-                 TAKE_WORDS: TAKE_WORDS, CASTLE_WORDS: CASTLE_WORDS };
+                 TAKE_WORDS: TAKE_WORDS, CASTLE_WORDS: CASTLE_WORDS,
+                 COMPOUND: COMPOUND };
     var owner = {};
     Object.keys(maps).forEach(function (name) {
       Object.keys(maps[name]).forEach(function (w) {

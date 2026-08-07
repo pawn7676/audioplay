@@ -1743,3 +1743,42 @@ its button still exists; a retired one reads as never chosen, the same
 as junk in storage. The harness proves that path with a 5+3 planted in
 storage, and the preset-count test now derives blitz from Lichess's
 own formula (60*min + 40*inc < 480) instead of counting to nine.
+
+### w65
+
+"ROOK B8" CAME BACK AS "RUGBY". Game w64-1, 21:14:58, and the shape is
+one this project already knows: Safari runs a piece name into the file
+that follows it, which is why COMPOUND exists and why "rookie" is in
+it. What was new is where it landed. Every previous fusion produced a
+non-word - rookie, bishopy, knightie - and this one produced RUGBY, an
+ordinary English word with nothing about it to suggest damage. Both
+readings of the utterance were damaged the same way ("Rugby", "Rugby
+eight"), so unlike the rest of that game there was no undamaged rival
+to fall back on, and the move was lost outright: "Say again."
+
+"RUG" IS A ROOK. The same game returned it four times - "Rug B8", "Rug
+takes Echo for", "Rug D2", "Rug takes foxtrot five" - and all four
+survived on luck, because a rival reading happened to spell the same
+move "Rock". The demotion heuristic even reported them as the complete
+reading minus its first word, which is exactly right: with "rug"
+unknown, "Rug B8" carried no rook evidence at all. Alone, any of them
+would have been a lost move. Three letters, so both ends of fuzzyToken
+refuse it - it can neither be reached by a near-miss nor seed one.
+"Rue" and "Route" appeared once each and are NOT added: single
+sightings, both rescued, and "route" is long enough to be a fuzzy
+target with a bad halo around it.
+
+COMPOUND IS NOW CROSS-CHECKED against the other four tables, which w54
+built the guard for and did not cover. It is consumed FIRST in
+parseTranscript - before NATO, NUMS, PIECES and the take words - so a
+word in both wins there and the other meaning silently never happens.
+That mattered little while the table held only non-words; "rugby" is
+the first entry anyone could plausibly reach for twice.
+
+Three mutation tests, and the second one earned its keep. The first
+version of the "rug" board put a lone rook on b1, where "bravo eight"
+named exactly one move whoever was said to be moving - so the test
+passed with "rug" deleted. The board now has a rook AND a queen able
+to reach b8, so the piece word is load-bearing and the bare square
+asks. Same lesson as w28 and the w63 mate-repair test: a test that
+passes with the fix removed was never testing the fix.
