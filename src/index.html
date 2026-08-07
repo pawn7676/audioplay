@@ -161,17 +161,33 @@
   .hint { color: var(--dim); font-size: .82rem; margin-top: 8px; line-height: 1.4; }
   #lichessLine { margin-top: 6px; }
   #turnLine { margin-top: 6px; font-weight: 700; }
-  #clockLine { margin-top: 6px; font-size: 1.5rem; font-weight: 700; letter-spacing: .02em;
-               font-family: Menlo, "SF Mono", monospace; }
-  #clockLine .mine { color: var(--brass); }
-  #clockLine .low { color: var(--bad); }
-  /* the same brass marks YOUR side on both lines, so the
-     block reads as one thing (w68). The title is dimmer than
-     the name because it qualifies it - BOT, GM - and at a
+  /* BOARD AND RAIL (w70). align-items:stretch so the rail is
+     exactly as tall as the board and its two clocks can be
+     pushed to the ends; wrap so a narrow screen drops the
+     rail underneath instead of squeezing the board. The
+     board keeps its own max-width and stops centring itself
+     once it has a neighbour. */
+  #boardRow { display: flex; flex-wrap: wrap; gap: 14px;
+              align-items: stretch; justify-content: center; }
+  #boardRow #mini { margin: 0; flex: 0 1 360px; }
+  #boardSide { flex: 1 1 150px; min-width: 150px; max-width: 260px;
+               display: flex; flex-direction: column; }
+  /* the gap between the two halves is what pushes them apart,
+     so no fixed heights are needed and the rail matches
+     whatever the board's aspect-ratio works out to */
+  .sideGap { flex: 1 1 auto; min-height: 10px; }
+  .sideClock { font-size: 1.6rem; font-weight: 700; letter-spacing: .02em;
+               font-family: Menlo, "SF Mono", monospace; line-height: 1.2; }
+  .sideName { font-family: Menlo, "SF Mono", monospace; font-size: .8rem;
+              line-height: 1.5; margin: 2px 0; }
+  /* the same brass marks YOUR side on clock and name alike, so
+     the pair reads as one block (w68). The title is dimmer
+     than the name because it qualifies it - BOT, GM - and at a
      glance the name is what is wanted. */
-  #playersLine .mine { color: var(--brass); }
-  #playersLine .title { opacity: .65; }
-  #playersLine .rating { opacity: .65; }
+  .sideClock .mine, .sideName .mine { color: var(--brass); }
+  .sideClock .low { color: var(--bad); }
+  .sideName .title { opacity: .65; }
+  .sideName .rating { opacity: .65; }
   input.whoin { width: 9em; padding: 4px; font: inherit; }
   select { font: inherit; padding: 4px; }
   .row.opt { font-size: .85rem; color: var(--text); gap: 6px; }
@@ -205,12 +221,24 @@
 <div class="panel" id="panelBoard">
   <details open>
   <summary>Board</summary>
-  <canvas id="mini" width="768" height="768"></canvas>
-  <!-- players above the clocks, in the same white-then-black
-       order, so the two lines read down as one block (w68) -->
-  <div class="stats" id="playersLine"></div>
+  <!-- THE LICHESS SHAPE (w70): board left, a rail on the
+       right carrying the far player's clock and name at the
+       top and yours at the bottom. Ordered by the BOARD, not
+       by colour - see renderBoardSide. The rail wraps under
+       the board on a narrow screen; the turn line stays full
+       width below both, being a sentence rather than part of
+       the rail. -->
+  <div id="boardRow">
+    <canvas id="mini" width="768" height="768"></canvas>
+    <div id="boardSide">
+      <div class="sideClock" id="clockTop"></div>
+      <div class="sideName" id="nameTop"></div>
+      <div class="sideGap"></div>
+      <div class="sideName" id="nameBottom"></div>
+      <div class="sideClock" id="clockBottom"></div>
+    </div>
+  </div>
   <div class="stats" id="turnLine"></div>
-  <div class="stats" id="clockLine"></div>
   </details>
 </div>
 
