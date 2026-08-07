@@ -2353,3 +2353,33 @@ its own cancel (w71) and the settings panel's tap-outside exit
 BY renderAccount rather than painted over it, so the repaint tick
 cannot un-ask the question - the w37 shape, guarded against
 before it shipped this time.
+
+### w78
+
+THE COMPOUND TABLE STOPPED WAITING FOR THE LOG. Until now every
+fused word was paid for with a lost move in a real game: rugby
+cost one outright in game w64-1, and knight+e sat misspelled for
+sixty-odd versions because the entry was written the one way
+Safari would never write it (w66). But w65 had already written
+down the rule that generates the family - the fusion follows the
+vowel - and a rule that can name its own untested members can be
+searched for instead of waited for. The owner asked for exactly
+that, so an English word list was run against every piece+file
+fusion and the snug fits added ahead of any log: knife for
+knight+f ("knight f three" is Nf3, the commonest move in chess,
+one swallowed t from coming back as "knife three"), roxy for
+rook+c, quincy for queen+c, ponzi, pony and pontiff for the pawn
+family, kinsey and clingy for the king's. A different accent
+should not have to lose the move rugby cost before the table
+learns a word a search could already know.
+
+What the search REJECTED matters more than what it kept, and the
+bar now stands written next to the table: a tight fit for the
+fusion, and never a word said near numbers at a board. "nice" is
+exactly the sound of knight+c and stayed out, because compounds
+are consumed first, exact, no questions asked - and "nice one"
+must never become a knight to c1. This entry exists partly to
+hold that line for the next session that finds a tempting common
+word: the table remains exact-only, it still cannot seed the
+fuzzy matcher, and a speculative entry has to clear a HIGHER bar
+than a logged one, since it arrives with no game behind it.

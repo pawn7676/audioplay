@@ -2796,6 +2796,86 @@ const sleep = ms =>
   check('"nightie four" names e4 as the destination (' + drift + ")",
         drift === '["e4"]');
 
+  // ---- w78: compounds searched for, not stumbled on ----
+  // The whole batch, asked of the LOADED table so a typo in
+  // vocabulary.js cannot pass on the strength of this list
+  // agreeing with itself.
+  const W78 = { roxy: "r c", roxie: "r c", rocky: "r e", knife: "n f",
+    ponzi: "p c", pansy: "p c", pony: "p e", pawnee: "p e",
+    pontiff: "p f", punchy: "p g", quincy: "q c", quincey: "q c",
+    queenie: "q e", queeny: "q e", cringy: "q g", cringey: "q g",
+    kinsey: "k c", kingie: "k e", kingy: "k e", clingy: "k e" };
+  const w78bad = Object.keys(W78).filter(function (w) {
+    const got = vm.runInContext(
+      "JSON.stringify(COMPOUND[" + JSON.stringify(w) + "] || null)", sandbox);
+    const want = W78[w].split(" ");
+    return got !== JSON.stringify([["piece", want[0]], ["file", want[1]]]);
+  });
+  check("every searched-for compound maps to its piece and file (" +
+        (w78bad.join(" ") || "all do") + ")", w78bad.length === 0);
+
+  // Each board below follows the rugby/nightie discipline: TWO
+  // piece types reach the spoken square, so the bare square
+  // asks and only the fused word's piece half decides. A test
+  // where one piece reached it would pass with the entry
+  // deleted, which is exactly what w66 caught.
+
+  // knight+f: a queen and BOTH knights keep "three" ambiguous
+  // unless the word really splits into knight + f-file.
+  const KNIFE = "7k/8/8/8/8/8/8/1N2KQN1 w - - 0 1";
+  await onBoard(KNIFE, "foxtrot three",
+                /no pawn can go there.*say queen, or knight/i,
+                "with two pieces on f3 the bare square is not decided");
+  await onBoard(KNIFE, "knife three", /knight foxtrot 3/i,
+                '"knife three" splits into knight + f-file: Nf3');
+  const knifeDrift = vm.runInContext(
+    'JSON.stringify(parseTranscript("knife three").squares || [])', sandbox);
+  check('"knife three" names f3 as the destination (' + knifeDrift + ")",
+        knifeDrift === '["f3"]');
+
+  // rook+c and queen+c share one board: both reach c4, so the
+  // piece half of the fused word is what picks.
+  const ROXY = "7k/8/8/8/R7/8/8/2Q1K3 w - - 0 1";
+  await onBoard(ROXY, "charlie four",
+                /no pawn can go there.*say queen, or rook/i,
+                "with two pieces on c4 the bare square is not decided");
+  await onBoard(ROXY, "roxy four", /rook charlie 4/i,
+                '"roxy four" splits into rook + c-file');
+  await onBoard(ROXY, "quincy four", /queen charlie 4/i,
+                '"quincy four" splits into queen + c-file');
+
+  // queen+g against a rook on the same file
+  await onBoard("7k/8/8/8/8/8/8/3QK1R1 w - - 0 1", "cringy four",
+                /queen golf 4/i,
+                '"cringy four" splits into queen + g-file');
+
+  // king+e and king+c, each against a queen reaching the square
+  await onBoard("7k/8/8/8/8/8/8/3QK3 w - - 0 1", "clingy two",
+                /king echo 2/i,
+                '"clingy two" splits into king + e-file');
+  await onBoard("7k/8/8/8/8/8/8/3QK3 w - - 0 1", "kingie two",
+                /king echo 2/i,
+                '"kingie two" does too');
+  await onBoard("7k/8/8/8/Q7/8/8/3K4 w - - 0 1", "kinsey two",
+                /king charlie 2/i,
+                '"kinsey two" splits into king + c-file');
+
+  // pawn family: naming the piece is what SKIPS the pawn-first
+  // question a bare square would ask with a queen also
+  // reaching it, so the assertion is that the move PLAYED.
+  await onBoard("7k/8/8/8/Q7/8/4P3/4K3 w - - 0 1", "pony four",
+                /echo 4/i, '"pony four" is the pawn to e4');
+  check("and it was played, not asked",
+        vm.runInContext("api.moves.length", sandbox) === 1);
+  await onBoard("7k/8/8/8/5Q2/8/2P5/4K3 w - - 0 1", "ponzi four",
+                /charlie 4/i, '"ponzi four" is the pawn to c4');
+  check("and it was played, not asked",
+        vm.runInContext("api.moves.length", sandbox) === 1);
+  await onBoard("7k/8/8/8/1Q6/8/5P2/4K3 w - - 0 1", "pontiff four",
+                /foxtrot 4/i, '"pontiff four" is the pawn to f4');
+  check("and it was played, not asked",
+        vm.runInContext("api.moves.length", sandbox) === 1);
+
   // ============ w58: "QUEEN CHECK", FROM A REAL GAME ==========
   // Game w56-1: "queen check" said twice, refused twice with
   // "that is not a legal move", and Qa4+ was available the

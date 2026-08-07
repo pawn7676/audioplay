@@ -152,7 +152,49 @@
     pontic: [["piece", "p"], ["take"]],
     pontics: [["piece", "p"], ["take"]],
     pontikes: [["piece", "p"], ["take"]],
-    pontakes: [["piece", "p"], ["take"]]
+    pontakes: [["piece", "p"], ["take"]],
+    // SEARCHED FOR, NOT STUMBLED ON (w78). Every entry above
+    // was paid for with a lost move in a real game before it
+    // earned its line. But the family was never mysterious -
+    // the fusion rule three comments up names its own untested
+    // members - so for once English was searched ahead of the
+    // log: a word list run against every piece+file fusion,
+    // and the snug fits added before some accent pays for them
+    // one game at a time. Two bars, and a word must clear
+    // both. It must be a TIGHT rendering of the fusion, and it
+    // must not be a word said near numbers at a board: "nice"
+    // and "knee" are exactly the sound of knight+c and
+    // knight+e and stayed out, because this table is consumed
+    // first and asks no questions - "nice one" must never
+    // become a knight to c1. The d-file stays empty: English
+    // offered nothing snug. Exact-only by construction, like
+    // every compound - none of these can seed the fuzzy
+    // matcher.
+    roxy: [["piece", "r"], ["file", "c"]],
+    roxie: [["piece", "r"], ["file", "c"]],
+    // "rock" has been the rook since w65, so rock+ee is the
+    // rookie fusion in that spelling.
+    rocky: [["piece", "r"], ["file", "e"]],
+    // The one the search was worth doing for: "knight f
+    // three" is Nf3, the commonest move in chess, one
+    // swallowed t away from coming back as "knife three".
+    knife: [["piece", "n"], ["file", "f"]],
+    ponzi: [["piece", "p"], ["file", "c"]],
+    pansy: [["piece", "p"], ["file", "c"]],
+    pony: [["piece", "p"], ["file", "e"]],
+    pawnee: [["piece", "p"], ["file", "e"]],
+    pontiff: [["piece", "p"], ["file", "f"]],
+    punchy: [["piece", "p"], ["file", "g"]],
+    quincy: [["piece", "q"], ["file", "c"]],
+    quincey: [["piece", "q"], ["file", "c"]],
+    queenie: [["piece", "q"], ["file", "e"]],
+    queeny: [["piece", "q"], ["file", "e"]],
+    cringy: [["piece", "q"], ["file", "g"]],
+    cringey: [["piece", "q"], ["file", "g"]],
+    kinsey: [["piece", "k"], ["file", "c"]],
+    kingie: [["piece", "k"], ["file", "e"]],
+    kingy: [["piece", "k"], ["file", "e"]],
+    clingy: [["piece", "k"], ["file", "e"]]
   };
 
   // "text" and "texts" are the take word with its k gone
