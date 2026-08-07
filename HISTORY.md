@@ -1749,12 +1749,27 @@ own formula (60*min + 40*inc < 480) instead of counting to nine.
 "ROOK B8" CAME BACK AS "RUGBY". Game w64-1, 21:14:58, and the shape is
 one this project already knows: Safari runs a piece name into the file
 that follows it, which is why COMPOUND exists and why "rookie" is in
-it. What was new is where it landed. Every previous fusion produced a
-non-word - rookie, bishopy, knightie - and this one produced RUGBY, an
-ordinary English word with nothing about it to suggest damage. Both
-readings of the utterance were damaged the same way ("Rugby", "Rugby
-eight"), so unlike the rest of that game there was no undamaged rival
-to fall back on, and the move was lost outright: "Say again."
+it. What was new is not that it produced a real English word - the
+first draft of this entry said "every previous fusion produced a
+non-word", and the owner corrected it on sight: "rookie" is one of
+these, "politics" is another, and both are as ordinary as "rugby".
+The table has always been full of real words.
+
+WHAT WAS NEW IS THAT BOTH READINGS FUSED. Safari returned "Rugby" and
+"Rugby eight" - the same damage twice, no undamaged rival. Every other
+mishearing in that game had one: "Rug B8" was rescued by "Rock B8",
+"Rug D2" by "Rock D2", four times over. That is the difference between
+a mishearing that costs nothing and the one utterance in the game that
+died outright ("Say again."), and it is not a property of the word at
+all - it is a property of the LIST. A fix that assumes the rival
+readings disagree has nothing to work with when they agree.
+
+Also the first fusion onto a file other than e. The pattern behind all
+of them is audible once named: the fusion happens where the spoken
+letter ENDS IN THE "EE" SOUND - b, c, d, e, g - because that is what
+runs into the tail of the piece word. "Rook e" makes "rookie", "rook
+b" makes "rugby". Which is a prediction, not just a description, and
+the holes it points at are written up under w66.
 
 "RUG" IS A ROOK. The same game returned it four times - "Rug B8", "Rug
 takes Echo for", "Rug D2", "Rug takes foxtrot five" - and all four
@@ -1782,3 +1797,55 @@ passed with "rug" deleted. The board now has a rook AND a queen able
 to reach b8, so the piece word is load-bearing and the bare square
 asks. Same lesson as w28 and the w63 mate-repair test: a test that
 passes with the fix removed was never testing the fix.
+
+### w66
+
+THE OWNER READ w65 AND SAID: "rookie" and "nighty" are not non-words.
+Correct, and the entry has been fixed where it stood - "politics" is in
+that same table. The claim was not just wrong, it was pointing at the
+wrong thing entirely, and correcting it produced the actual lesson:
+what killed "Rugby" was that BOTH readings fused identically, so the
+rival-reading machinery that rescued "Rug B8" four times over had
+nothing to offer. Never a property of the word.
+
+Their next question - what other examples await us - turned out to be
+answerable rather than something to wait for. The fusion happens where
+the spoken letter ends in the "ee" sound, because that is what has
+nothing to separate it from the tail of the piece word: e is "ee", b is
+"bee". Probing the family against the loaded vocabulary found the hole
+immediately, and it was not in some untested corner - it was in an
+entry that has been there since the userscript.
+
+"KNIGHTIE" IS THE ONE SPELLING SAFARI WILL NOT WRITE. The knight+e
+fusion has always been accepted, spelled with the silent k. But PIECES,
+three tables up in the same file, records what Safari actually does
+with the word - it writes NIGHT, k gone, and has done in every log this
+project has. So the fused form arrives as "nightie" or "nighty" and hit
+neither. Both are now entries. This is not a new fusion; it is the same
+one, finally spelled the way it turns up. "knightie" stays - one line,
+and something may yet produce it.
+
+AND IT DOES NOT FAIL LOUDLY, IT DRIFTS. Without the entry, the fuzzy
+matcher rescues "nightie" as "nights" and hands back a knight with no
+file, leaving the "4" to be re-read as a FROM-rank: "I heard knight
+rank 4. Say the file." The piece survives, the destination evaporates.
+Worth naming because it sets what a test here has to assert - the
+destination square, not the piece. A test that only asked "is it a
+knight" would pass on the broken parse.
+
+Two mutation tests, and the second board needed rebuilding for exactly
+the reason the first did in w65: with ONE knight, the drifted parse
+still landed on Ne4 and the test passed with the entry deleted. A
+second knight reaching a4 makes "the knight move to rank 4" ambiguous,
+so only the real split can answer. That is twice in two versions, which
+is the argument for running the mutation every time rather than when it
+feels warranted.
+
+NOT ADDED, AND DELIBERATELY: queen+e ("queenie" - which probes exactly
+as "nightie" did, piece rescued and file gone), king+e, pawn+e, and the
+c/d/g half of the family. Every one is a guess. This table has grown
+one real log at a time since v114, and the difference between "nightie"
+and "queenie" is that the knight+e fusion is ALREADY accepted here and
+merely misspelled, where queen+e has never been seen at all. Left for
+the owner to call, with the probe method written down so the next
+sighting is cheap to confirm.

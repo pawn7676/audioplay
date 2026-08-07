@@ -116,12 +116,19 @@
   // single symbol, so it does not invert.
   // w65, game w64-1: the same fusion, but onto BRAVO rather
   // than the e-file. "Rook b8" came back as "Rugby" and
-  // "Rugby eight" - both readings of one utterance, so there
-  // was no undamaged rival to fall back on, and the move was
-  // simply lost ("Say again."). It is the most ordinary word
-  // this table will ever hold, which is the point: the fusion
-  // lands on a real English word and nothing about the sound
-  // says so.
+  // "Rugby eight" - BOTH readings of one utterance, so there
+  // was no undamaged rival to fall back on and the move was
+  // simply lost ("Say again."). That, not the word, is what
+  // was new: an entry here calling rugby "an ordinary English
+  // word, unlike the rest" was wrong on sight, since rookie
+  // and politics are sitting right beside it.
+  //
+  // THE FUSION FOLLOWS THE VOWEL. Every entry below runs a
+  // piece word into a letter whose spoken name ends in the
+  // "ee" sound - e ("ee"), b ("bee") - which is exactly the
+  // sound that has nothing to separate it from the tail of
+  // "rook" or "bishop". That makes c ("cee"), d ("dee") and
+  // g ("gee") the untested rest of the same family.
   var COMPOUND = {
     rookie: [["piece", "r"], ["file", "e"]],
     rookies: [["piece", "r"], ["file", "e"]],
@@ -129,7 +136,18 @@
     rugby: [["piece", "r"], ["file", "b"]],
     rugbys: [["piece", "r"], ["file", "b"]],
     bishopy: [["piece", "b"], ["file", "e"]],
+    // KNIGHT+E WAS SPELLED THE ONE WAY SAFARI WILL NOT WRITE
+    // IT (w66). "knightie" has been the only entry for this
+    // fusion since the userscript, and PIECES three tables up
+    // records what Safari actually does with the word: it
+    // writes knight as NIGHT, silent k gone, every time. So
+    // the fused form arrives as "nightie" or "nighty" and hit
+    // neither. Not a new fusion - the same one, finally
+    // spelled the way it turns up. "knightie" stays: it costs
+    // one line and something may yet produce it.
     knightie: [["piece", "n"], ["file", "e"]],
+    nightie: [["piece", "n"], ["file", "e"]],
+    nighty: [["piece", "n"], ["file", "e"]],
     politics: [["piece", "p"], ["take"]],
     pontic: [["piece", "p"], ["take"]],
     pontics: [["piece", "p"], ["take"]],
@@ -173,14 +191,14 @@
    * "a" works.
    */
   (function crossCheckVocabulary() {
-    // COMPOUND joined the check at w65, when the table grew
-    // "rugby" - an ordinary English word, and the first entry
-    // here that anyone might also reach for as a spelling of
-    // something else. It is consumed BEFORE all four of the
-    // others in parseTranscript, so a word in both wins here
-    // and the other meaning silently never happens: the
-    // loudest version of exactly the bug this guard exists
-    // for.
+    // COMPOUND joined the check at w65. The reason is
+    // structural, not about any one entry: it is consumed
+    // BEFORE all four of the others in parseTranscript, so a
+    // word in both wins here and the other meaning silently
+    // never happens - the loudest version of exactly the bug
+    // this guard exists for. That the table is full of real
+    // English words (rookie, politics, rugby) is what makes
+    // the collision reachable at all.
     var maps = { NATO: NATO, NUMS: NUMS, PIECES: PIECES,
                  TAKE_WORDS: TAKE_WORDS, CASTLE_WORDS: CASTLE_WORDS,
                  COMPOUND: COMPOUND };
