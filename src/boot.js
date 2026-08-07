@@ -62,7 +62,7 @@
         connectAccount();
         if (returned) uiStatus("Signed in.");
       } else {
-        uiStatus("Not signed in.");
+        uiStatus("Sign in to play.");
       }
       uiGameChanged();
     });

@@ -176,7 +176,7 @@
      * position:fixed, so it rides the viewport and stays put
      * while the page scrolls under it. Its button does NOT:
      * buildWebUI moves the whole button row off the fixed
-     * wrapper and into the Voice panel at the top of the page,
+     * wrapper and into the top panel of the page,
      * where it scrolls away like any other content. Scroll
      * down with the panel open and the only control that can
      * close it is somewhere above the fold - the panel sits
@@ -495,16 +495,16 @@
   // be readable - and the pill has a fixed width so the
   // buttons beside it never shift as the label changes.
   //
-  // THE WORDS ARE SHORT BECAUSE THE PANEL IS THE SUBJECT
-  // (w30): the heading above already says VOICE, so the
-  // button says only what it does or what it is doing -
-  // "Start", then "Listening" or "On". Note the small
-  // inconsistency the owner chose, and it is the right
-  // choice: "Start" is an ACTION and the other two are
-  // STATES. Off, the only thing worth saying is what will
-  // happen if you press it, because nothing is happening
-  // yet; on, the useful fact is whether the mic is live -
-  // which "Stop" would hide.
+  // THE WORDS WERE SHORT BECAUSE THE PANEL WAS THE SUBJECT
+  // (w30): the heading above said VOICE, so the button said
+  // only "Start". w76 dropped the heading - the account
+  // button joined the row, so VOICE no longer named the
+  // panel's contents - and the noun moved into the label:
+  // "Voice Mode", the owner's wording, with the triangle
+  // already carrying "start". The on-states keep w30's
+  // choice: "Listening" and "On" are STATES, and the useful
+  // fact is whether the mic is live - which "Stop" would
+  // hide.
   // THE CODE SAYS WHICH STATE, THE STYLESHEET SAYS WHAT IT
   // LOOKS LIKE (w54). This wrote #91bddf and #3a5a2a into the
   // element by hand - the same two values --accent and
@@ -522,7 +522,7 @@
   // button when it builds it, so there IS something to clear.
   function paintVoiceButton() {
     if (!bigBtn) return;
-    bigBtn.textContent = !running ? "\u25B6 Start"
+    bigBtn.textContent = !running ? "\u25B6 Voice Mode"
       : (listening ? "\u25CF Listening" : "\u25CB On");
     bigBtn.style.background = "";
     bigBtn.style.color = "";
@@ -561,7 +561,7 @@
   function restyleVoiceButton() {
     if (!bigBtn) return;
     adoptPageButtonLook(bigBtn);
-    bigBtn.style.minWidth = "124px";
+    bigBtn.style.minWidth = "140px";
     bigBtn.style.textAlign = "center";
     paintVoiceButton();
   }
@@ -697,7 +697,7 @@
     }
     if (api.over) { uiStatus("Game over."); return; }
     if (!running) {
-      uiStatus("Playing. Tap the Start button to turn on voice.");
+      uiStatus("Playing. Tap the Voice Mode button to turn on voice.");
       return;
     }
     uiStatus("Playing.");
@@ -719,35 +719,35 @@
   // It lives in the stylesheet as .panel button.on since w54 -
   // it was a pair of hex constants here, which is how it came
   // to be typed out twice.
-  var signInBtn, signOutBtn, seekBtn, seekCancelBtn, challengeBtn;
+  var signInBtn, seekBtn, seekCancelBtn, challengeBtn;
 
   function renderAccount() {
     var signedIn = !!storedToken();
     if (signInBtn) {
-      // ONE control, both facts (w9/w12). Signed out it is
-      // the way in and says so. Signed in it becomes the
-      // account itself: the name is the label, the green is
-      // the state, and it is NOT a button any more - tapping
-      // a name should not do anything. Sign out is how you
-      // leave. The name is not repeated in the status line:
-      // that line says what is HAPPENING, this says WHO.
-      // BOTH STATES BY CLASS (w54). This element carried both
-      // idioms at once - an inline colour for signed IN, a
-      // class toggle for signed OUT - on the same button, so
-      // which one decided the look depended on which branch
-      // ran last. That is exactly the split ownership w36 was
-      // about. The green is the same green the voice button
-      // uses, because it means the same thing, and now they
-      // are the same rule rather than the same hex typed twice.
-      signInBtn.textContent = api.myName || "Sign in with Lichess";
-      signInBtn.style.cursor = api.myName ? "default" : "";
-      signInBtn.style.background = "";
-      signInBtn.style.color = "";
-      signInBtn.style.borderColor = "";
+      // ONE control, all the account facts (w9/w12, revised
+      // w76). Signed out it is the way in and says so. Signed
+      // in it is the account AND the way out: w12 ruled that
+      // tapping a name should do nothing, and that held while
+      // Sign out had its own button beside it - but merged
+      // into the top row there is no second button, and a
+      // control that can be pressed and does nothing reads as
+      // broken. The label carries the ACTION so the tap is
+      // never a surprise - the name alone invites nothing,
+      // "name - Sign out" says exactly what pressing it does.
+      // A stray tap is cheap besides: signing back in is two
+      // taps on lichess.org (PKCE). The name is not repeated
+      // in the status line: that line says what is HAPPENING,
+      // this says WHO.
+      // BOTH STATES BY CLASS (w54): the page's colour
+      // language, blue primary = press me, green on =
+      // running - the same rule as the voice button, not the
+      // same hex typed twice.
+      signInBtn.textContent = api.myName
+        ? api.myName + " — Sign out"
+        : "Sign in with Lichess";
       signInBtn.classList.toggle("primary", !api.myName);
       signInBtn.classList.toggle("on", !!api.myName);
     }
-    if (signOutBtn) signOutBtn.disabled = !signedIn;
     var inGame = !!api.gameId && api.gameId !== "PRACTICE" && !api.over;
     if (seekBtn) seekBtn.disabled = !signedIn || inGame || !!seekAbort;
     if (seekCancelBtn) seekCancelBtn.disabled = !seekAbort;
@@ -913,18 +913,16 @@
     nameTop = el("nameTop");
     nameBottom = el("nameBottom");
     signInBtn = el("btnSignIn");
-    signOutBtn = el("btnSignOut");
     seekBtn = el("btnSeek");
     seekCancelBtn = el("btnSeekCancel");
     challengeBtn = el("btnChallenge");
 
+    // The tap is the whole account UI (w76): the way in when
+    // signed out, the way out when signed in. renderAccount's
+    // label says which, so the press is never a guess.
     signInBtn.addEventListener("click", function () {
-      if (api.myName) return;     // a label when signed in (w12)
-      signIn();
-    });
-    signOutBtn.addEventListener("click", function () {
-      signOut();
-      renderButton();
+      if (api.myName) signOut();
+      else signIn();
     });
 
     seekBtn.addEventListener("click", function () {
@@ -989,7 +987,7 @@
     // bottom-right was the right shape OVER lichess.org;
     // over our own page it covered the hints and the
     // challenge row. buildUI() is untouched - the row is
-    // re-parented into the Voice panel and restyled to
+    // re-parented into the top panel and restyled to
     // flow. The settings and log panels stay overlays
     // (transient, closable), but the settings anchor
     // assumed the button was near the bottom, so opening
@@ -1027,15 +1025,19 @@
       // buildUI is still untouched; this is the same kind
       // of after-the-fact move as re-parenting the row.
       // The order is stated outright rather than inherited
-      // from buildUI's append sequence: Start first, then
-      // Settings, and Practice LAST - it is the one button
-      // that quietly stops moves reaching Lichess, so it
-      // sits furthest from the button pressed every game.
+      // from buildUI's append sequence: the voice button
+      // first, then Settings, and the two riskiest taps
+      // LAST, furthest from the button pressed every game:
+      // Practice quietly stops moves reaching Lichess, and
+      // the account button (from the markup, joined at w76)
+      // is Sign out once signed in, at the very end.
       // appendChild moves a node that already has a parent,
-      // so re-appending in order IS the reorder.
+      // so re-appending in order IS the reorder - and it is
+      // also how the sign-in button leaves the markup spot
+      // it boots in.
       var buttonRow = wrapEl.firstChild;
       if (buttonRow && buttonRow.appendChild) {
-        [bigBtn, settingsBtn, clockBtn, logBtn, practiceBtn]
+        [bigBtn, settingsBtn, clockBtn, logBtn, practiceBtn, signInBtn]
           .forEach(function (b) {
             if (!b) return;
             if (b !== bigBtn) adoptPageButtonLook(b);
@@ -1073,7 +1075,7 @@
     // taps on two settings pills read as a double-tap and
     // Safari zoomed the page. The page's own buttons are
     // covered by the scoped .panel button CSS, and the button
-    // row picked that up when it moved into the Voice panel
+    // row picked that up when it moved into the top panel
     // (w21) - but the settings and log panels attach to
     // document.body, OUTSIDE any .panel, so the same w21
     // scoping that fixed their pill sizes also took
