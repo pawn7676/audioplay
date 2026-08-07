@@ -2155,6 +2155,56 @@ const sleep = ms =>
                 /queen charlie 2/i,
                 '"clean charlie two" plays the queen move');
 
+  // ---- w65: "rugby" and "rug" are rooks (game w64-1) ----
+  // "Rook b8" fused into "Rugby" and "Rugby eight" - BOTH
+  // readings of the one utterance, so unlike "Rug B8" later in
+  // the same game there was no undamaged rival to fall back
+  // on, and the move was lost outright ("Say again.").
+  //
+  // BOTH A ROOK AND A QUEEN REACH b8 HERE, and that is the
+  // whole design of the board: the first version put a lone
+  // rook on b1, where "b8" named one move whoever was said to
+  // be moving, so "rug bravo eight" passed with "rug" deleted
+  // from the rook words. The word has to be load-bearing for
+  // the test to be about the word. Kings are kept off rank 8
+  // and the b-file so neither move carries a check.
+  const RUGBY = "R7/8/8/7k/8/8/8/1Q2K3 w - - 0 1";
+  // asserted as the ASK, not just "the word rook appears" -
+  // that laxer form would have matched a played "rook bravo 8"
+  // too, which is the outcome this is here to rule out
+  await onBoard(RUGBY, "bravo eight",
+                /no pawn can go there.*say queen, or rook/i,
+                "with two pieces on b8 the bare square is not decided");
+  await onBoard(RUGBY, "rugby eight", /rook bravo 8/i,
+                '"rugby eight" splits into rook + b-file');
+  check('"rug" parses as the rook',
+        vm.runInContext('PIECES["rug"]', sandbox) === "r");
+  await onBoard(RUGBY, "rug bravo eight", /rook bravo 8/i,
+                '"rug bravo eight" plays the rook move');
+  // three letters, so both ends of fuzzyToken refuse it and it
+  // can neither be reached by a near-miss nor seed one
+  check('"rug" is too short to be a fuzzy target either way',
+        vm.runInContext('fuzzyToken("rug")', sandbox) === null &&
+        vm.runInContext('fuzzyToken("rag")', sandbox) === null);
+
+  // w65: COMPOUND is now cross-checked against the other four
+  // tables. It is consumed FIRST in parseTranscript, so a word
+  // in both wins there and the other meaning silently never
+  // happens. A collision throws at LOAD, which would take this
+  // whole harness down with a vocab error long before here -
+  // so what is asserted is the invariant that guard protects.
+  const compoundClean = vm.runInContext(`
+    (function () {
+      var others = [NATO, NUMS, PIECES, TAKE_WORDS, CASTLE_WORDS];
+      return Object.keys(COMPOUND).filter(function (w) {
+        return others.some(function (m) { return m[w] !== undefined; });
+      });
+    })()
+  `, sandbox);
+  check("no compound word is also a plain vocabulary word (" +
+        (compoundClean.join(" ") || "none") + ")",
+        compoundClean.length === 0);
+
   // ============ w58: "QUEEN CHECK", FROM A REAL GAME ==========
   // Game w56-1: "queen check" said twice, refused twice with
   // "that is not a legal move", and Qa4+ was available the
