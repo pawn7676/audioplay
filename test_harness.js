@@ -585,22 +585,65 @@ const sleep = ms =>
   check('turn line: capitalised colour, no "that is you" (' + turn + ')',
         turn === "White to move." && !/that is you/.test(turn));
 
-  // ---- w39: White and Black, and the ear-spelling ----
-  const clocks = vm.runInContext(`
+  // ---- w39/w70: the clocks name colours; the RAIL follows
+  // the board ----
+  // w39 put White first in a horizontal line, where left and
+  // right mean nothing. w70 moved the clocks into a rail
+  // beside the board, where top and bottom DO mean something,
+  // and the order became board-relative: the far side on top,
+  // yours at the bottom, because the board next to it is drawn
+  // from your side. Both orientations are checked - a rail
+  // that had simply been frozen white-on-top would pass the
+  // first and fail the second.
+  const rail = () => vm.runInContext(`
     (function () {
-      api.myColor = "b"; api.wtime = 65000; api.btime = 30000;
-      api.pos = { turn: "w" };
       renderPageClocks();
-      return document.getElementById("clockLine").innerHTML;
+      return { top: document.getElementById("clockTop").innerHTML,
+               bottom: document.getElementById("clockBottom").innerHTML };
     })()
   `, sandbox);
-  check("clocks name the colours, White first (" +
-        clocks.replace(/<[^>]+>/g, "") + ")",
-        /White 1:05/.test(clocks) && /Black 0:30/.test(clocks) &&
-        !/you|them/i.test(clocks));
-  check("your own clock is still marked",
-        /class="mine[^"]*">Black/.test(clocks));
-  check("and marked low under a minute", /low[^"]*">Black/.test(clocks));
+  vm.runInContext(`
+    api.myColor = "b"; api.wtime = 65000; api.btime = 30000;
+    api.pos = { turn: "w" };
+  `, sandbox);
+  const asBlack = rail();
+  check("clocks still name the colours, not you-and-them (" +
+        (asBlack.top + " / " + asBlack.bottom).replace(/<[^>]+>/g, "") + ")",
+        /White 1:05/.test(asBlack.top) && /Black 0:30/.test(asBlack.bottom) &&
+        !/you|them/i.test(asBlack.top + asBlack.bottom));
+  check("playing black, MY clock is the bottom one and is marked",
+        /class="mine[^"]*">Black/.test(asBlack.bottom) &&
+        !/mine/.test(asBlack.top));
+  check("and marked low under a minute",
+        /low[^"]*">Black/.test(asBlack.bottom));
+  // the same board from the other side: the rail turns over
+  vm.runInContext('api.myColor = "w";', sandbox);
+  const asWhite = rail();
+  check("playing white, the rail turns over (" +
+        (asWhite.top + " / " + asWhite.bottom).replace(/<[^>]+>/g, "") + ")",
+        /Black 0:30/.test(asWhite.top) && /White 1:05/.test(asWhite.bottom));
+  check("and MY clock is the bottom one again",
+        /class="mine[^"]*">White/.test(asWhite.bottom) &&
+        !/mine/.test(asWhite.top));
+  vm.runInContext('api.myColor = "b";', sandbox);
+
+  // w70: the rail is BESIDE the board, not under it. The
+  // renderers above prove the contents; this proves the shape
+  // they render into actually exists, since a rail whose CSS
+  // never arrived would still pass every check above while
+  // stacking under the board exactly as before. Read from the
+  // template, which is the thing build.js inlines - the claim
+  // is about markup, so markup is what is read (the same
+  // exception w67 states).
+  const tmplBoard = fs.readFileSync("src/index.html", "utf8");
+  check("the board and its rail share one flex row",
+        /id="boardRow"/.test(tmplBoard) &&
+        /#boardRow\s*\{[^}]*display:\s*flex/.test(tmplBoard));
+  check("the rail carries a clock and a name at each end",
+        /id="clockTop"/.test(tmplBoard) && /id="nameTop"/.test(tmplBoard) &&
+        /id="nameBottom"/.test(tmplBoard) && /id="clockBottom"/.test(tmplBoard));
+  check("and it wraps under the board rather than squeezing it",
+        /#boardRow\s*\{[^}]*flex-wrap:\s*wrap/.test(tmplBoard));
   // press Start with no token and listen, rather than
   // grepping the source for the string
   vm.runInContext(`
@@ -2176,7 +2219,8 @@ const sleep = ms =>
   // VISIBLE, and a test that checked api.players would have
   // passed while the panel stayed empty (w27/w28).
   const playersHtml = () => vm.runInContext(
-    'document.getElementById("playersLine").innerHTML', sandbox);
+    'document.getElementById("nameTop").innerHTML +\n' +
+    ' document.getElementById("nameBottom").innerHTML', sandbox);
   vm.runInContext(`
     api.gameId = "P1"; api.over = false; api.myId = "me"; dryRun = false;
     CFG.showPlayers = true;
@@ -2270,7 +2314,8 @@ const sleep = ms =>
   // The owner's reason is about the game, not the panel: an
   // opponent about to flag is something you want to know.
   const clockHtml = () => vm.runInContext(
-    'document.getElementById("clockLine").innerHTML', sandbox);
+    'document.getElementById("clockTop").innerHTML +\n' +
+    ' document.getElementById("clockBottom").innerHTML', sandbox);
   vm.runInContext(`
     api.myColor = "w"; api.clockAt = null;
     api.wtime = 30000; api.btime = 300000; renderPageClocks();

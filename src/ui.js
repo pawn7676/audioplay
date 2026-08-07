@@ -586,7 +586,8 @@
     return w.charAt(0).toUpperCase() + w.slice(1);
   }
 
-  var statusLine, clockLine, turnLine, playersLine;
+  var statusLine, turnLine;
+  var clockTop, clockBottom, nameTop, nameBottom;   /* w70 rail */
 
   function uiStatus(text) {
     if (statusLine) statusLine.textContent = text;
@@ -600,71 +601,87 @@
     return m + ":" + (s < 10 ? "0" : "") + s;
   }
 
-  function renderPageClocks() {
-    if (!clockLine) return;
-    if (!api.pos || api.wtime == null) { clockLine.innerHTML = ""; return; }
-    // WHITE AND BLACK, NOT YOU AND THEM (w39). The board
-    // above is drawn from your side and the colours are what
-    // the game is actually about; "you/them" made the reader
-    // translate twice. White is always first, as it is in
-    // every score sheet ever written. WHICH ONE IS YOURS is
-    // still marked - the "mine" class, and its low-time
-    // colour - so nothing was lost by naming them properly.
+  /* THE BOARD'S OWN SHAPE (w70). Two clocks and two names in
+   * a rail beside the board, far side at the top and yours at
+   * the bottom - the Lichess arrangement, and the reason is
+   * the one the owner gave: not that the small clocks are read
+   * from across the room (clock mode is what that is for) but
+   * that the page should LOOK like the thing it talks to.
+   *
+   * ORDERED BY THE BOARD, NOT BY COLOUR, which reverses w39
+   * for this one layout and is worth saying why. w39 chose
+   * white-then-black for a HORIZONTAL line, where left and
+   * right mean nothing and "you and them" made the reader
+   * translate twice. A rail beside the board is different in
+   * kind: top and bottom here DO mean something, because the
+   * board next to it is drawn from your side and flips with
+   * your colour. A rail that ignored that would put your clock
+   * level with their pieces. Colour is still named on every
+   * clock, so what w39 was protecting is not lost.
+   *
+   * ONE PAIR OF FUNCTIONS FOR BOTH ROWS, because clocks and
+   * names are one block: they share the mine/low marking and
+   * they are positioned relative to each other.
+   */
+  function sideOf(top) {
     var mine = api.myColor || "w";
-    function side(colour) {
-      var left = remainingMs(colour);
-      var isMine = colour === mine;
-      // EITHER SIDE, NOT JUST YOURS (w69). The red was mine-only
-      // because it doubled as a marker for which clock was
-      // yours - but the brass "mine" colour already does that
-      // job on its own, and it survives here (low overrides the
-      // colour, not the class). The owner's reason is the
-      // better one and it is about the GAME, not the panel: an
-      // opponent about to flag is something you want to know.
-      var low = left != null && left < 60000;
-      return '<span class="' + (isMine ? "mine" : "") +
-        (low ? " low" : "") + '">' + colourLabel(colour) + " " +
-        fmtClock(left) + "</span>";
-    }
-    clockLine.innerHTML = side("w") + " &nbsp; " + side("b");
+    return top ? (mine === "w" ? "b" : "w") : mine;
   }
 
-  /* THE OPPONENT HAD NO NAME ANYWHERE (w68). gameFull has
-   * carried both players since w1; the page read white.id to
-   * decide your colour and dropped the rest, so the one thing
-   * you could not learn from this page was who you were
-   * playing. Rendered in the clock line's own order - white
-   * first, always, w39 - so the two lines stack into one
-   * block, with the same brass marking your side.
-   *
-   * ESCAPED, because these strings come from Lichess and are
+  /* ESCAPED, because these strings come from Lichess and are
    * chosen by other people: a username cannot contain markup
-   * today, but this line is built with innerHTML and the cost
-   * of being sure is four replaces. */
+   * today, but this is built with innerHTML and the cost of
+   * being sure is four replaces. */
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
                     .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
+  function clockCell(colour) {
+    var left = remainingMs(colour);
+    var isMine = colour === (api.myColor || "w");
+    // EITHER SIDE, NOT JUST YOURS (w69). The red was mine-only
+    // because it doubled as a marker for which clock was
+    // yours - but the brass "mine" colour already does that
+    // job on its own, and it survives here (low overrides the
+    // colour, not the class). The owner's reason is the
+    // better one and it is about the GAME, not the panel: an
+    // opponent about to flag is something you want to know.
+    var low = left != null && left < 60000;
+    return '<span class="' + (isMine ? "mine" : "") +
+      (low ? " low" : "") + '">' + colourLabel(colour) + " " +
+      fmtClock(left) + "</span>";
+  }
+
+  /* THE OPPONENT HAD NO NAME ANYWHERE until w68. gameFull has
+   * carried both players since w1; the page read white.id to
+   * decide your colour and dropped the rest, so the one thing
+   * you could not learn from this page was who you were
+   * playing. */
+  function nameCell(colour) {
+    var pl = (api.players || {})[colour];
+    if (!pl || !CFG.showPlayers) return "";
+    var isMine = colour === (api.myColor || "w");
+    return '<span class="' + (isMine ? "mine" : "") + '">' +
+      (pl.title ? '<span class="title">' + esc(pl.title) + "</span> " : "") +
+      esc(pl.name) +
+      (pl.rating != null && CFG.showRatings
+        ? ' <span class="rating">' + esc(pl.rating) + "</span>" : "") +
+      "</span>";
+  }
+
+  function renderPageClocks() {
+    if (!clockTop || !clockBottom) return;
+    var live = api.pos && api.wtime != null;
+    clockTop.innerHTML = live ? clockCell(sideOf(true)) : "";
+    clockBottom.innerHTML = live ? clockCell(sideOf(false)) : "";
+  }
+
   function renderPlayers() {
-    if (!playersLine) return;
-    var ps = api.players || {};
-    if (!CFG.showPlayers || !api.pos || (!ps.w && !ps.b)) {
-      playersLine.innerHTML = "";
-      return;
-    }
-    var mine = api.myColor || "w";
-    function side(colour) {
-      var pl = ps[colour];
-      if (!pl) return "";
-      return '<span class="' + (colour === mine ? "mine" : "") + '">' +
-        (pl.title ? '<span class="title">' + esc(pl.title) + "</span> " : "") +
-        esc(pl.name) +
-        (pl.rating != null && CFG.showRatings
-          ? ' <span class="rating">' + esc(pl.rating) + "</span>" : "") +
-        "</span>";
-    }
-    playersLine.innerHTML = side("w") + " &nbsp; " + side("b");
+    if (!nameTop || !nameBottom) return;
+    var live = api.pos && (api.players.w || api.players.b);
+    nameTop.innerHTML = live ? nameCell(sideOf(true)) : "";
+    nameBottom.innerHTML = live ? nameCell(sideOf(false)) : "";
   }
 
   function renderTurn() {
@@ -889,9 +906,11 @@
   function buildWebUI() {
     buildUI();                    // the shared button row et al
     statusLine = el("lichessLine");
-    clockLine = el("clockLine");
     turnLine = el("turnLine");
-    playersLine = el("playersLine");
+    clockTop = el("clockTop");
+    clockBottom = el("clockBottom");
+    nameTop = el("nameTop");
+    nameBottom = el("nameBottom");
     signInBtn = el("btnSignIn");
     signOutBtn = el("btnSignOut");
     seekBtn = el("btnSeek");

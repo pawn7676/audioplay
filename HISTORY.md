@@ -2014,3 +2014,42 @@ reading them from across the room, which is what clock mode is for, but
 about the page LOOKING like the thing it talks to. That is a good
 reason and it changes the answer. Its own version, because it moves the
 one thing on the page a game is actually watched through.
+
+### w70
+
+THE CLOCKS MOVED BESIDE THE BOARD. w68 declined this and w68 was
+reasoning from the wrong premise - that the small clocks are meant to
+be read from across the room, which they are not: clock mode is what
+that is for. The owner's reason is different and it is a good one. The
+small clocks are for when you ARE looking at the page, and there the
+job is that the page should look like the thing it talks to. Somebody
+arriving from lichess.org should not have to relearn where a clock
+lives. That is worth a layout.
+
+One correction to the premise on the way past: the clocks were already
+in the board panel, not the Lichess one. They rendered under the board
+rather than beside it, so this is a reflow, not a move.
+
+Board left, rail right: far player's clock and name at the top, yours
+at the bottom, with the gap between them doing the pushing so no fixed
+heights are needed and the rail matches whatever the board's
+aspect-ratio works out to. It wraps under the board on a narrow screen
+rather than squeezing it. The turn line stays full width below both,
+being a sentence rather than part of the rail.
+
+ORDERED BY THE BOARD, NOT BY COLOUR, which reverses w39 and is worth
+saying why rather than looking like a lapse. w39 chose white-then-black
+for a HORIZONTAL line, where left and right mean nothing and "you and
+them" made the reader translate twice. A rail beside the board is
+different in kind: top and bottom DO mean something there, because the
+board next to it is drawn from your side and flips with your colour. A
+rail that ignored that would put your clock level with their pieces.
+Colour is still named on every clock, so what w39 was protecting is
+not lost.
+
+The test for it checks BOTH orientations, and that is not padding: a
+rail simply frozen white-on-top passes as black and fails as white,
+which is exactly the mutation that was run. The other mutation takes
+the flex row away - the renderers would still fill the rail correctly
+while it stacked under the board looking just like w69, so the shape
+is asserted from the template separately from its contents.
