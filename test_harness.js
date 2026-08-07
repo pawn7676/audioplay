@@ -1715,6 +1715,22 @@ const sleep = ms =>
   check("VERSION is a w-number at runtime (" + ver + ")",
         /^w\d+$/.test(ver));
 
+  // ---- w59: "clean" is a queen (game w58-1) ----
+  // Safari returned "Clean check" for "queen check" twice
+  // running. The fuzzy matcher could not have saved it -
+  // "clean" is three edits from "queen" - so it is a named
+  // spelling, and exact-only, because six ordinary words sit
+  // one edit from it.
+  check('"clean" parses as the queen',
+        vm.runInContext('PIECES["clean"]', sandbox) === "q");
+  check("and it is never a fuzzy target (clear/lean stay themselves)",
+        vm.runInContext('FUZZY_EXACT_ONLY["clean"]', sandbox) === 1 &&
+        vm.runInContext('fuzzyToken("clear")', sandbox) === null &&
+        vm.runInContext('fuzzyToken("glean")', sandbox) === null);
+  await onBoard("4k3/8/8/8/8/8/8/3QK3 w - - 0 1", "clean charlie two",
+                /queen charlie 2/i,
+                '"clean charlie two" plays the queen move');
+
   // ============ w58: "QUEEN CHECK", FROM A REAL GAME ==========
   // Game w56-1: "queen check" said twice, refused twice with
   // "that is not a legal move", and Qa4+ was available the
