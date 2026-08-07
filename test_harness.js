@@ -2079,6 +2079,70 @@ const sleep = ms =>
         vm.runInContext("api.over", sandbox) === false &&
         vm.runInContext('RULES.sqName ? api.pos.board[RULES.nameSq("e2")] : null',
                         sandbox) === "P");
+  // ---- w68: the opponent has a name, and it is on screen ----
+  // gameFull has carried both players since w1 and the page
+  // read one field of it. Asked of the built DOM, not of the
+  // api object: the whole complaint was that nothing was
+  // VISIBLE, and a test that checked api.players would have
+  // passed while the panel stayed empty (w27/w28).
+  const playersHtml = () => vm.runInContext(
+    'document.getElementById("playersLine").innerHTML', sandbox);
+  vm.runInContext(`
+    api.gameId = "P1"; api.over = false; api.myId = "me"; dryRun = false;
+    CFG.showPlayers = true;
+    handleGameFull({
+      white: { id: "me", name: "pawn76", rating: 1500 },
+      black: { id: "maia1", name: "maia1", title: "BOT", rating: 1900 },
+      state: { moves: "" } });
+    uiGameChanged();
+  `, sandbox);
+  await sleep(40);
+  const shown = playersHtml();
+  check("both players are named under the board (" + shown + ")",
+        /pawn76/.test(shown) && /maia1/.test(shown));
+  check("with their ratings", /1500/.test(shown) && /1900/.test(shown));
+  check("and the title, since a BOT is worth knowing about",
+        /BOT/.test(shown));
+  check("your own side is marked, as the clocks mark it",
+        /class="mine"/.test(shown));
+  // the log line says it too - a pasted log should name the
+  // opponent, which until now it never did
+  check("the log names the opponent",
+        vm.runInContext(
+          'LOG.filter(function (l) { return /on the other side/.test(l); })' +
+          '.length', sandbox) >= 1);
+
+  // OFF LEAVES THE ROW OUT, not blank-but-present, and the
+  // flip repaints on the spot - the setting's whole effect is
+  // something already on screen.
+  vm.runInContext("CFG.showPlayers = false; renderPlayers();", sandbox);
+  check("showPlayers off empties the row without a game event",
+        playersHtml() === "");
+  vm.runInContext("CFG.showPlayers = true; renderPlayers();", sandbox);
+  check("and back on restores it", /pawn76/.test(playersHtml()));
+
+  // A Lichess AI opponent has aiLevel and NO name at all - the
+  // shape that would otherwise render "undefined".
+  vm.runInContext(`
+    api.gameId = "P2"; api.over = false;
+    handleGameFull({ white: { id: "me", name: "pawn76", rating: 1500 },
+                     black: { aiLevel: 3 }, state: { moves: "" } });
+    uiGameChanged();
+  `, sandbox);
+  await sleep(40);
+  const aiShown = playersHtml();
+  check("a nameless AI opponent is described, not left undefined (" +
+        aiShown + ")",
+        /computer level 3/.test(aiShown) && !/undefined/.test(aiShown));
+
+  // w60's lesson, one field over: practice must not inherit
+  // the opponent you just finished playing.
+  vm.runInContext("dryStart(); uiGameChanged();", sandbox);
+  await sleep(40);
+  check("practice mode shows no opponent (" +
+        (playersHtml() || "empty") + ")", playersHtml() === "");
+  vm.runInContext("dryRun = false;", sandbox);
+
   vm.runInContext(
     "api.gameId = null; api.over = false; dryRun = true; clearToken();",
     sandbox);

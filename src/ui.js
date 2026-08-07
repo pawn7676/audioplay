@@ -225,6 +225,14 @@
     settingHeader("all modes");
     settingRow("confirmMyMove", "confirm my move");
     settingRow("guardPawnPushes", "guard pawn pushes");
+    // w68. Repaints on the spot rather than waiting for the
+    // next game event: this is the one setting whose whole
+    // effect is something already on screen, so a flip that
+    // did nothing visible until the opponent moved would read
+    // as a broken switch.
+    settingRow("showPlayers", "show players", function () {
+      renderPlayers();
+    });
     settingHeader("voice mode");
     settingRow("readBackMine", "speak my move");
     settingHeader("clock mode");
@@ -512,7 +520,7 @@
     return w.charAt(0).toUpperCase() + w.slice(1);
   }
 
-  var statusLine, clockLine, turnLine;
+  var statusLine, clockLine, turnLine, playersLine;
 
   function uiStatus(text) {
     if (statusLine) statusLine.textContent = text;
@@ -546,6 +554,44 @@
         fmtClock(left) + "</span>";
     }
     clockLine.innerHTML = side("w") + " &nbsp; " + side("b");
+  }
+
+  /* THE OPPONENT HAD NO NAME ANYWHERE (w68). gameFull has
+   * carried both players since w1; the page read white.id to
+   * decide your colour and dropped the rest, so the one thing
+   * you could not learn from this page was who you were
+   * playing. Rendered in the clock line's own order - white
+   * first, always, w39 - so the two lines stack into one
+   * block, with the same brass marking your side.
+   *
+   * ESCAPED, because these strings come from Lichess and are
+   * chosen by other people: a username cannot contain markup
+   * today, but this line is built with innerHTML and the cost
+   * of being sure is four replaces. */
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function renderPlayers() {
+    if (!playersLine) return;
+    var ps = api.players || {};
+    if (!CFG.showPlayers || !api.pos || (!ps.w && !ps.b)) {
+      playersLine.innerHTML = "";
+      return;
+    }
+    var mine = api.myColor || "w";
+    function side(colour) {
+      var pl = ps[colour];
+      if (!pl) return "";
+      return '<span class="' + (colour === mine ? "mine" : "") + '">' +
+        (pl.title ? '<span class="title">' + esc(pl.title) + "</span> " : "") +
+        esc(pl.name) +
+        (pl.rating != null
+          ? ' <span class="rating">' + esc(pl.rating) + "</span>" : "") +
+        "</span>";
+    }
+    playersLine.innerHTML = side("w") + " &nbsp; " + side("b");
   }
 
   function renderTurn() {
@@ -583,6 +629,7 @@
   function uiGameChanged() {
     renderMiniBoard();
     renderPageClocks();
+    renderPlayers();
     renderTurn();
     renderAccount();
     renderButton();
@@ -771,6 +818,7 @@
     statusLine = el("lichessLine");
     clockLine = el("clockLine");
     turnLine = el("turnLine");
+    playersLine = el("playersLine");
     signInBtn = el("btnSignIn");
     signOutBtn = el("btnSignOut");
     seekBtn = el("btnSeek");

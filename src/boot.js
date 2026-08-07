@@ -33,9 +33,16 @@
     // "you are black" - until the first move bumped the count.
     // The board's whole job is confirming the pipeline and
     // Lichess agree; orientation is part of what it confirms.
+    // the players joined at w68, for the w60 reason one field
+    // over: they arrive with gameFull, which on a REJOIN can
+    // land with gameId and moves.length both already settled,
+    // so nothing else in this list would move and the names
+    // would sit blank under a board that is otherwise right.
     var now = [api.gameId, api.moves.length, api.over,
                api.myName, !!seekAbort, running, dryRun,
-               api.myColor, !!api.pos].join("|");
+               api.myColor, !!api.pos,
+               (api.players.w && api.players.w.name) || "",
+               (api.players.b && api.players.b.name) || ""].join("|");
     if (now !== paintedState) {
       paintedState = now;
       uiGameChanged();
