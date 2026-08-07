@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w73";
+  VERSION = "w74";
 
   var RULES = makeRules();
 
@@ -1112,10 +1112,38 @@
                ev.challenge.challenger &&
                (ev.challenge.challenger.id || "").toLowerCase()
                  !== (api.myId || "")) {
-      log("EVT", "incoming challenge from " +
-          (ev.challenge.challenger.name || "?"));
-      uiStatus("Challenge from " +
-          (ev.challenge.challenger.name || "someone") +
+      var who = ev.challenge.challenger.name || "someone";
+      /* SAY NO BEFORE IT BECOMES A GAME (w74). This is the
+       * hole w71 left: w71 stopped this page CREATING a game
+       * too fast to play, and did nothing about one arriving.
+       * The page never accepts a challenge itself - it tells
+       * you to accept on Lichess - so by the time gameStart
+       * lands with compat.board:false there is a live game
+       * with a running clock that this page can only walk
+       * away from. Declining is the point where it can still
+       * be stopped, and Lichess has a reason code for exactly
+       * this, so the challenger is told WHY rather than left
+       * to time out.
+       *
+       * The other route to an unplayable game - starting one
+       * yourself in the Lichess app - is deliberately left
+       * alone. That was a choice you made in another app, and
+       * aborting a game someone deliberately started is not
+       * this page's business. It still says so out loud. */
+      if (tooFastToPlay(ev.challenge.timeControl)) {
+        var shown = (ev.challenge.timeControl &&
+                     ev.challenge.timeControl.show) || "it";
+        log("EVT", "declining " + who + "'s challenge, too fast (" +
+            shown + ")");
+        declineChallenge(ev.challenge.id, "tooFast");
+        speak("declined a challenge from " + who +
+              ". it is too fast to play here.");
+        uiStatus("Declined " + who + "'s challenge - " + shown +
+                 " is too fast to play here.");
+        return;
+      }
+      log("EVT", "incoming challenge from " + who);
+      uiStatus("Challenge from " + who +
           " - accept it on Lichess or with the app.");
     }
   }
@@ -1192,13 +1220,21 @@
    * here, one bot move on Lichess, auto-aborted only because
    * nobody moved for white... for black. Refusing BEFORE the
    * POST means no game exists to abandon. */
+  /* The two floors, named once (w74) because three places now
+   * need them and w73 left the same 480 written out twice -
+   * one of those copies being unreachable, which is exactly
+   * how a duplicated constant rots. Lichess sizes a game as
+   * limit + 40 x increment SECONDS. */
+  var SEEK_FLOOR_S = 480;   /* rapid: what a public seek needs */
+  var PLAY_FLOOR_S = 180;   /* blitz: what the Board API plays at all */
+
   function speedGate(minutes, increment, seeking) {
     var est = minutes * 60 + 40 * increment;
-    var floor = seeking ? 480 : 180;
+    var floor = seeking ? SEEK_FLOOR_S : PLAY_FLOOR_S;
     if (est >= floor) return null;
-    var name = est < 180 ? "bullet" : "blitz";
+    var name = est < PLAY_FLOOR_S ? "bullet" : "blitz";
     var out = minutes + "+" + increment + " is " + name + " - ";
-    if (est < 180) {
+    if (est < PLAY_FLOOR_S) {
       out += "too fast for this app. Blitz or slower for challenges, " +
              "rapid or slower to find an opponent.";
     } else {
@@ -1254,15 +1290,21 @@
         // Custom box can still say 5+3, so the hint stays.
         // When a 400 lands on a blitz control, say which way
         // out exists.
+        // THE w61 BLITZ HINT WAS DELETED HERE (w74), having
+        // become unreachable at w71. It fired on a 400 with an
+        // estimate under SEEK_FLOOR_S - and w71's speedGate
+        // refuses exactly that range before the POST, from the
+        // same clamped values and the same formula, so the
+        // branch could not run. w71's entry claimed it "stays
+        // for whatever still gets through"; nothing does. It
+        // was a second copy of the 480 rule, kept in case the
+        // gate loosened, which is the reasoning that leaves
+        // two constants to disagree. One rule, in speedGate.
         return r.json().catch(function () { return {}; })
           .then(function (j) {
             var why = j.error ? " - " + j.error : " (HTTP " + r.status + ")";
-            var blitz = (minutes * 60 + 40 * increment) < 480;
-            var hint = (r.status === 400 && blitz)
-              ? " Blitz seeks are not allowed - challenge someone instead."
-              : "";
             log("ERR", "seek refused" + why);
-            uiStatus("Seek refused" + why + "." + hint);
+            uiStatus("Seek refused" + why + ".");
             uiGameChanged();
           });
       }
@@ -1415,6 +1457,33 @@
         log("ERR", "challenge: " + e.message);
         uiStatus("Challenge failed (" + e.message + ").");
       }
+    });
+  }
+
+  /* A challenge event states its clock in SECONDS, unlike our
+   * own forms which take minutes - so this cannot call
+   * speedGate, only share its floor. An unlimited or
+   * correspondence challenge has no clock and is playable. */
+  function tooFastToPlay(tc) {
+    if (!tc || tc.type !== "clock") return false;
+    var limit = Number(tc.limit) || 0, inc = Number(tc.increment) || 0;
+    return (limit + 40 * inc) < PLAY_FLOOR_S;
+  }
+
+  function declineChallenge(id, reason) {
+    if (!id || !storedToken()) return;
+    return fetch(LICHESS_BASE + "/api/challenge/" +
+                 encodeURIComponent(id) + "/decline", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + storedToken(),
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: "reason=" + encodeURIComponent(reason)
+    }).then(function (r) {
+      log("API", "declined challenge (" + reason + ") -> " + r.status);
+    }).catch(function (e) {
+      log("ERR", "could not decline challenge: " + e.message);
     });
   }
 
