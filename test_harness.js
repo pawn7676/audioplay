@@ -1715,6 +1715,75 @@ const sleep = ms =>
   check("VERSION is a w-number at runtime (" + ver + ")",
         /^w\d+$/.test(ver));
 
+  // ============ w58: "QUEEN CHECK", FROM A REAL GAME ==========
+  // Game w56-1: "queen check" said twice, refused twice with
+  // "that is not a legal move", and Qa4+ was available the
+  // whole time - the owner played it seconds later by naming
+  // the square. Mate had a repair; check did not.
+
+  // EXACTLY ONE checking move by that piece: it plays, like
+  // the mate and half-square repairs on the same weight of
+  // evidence. Ra8+ is the only check a1 rook has here.
+  await onBoard("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "rook check",
+                /rook alpha 8, check/i,
+                '"rook check" plays the one checking rook move');
+  check("and it was actually played",
+        vm.runInContext("api.moves.length", sandbox) === 1);
+
+  // SEVERAL checking moves: it asks, it does not choose.
+  // Uniqueness is counted over every legal move of that piece,
+  // so a lost word can only ever turn one candidate into
+  // several - which asks - never into a different move.
+  await onBoard("4k3/8/8/8/8/8/8/3QK3 w - - 0 1", "queen check",
+                /did you mean queen .*check/i,
+                'several checks ask rather than guessing');
+  check("and nothing was played while it asks",
+        vm.runInContext("api.moves.length", sandbox) === 0);
+
+  // the check word is repeated back, not swallowed
+  await setBoard("4k3/8/8/8/8/8/8/1B2K3 w - - 0 1");
+  say("queen check");
+  await sleep(120);
+  const qchk = heard().join(" | ");
+  check('a refusal repeats the check word ("' + qchk + '")',
+        /i heard queen check/i.test(qchk));
+
+  // "checkmate" MUST go to the mate repair, not this one.
+  // This board has two checking rook moves - Ra8# and Rh8+ -
+  // and only one of them mates. The check repair would find
+  // both and ask; the mate repair finds one and plays it. So
+  // the difference between the two is exactly what "did you
+  // mean" tells us, and asserting only that Ra8 is mentioned
+  // would pass either way (it did, until this was tightened).
+  // WHICH REPAIR ANSWERED is the claim, so that is what is
+  // asserted - the log names it. Asserting on the spoken move
+  // instead needs a board where the two repairs would differ,
+  // and that is fiddly to construct and easy to get wrong: the
+  // first version of this test used a board where the only
+  // checking rook move WAS the mate, so it passed with the
+  // guard deliberately removed.
+  await setBoard("6k1/5ppp/8/8/8/8/8/R3K2R w - - 0 1");
+  heard();
+  vm.runInContext("LOG.length = 0;", sandbox);
+  vm.runInContext('handleTranscripts(["rook checkmate"]);', sandbox);
+  await sleep(120);
+  const rmate = heard().join(" | ");
+  const whichRepair = vm.runInContext(
+    'LOG.filter(function (l) { return /(mate|check) repair/.test(l); })' +
+    '.map(function (l) { return l.replace(/^.*CND  /, ""); }).join(" | ")',
+    sandbox);
+  check('"rook checkmate" is answered by the MATE repair (' +
+        (whichRepair || "none") + ")",
+        /mate repair/.test(whichRepair) && !/check repair/.test(whichRepair));
+  check("and it plays the mate (" + rmate + ")",
+        /rook alpha 8, checkmate/i.test(rmate));
+
+  // and a piece with no checking move says so rather than
+  // offering something else
+  await onBoard("4k3/8/8/8/8/8/8/4K1NR w - - 0 1", "bishop check",
+                /i heard bishop check/i,
+                'no bishop at all: the refusal names what was said');
+
   // ============== w53: THE SAME ANSWER, FASTER =============
   // Every change in w53 is meant to be invisible. The risk is
   // not that it gets slower, it is that a list passed in to

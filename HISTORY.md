@@ -1368,3 +1368,55 @@ three is exactly when that happens, so the harness compares the two lists.
 The other direction kills the harness at startup with ENOENT and build.js
 with MISSING, which is loud enough already.
 
+
+### w58
+
+"QUEEN CHECK", FROM A REAL GAME. The first finding that came from playing
+rather than from reading, and it is the kind only playing finds: an
+asymmetry nobody would predict, in a place both halves of which look
+finished.
+
+MATE HAD A REPAIR AND CHECK DID NOT. Game w56-1, 16:50:47: "queen check",
+refused with "that is not a legal move". Said again twelve seconds later,
+refused again. Qa4+ was on the board the whole time, and the owner played it
+seventeen seconds after that by naming the square instead. A piece plus a
+check word constrains nothing the constraint set can hold - check is a fact
+about the position AFTER the move - so it parses to an empty request, finds
+no candidates, walks the entire repair chain and falls out of the bottom.
+Which is exactly the shape v117's mate repair exists to catch, and it was
+written for the RARER of the two words.
+
+The new repair is the mate repair's twin and deliberately so: same gate, same
+"one plays, several ask", the mating moves swapped for the checking ones
+(/[+#]$/, not /\+$/ - if the only check available is mate, "queen check"
+still means it).
+
+MATE UTTERANCES ARE EXCLUDED FROM IT TWICE OVER, because MATE_WORDS is a
+SUBSET of CHECK_WORDS and "checkmate" satisfies both. The check repair tests
+for mate words itself AND sits after the mate repair in the list, so neither
+depends on the ordering to be right - the ordering is there so the more
+specific one is reached first, not so it is the only one that can be.
+
+WHAT IS WORTH REVISITING IF IT EVER MISFIRES: this plays on a unique fit, and
+"queen check" is thin evidence - a piece and a fact about the resulting
+position, with no square at all. What makes it acceptable is the rule the
+whole grammar rests on and nothing here weakens: uniqueness is counted over
+EVERY legal move of that piece, so a word lost off the front can only ever
+turn one candidate into several, which asks. It cannot turn one candidate
+into a different one.
+
+AND THE READ-BACK WAS SWALLOWING THE WORD. "Queen check" came back as "I
+heard queen" - the w44 fault from the other side, and visible twice in that
+same log while the owner was trying to work out what the machine had heard.
+Check words were consumed by nothing at all: they fell through every branch
+of the token loop and off the end, and only saysCheck, reading the raw text,
+ever knew they were there. The parser notes them now - saidCheck, saidMate,
+constraining nothing - and heardSoFar says them last, where they are spoken.
+
+A TEST NOTE WORTH KEEPING. The first version of the "checkmate still goes to
+the mate repair" test asserted on the move that came back, and PASSED with
+the guard deliberately removed: the board it used had only one checking rook
+move, which was the mate, so both repairs gave the same answer. The claim is
+about WHICH REPAIR ANSWERED, so that is what it asserts now - the log names
+it. A test that cannot tell the two branches apart is not testing the branch.
+

@@ -443,6 +443,61 @@
     return false;
   }
 
+  function tryCheckRepair(req, transcripts) {
+    /* CHECK NAMED, EVERYTHING ELSE EATEN (w58). The twin of
+     * the mate repair above, and it was missing - which is an
+     * asymmetry nobody would predict, because "mate" is the
+     * rarer word by far. Game w56-1 found it: "queen check"
+     * was said TWICE, refused both times with "that is not a
+     * legal move", and Qa4+ was on the board the whole time -
+     * the owner played it seventeen seconds later by naming
+     * the square instead.
+     *
+     * The reason it fell through is that a piece plus a check
+     * word constrains nothing the constraint set can hold, so
+     * it parses to an empty request, finds no candidates, and
+     * walks the entire repair chain to fall out of the bottom.
+     * Exactly the shape the mate repair exists to catch.
+     *
+     * MATE UTTERANCES ARE EXCLUDED, because MATE_WORDS is a
+     * SUBSET of CHECK_WORDS - "checkmate" satisfies both - and
+     * the mate repair answers those better: it offers only the
+     * moves that mate, where this would offer every move that
+     * gives check. Excluded here as well as ordered after it,
+     * so the two do not depend on the list order to be right.
+     *
+     * A mating move counts as a check, though: /[+#]$/, not
+     * /\+$/. If the only checking move available happens to be
+     * mate, "queen check" still means it.
+     *
+     * IT PLAYS ON A UNIQUE FIT, like the mate and half-square
+     * repairs, and this is the part worth revisiting if it
+     * ever misfires: "queen check" is thin evidence - a piece
+     * and a fact about the resulting position, with no square
+     * at all. What makes it acceptable is the rule the whole
+     * grammar rests on: uniqueness is counted over EVERY legal
+     * move of that piece, so a lost word can only ever turn
+     * one candidate into several, which asks. It cannot pick a
+     * different move.
+     */
+    if (req.piece && !req.squares.length && !req.victim &&
+        !req.fromFile && !req.fromRank && !req.capture &&
+        transcripts.some(saysCheck) && !transcripts.some(saysMate)) {
+      var cc = anyMove();
+      cc.piece = req.piece;
+      var legalChk = api.pos.legalMoves();
+      var pchecks = movesFor(api.pos, cc, false, legalChk)
+        .filter(function (m) {
+          return /[+#]$/.test(api.pos.sanOf(m, legalChk));
+        });
+      if (pchecks.length) {
+        offer(candidatesOf(pchecks, req), "check repair");
+        return true;
+      }
+    }
+    return false;
+  }
+
   /* THE ORDER OF THE REPAIRS, WRITTEN DOWN.
    *
    *  Origin-capture goes first for a reason that used to live
@@ -453,9 +508,18 @@
    *  position of two if-blocks in a 700-line function, and
    *  moving either silently changed the grammar.
    *
-   *  Mate goes last because it is the weakest evidence: a
-   *  piece and the word "mate", with everything else eaten.
+   *  Mate and check go last because they are the weakest
+   *  evidence: a piece and one word about the position AFTER
+   *  the move, with everything else eaten.
+   *
+   *  Mate before check, because MATE_WORDS is a subset of
+   *  CHECK_WORDS - "checkmate" is both - and mate answers
+   *  those far better: the moves that MATE, not every move
+   *  that gives check. Each also tests for the other's words
+   *  itself, so neither depends on this order to be correct;
+   *  the order is here so the more specific one is reached
+   *  first, not so it is the only one that can be.
    */
   var REPAIRS = [tryOriginCapture, tryHalfSquare,
-                 tryCaptureRepair, tryMateRepair];
+                 tryCaptureRepair, tryMateRepair, tryCheckRepair];
 
