@@ -2166,143 +2166,35 @@ const sleep = ms =>
   vm.runInContext("speechSynthesis = __realSynth;", sandbox);
   heard();
 
-  // 103: a keep-alive paused by the OS resumes itself; one
-  // paused by US stays paused
-  const kaOut = vm.runInContext(`
-    (function () {
-      startKeepAlive();
-      var plays = 0;
-      keepAlive.play = function () { plays++; return Promise.resolve(); };
-      keepAlive.on_pause();          // the OS pauses it
-      var afterOs = plays;
-      stopKeepAlive();               // OUR pause
-      keepAlive.on_pause();
-      var afterOurs = plays;
-      startKeepAlive();              // wanted again (also plays)
-      return { os: afterOs, ours: afterOurs };
-    })()
-  `, sandbox);
-  check("an OS pause of the keep-alive is resumed", kaOut.os === 1);
-  check("a deliberate stop is respected", kaOut.ours === 1);
-
-  // w88: an OS that RE-pauses the resumed holder meets a
-  // backoff, not a fight. The owner's log: pause -> play ->
-  // abort -> pause in a closed loop, ~86 log events a second
-  // for minutes, the page's buttons dead under it - and with
-  // the log panel open, every line rejoined and re-laid the
-  // whole 3000-line panel. The first pause of a streak must
-  // keep w63's immediate resume; every re-pause inside the
-  // calm window must wait its doubling turn, one pending
-  // retry at a time, milestones logged instead of cycles.
-  const kaStorm = vm.runInContext(`
-    (function () {
-      kaStreak = 0; kaPausedAt = 0;
-      clearTimeout(kaRetryTimer); kaRetryTimer = null;
-      startKeepAlive();
-      __kaPlays = 0;
-      keepAlive.play = function () { __kaPlays++; return Promise.resolve(); };
-      LOG.length = 0;
-      for (var i = 0; i < 500; i++) keepAlive.on_pause();
-      return { plays: __kaPlays,
-               lines: LOG.filter(function (l) {
-                 return l.indexOf("session holder") >= 0; }).length,
-               timerArmed: kaRetryTimer !== null };
-    })()
-  `, sandbox);
-  check("a 500-pause storm gets ONE immediate resume, not 500",
-        kaStorm.plays === 1);
-  check("and a handful of milestone log lines, not a flooded panel",
-        kaStorm.lines > 0 && kaStorm.lines <= 5);
-  check("and one armed retry waiting on the backoff",
-        kaStorm.timerArmed === true);
-  await sleep(1000);             // the REAL 250ms first rung, unscaled:
-                                 // sleep is scaled to .35, the rung is not
-  check("the backed-off retry does ask the OS again",
-        vm.runInContext("__kaPlays", sandbox) === 2 &&
-        vm.runInContext("kaRetryTimer", sandbox) === null);
-  // and OUR stop cancels a pending retry outright
-  const kaCancel = vm.runInContext(`
-    (function () {
-      keepAlive.on_pause();          /* streak continues: re-arms */
-      var armed = kaRetryTimer !== null;
-      stopKeepAlive();
-      return { armed: armed, after: kaRetryTimer === null };
-    })()
-  `, sandbox);
-  check("a deliberate stop cancels the pending retry too",
-        kaCancel.armed === true && kaCancel.after === true);
-  vm.runInContext("startKeepAlive();", sandbox);   /* leave it as found */
-  heard();
-
-  // w89: the holder plays only while the page is HIDDEN. The
-  // w87-w88 iPad logs put the lag exactly inside iPadOS's
-  // eviction of the always-playing element; the element now
-  // sits primed-but-paused while the screen is on and starts
-  // at the visibilitychange. Driven through the real listener
-  // list, as the OS would.
-  vm.runInContext(`
-    kaArmed = false; kaStreak = 0; kaPausedAt = 0;
-    clearTimeout(kaRetryTimer); kaRetryTimer = null;
-    stopKeepAlive();
-    __kaPlays = 0; __kaPauses = 0;
-    keepAlive.play = function () { __kaPlays++; return Promise.resolve(); };
-    keepAlive.pause = function () { __kaPauses++; };
-    document.visibilityState = "visible";
-    armKeepAlive();                 /* the voice button, screen on */
-  `, sandbox);
-  await sleep(30);                  // the prime's play() resolves
-  check("arming while visible primes the holder but does not hold",
-        vm.runInContext("__kaPlays", sandbox) === 1 &&
-        vm.runInContext("__kaPauses", sandbox) >= 1 &&
-        vm.runInContext("keepAliveWanted", sandbox) === false);
-  vm.runInContext("LOG.length = 0; keepAlive.on_pause();", sandbox);
-  check("and an OS pause of the idle holder starts no fight",
-        vm.runInContext("LOG.length", sandbox) === 0 &&
-        vm.runInContext("__kaPlays", sandbox) === 1);
-  vm.runInContext(`
-    document.visibilityState = "hidden";
-    document._listeners.visibilitychange.slice()
-      .forEach(function (f) { f(); });
-  `, sandbox);
-  check("the page going hidden starts the holder",
-        vm.runInContext("__kaPlays", sandbox) === 2 &&
-        vm.runInContext("keepAliveWanted", sandbox) === true);
-  vm.runInContext(`
-    document.visibilityState = "visible";
-    document._listeners.visibilitychange.slice()
-      .forEach(function (f) { f(); });
-    LOG.length = 0;
-    keepAlive.on_pause();           /* the pause OUR stop caused */
-  `, sandbox);
-  check("returning visible stops it, OUR pause, no resume fight",
-        vm.runInContext("keepAliveWanted", sandbox) === false &&
-        vm.runInContext("LOG.length", sandbox) === 0 &&
-        vm.runInContext("__kaPlays", sandbox) === 2);
-  vm.runInContext(`
-    disarmKeepAlive();
-    document.visibilityState = "hidden";
-    document._listeners.visibilitychange.slice()
-      .forEach(function (f) { f(); });
-  `, sandbox);
-  check("a disarmed holder ignores the screen going dark",
-        vm.runInContext("__kaPlays", sandbox) === 2);
+  // w90: the stall watch turns "it felt laggy" into a log
+  // line with a duration on it. A deliberate synchronous
+  // block of the loop must be noticed and measured...
+  vm.runInContext(
+    'document.visibilityState = "visible"; LOG.length = 0;', sandbox);
+  await sleep(900);           // a clean beat lands first
+  vm.runInContext(
+    "var __t0 = Date.now(); while (Date.now() - __t0 < 1200) {}",
+    sandbox);
+  await sleep(900);           // the beat after the stall measures it
+  check("a main-thread stall is noticed and measured",
+        vm.runInContext(
+          "LOG.some(function (l) { return /LAG.*stalled/.test(l); })",
+          sandbox));
+  // ...and a HIDDEN page's timer nap must not be: iOS
+  // throttles background timers on purpose, and screen-off
+  // (when it existed) would have filled the log with stalls
+  // that were really naps.
+  vm.runInContext(
+    'document.visibilityState = "hidden"; LOG.length = 0;', sandbox);
+  vm.runInContext(
+    "var __t1 = Date.now(); while (Date.now() - __t1 < 1200) {}",
+    sandbox);
+  await sleep(900);
+  check("a hidden page's timer nap is not logged as a stall",
+        vm.runInContext(
+          "!LOG.some(function (l) { return /LAG/.test(l); })",
+          sandbox));
   vm.runInContext('document.visibilityState = "visible";', sandbox);
-
-  // w89: the audio session is DECLARED where the API exists,
-  // and detected-absent everywhere else
-  const audRes = vm.runInContext(`
-    (function () {
-      navigator.audioSession = { type: "auto" };
-      declareAudioSession();
-      var declared = navigator.audioSession.type;
-      delete navigator.audioSession;
-      declareAudioSession();        /* absent: a log line, no throw */
-      return declared;
-    })()
-  `, sandbox);
-  check("the audio session is declared play-and-record where supported",
-        audRes === "play-and-record");
-  heard();
 
   // 125: a wake lock that resolves after exit is released, not
   // kept forever
@@ -4316,6 +4208,40 @@ const sleep = ms =>
     postMove = __tchPostMove; dryRun = true; api.gameId = "PRACTICE";
     api.pos = new RULES.Position(); api.moves = [];
   `, sandbox);
+
+  // ---- w90: the voice button no longer half-ends practice ----
+  // dryRun was flipped false by BOTH directions of the voice
+  // button, leaving the practice board and gameId standing
+  // with the flag down. Unreachable while voice was the only
+  // way to move; from w86 a board TAP in that half-state
+  // would have POSTed a move to a "game" called PRACTICE on
+  // the real Lichess API. Driven through the real button, and
+  // the network is watched the whole way.
+  vm.runInContext(`
+    dryRun = true; running = true; busy = false; pending = null;
+    dryOpponentReply = function () {};
+    api.gameId = "PRACTICE"; api.over = false; api.myColor = "w";
+    api.pos = new RULES.Position(); api.moves = [];
+    __fetches = 0; __realFetchW90 = fetch;
+    fetch = function () {
+      __fetches++;
+      return Promise.resolve({ ok: true, status: 200,
+        json: function () { return Promise.resolve({}); },
+        text: function () { return Promise.resolve(""); } });
+    };
+    bigBtn.on_click();               /* voice OFF */
+  `, sandbox);
+  check("voice off leaves practice standing",
+        vm.runInContext("dryRun === true && running === false", sandbox));
+  tap("e2"); tap("e4");
+  check("a tap with the mic closed is still a practice move, not a POST",
+        vm.runInContext("api.moves.join()", sandbox) === "e2e4" &&
+        vm.runInContext("__fetches", sandbox) === 0);
+  vm.runInContext("bigBtn.on_click();", sandbox);   /* voice back ON */
+  check("voice back on leaves practice standing too",
+        vm.runInContext("dryRun === true && running === true", sandbox));
+  vm.runInContext("fetch = __realFetchW90;", sandbox);
+  heard();
 
   // ---- HARD CONSTRAINT 4: NEVER EXPOSE OR LOG A TOKEN ----
   // header.js lists four constraints. This is the only one

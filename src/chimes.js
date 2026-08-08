@@ -13,6 +13,8 @@
   // ("ok.", the rejection sentence, the yes/no question)
   // and the renderer, BEEPS table, element cache, beep()
   // and warmChimes() were deleted. The keep-alive silent
-  // WAV in keepalive.js is unrelated and stays: it holds the
-  // iOS audio session, it is not a chime.
+  // WAV was unrelated and outlived them by design - it held
+  // the iOS audio session, it was not a chime - until w90
+  // removed it too, for its own reasons (see the keep-alive
+  // tombstone in header.js).
 

@@ -133,7 +133,8 @@
    *  fell behind while the userscript ran on to v134. Rather
    *  than merge, w20 cuts the v134 userscript into one file
    *  per job — settings, log, vocabulary, parsing, matching,
-   *  dialogue, speech-out, chimes, mic, keepalive, rules,
+   *  dialogue, speech-out, chimes, mic, keepalive (removed
+   *  at w90 — see the closed cases), rules,
    *  clock — and wraps this page's own shell around them:
    *  lichess.js (PKCE sign-in and the account event
    *  stream), ui.js (the page), boot.js. The w19 site
@@ -221,7 +222,12 @@
    *   silent looping WAV in keepalive.js holds the iOS audio
    *   session; without it the page suspends with the screen
    *   off. It is NOT a chime and must not be removed with
-   *   them.
+   *   them. (The finding stands; the WAV does not. iPadOS
+   *   began evicting the element itself in Aug 2026 and the
+   *   keep-alive was REMOVED at w90 — the closed case below
+   *   is the story. The consequence written here is now
+   *   simply accepted: the page suspends with the screen
+   *   off.)
    * - A STOPPED RECOGNISER CANNOT RESTART with the screen
    *   off: it returns "not-allowed" and stays dead for the
    *   rest of the game. MIC_ALWAYS_ON = true is required,
@@ -315,17 +321,43 @@
    * in-page repair, without a fundamentally different
    * theory.
    *
-   * THE KEEP-ALIVE STAYS. With the screen-on overlays as
-   * the primary way of playing, stripping keepalive.js was
-   * considered. Measured: only about 3% of the file is
-   * truly screen-off specific. It is kept as the FALLBACK
-   * LAYER — iOS may drop the wake lock at will, and with
-   * the keep-alive present a dropped lock plus a sleeping
-   * screen still leaves a fully alive game. Without it the
-   * page suspends silently, and the ugly case is a sleep
-   * during the OPPONENT'S think: their move arrives
-   * unannounced, the user waits deaf at the board, and the
-   * clock burns into Lichess's claim-victory window.
+   * THE KEEP-ALIVE IS GONE, AND SCREEN-OFF PLAY WITH IT
+   * (w90, owner's decision, 8 Aug 2026). The paragraph that
+   * stood here said the keep-alive stays as the fallback
+   * layer, and for a year it was right. Then iPadOS started
+   * EVICTING the silent holder element whenever the mic and
+   * the synthesizer were live — pause, refused play, abort,
+   * pause — and the page spent whole games inside the
+   * refused state with taps and buttons lagging five to ten
+   * seconds. Three rounds were spent on it and each is a
+   * lesson against re-proposing its shape: w88 backed the
+   * retry off (politeness did not stop the eviction), w89
+   * played the holder only while the page was hidden AND
+   * declared navigator.audioSession.type = "play-and-record"
+   * (the holder was refused even its gesture-blessed prime,
+   * and the lag continued with the element idle), and the
+   * logs after w89 still showed session-holder churn. The
+   * owner then called it: no more experiments, rip out
+   * screen-off play, LAGGINESS WILL NOT BE TOLERATED.
+   *
+   * What removal costs, stated so nobody rediscovers it in a
+   * lost game: with the screen off the page suspends
+   * silently. A sleep during the opponent's think means
+   * their move arrives unannounced, the user waits deaf at
+   * the board, and the clock burns into Lichess's
+   * claim-victory window. Screen-ON play is the mode of this
+   * program now; the clock overlay's wake lock (which keeps
+   * the screen awake) is the one guard left, and it is a
+   * screen-on guard.
+   *
+   * IF SCREEN-OFF PLAY EVER RETURNS, it starts from a fresh
+   * baseline, not from resurrecting keepalive.js: the owner
+   * said exactly that at the removal. A future attempt has
+   * to prove, on the device, that whatever holds the session
+   * can coexist with the mic and the synthesizer under
+   * then-current iPadOS — the Audio Session API maturing is
+   * the most likely door. The removed file's whole history
+   * is in git and in HISTORY.md w63/w88/w89/w90.
    *
    * NO SPOKEN LOW-TIME WARNING — asked for and DECLINED,
    * v92. Game11 was lost on the clock in voice mode with
