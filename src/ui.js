@@ -844,6 +844,7 @@
   // per-page setting; everything behavioural is CFG in the
   // shared settings panel).
   var OPPONENT_KEY = "audioplay.web.opponent";
+  var RATED_KEY = "audioplay.web.rated";
 
   // TIME CONTROL IS A PICKED PRESET (w33), remembered like
   // the opponent. The truth lives in one place - the picked
@@ -913,6 +914,16 @@
       log("ERR", "could not save time control: " + e.message);
     }
     paintTimeRow();
+  }
+
+  // the restore half of the rated dropdown (w99), top-level
+  // like wireTimeRow for the same reason: the return visit is
+  // the second use, and the harness drives it by name
+  function wireRated() {
+    var savedRated = "";
+    try { savedRated = localStorage.getItem(RATED_KEY) || ""; }
+    catch (e) {}
+    el("seekRated").value = savedRated === "rated" ? "rated" : "casual";
   }
 
   function wireTimeRow() {
@@ -1017,7 +1028,8 @@
                             : "Pick a time control first.");
         return;
       }
-      startSeek(tc.minutes, tc.increment, el("seekRated").checked);
+      startSeek(tc.minutes, tc.increment,
+                el("seekRated").value === "rated");
       renderAccount();
     });
     seekCancelBtn.addEventListener("click", function () {
@@ -1045,6 +1057,22 @@
     } else if (savedOpp) {
       oppSel.value = savedOpp;
     }
+    // RATED IS A DROPDOWN, AND IT COMES BACK (w99). Three
+    // versions tried to dress the native checkbox (w95 green,
+    // w97 native, w98 accent blue - a white checkmark on
+    // light blue, no contrast) and the control itself was the
+    // problem: most of a checkbox is the OS's to paint. A
+    // two-option select wears the page's clothes like
+    // everything beside it, says it in Lichess's own words -
+    // Rated, Casual - and rides the same storage the opponent
+    // row does. Casual unless the stored value says exactly
+    // "rated": a missing or junk key must never quietly rate
+    // a game.
+    el("seekRated").addEventListener("change", function () {
+      try { localStorage.setItem(RATED_KEY, el("seekRated").value); }
+      catch (e) {}
+    });
+    wireRated();
     wireTimeRow();
     syncOpponent();
     oppSel.addEventListener("change", syncOpponent);
@@ -1064,7 +1092,8 @@
         return;
       }
       sendChallenge(opponentName(), tc.minutes, tc.increment,
-                    el("seekRated").checked, el("challengeColour").value);
+                    el("seekRated").value === "rated",
+                    el("challengeColour").value);
       renderAccount();
     });
 

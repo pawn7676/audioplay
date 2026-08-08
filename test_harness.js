@@ -1356,6 +1356,48 @@ const sleep = ms =>
   vm.runInContext('localStorage.removeItem("audioplay.web.timecontrol");',
                   sandbox);
 
+  // ---- w99: rated is a dropdown, in Lichess's own words,
+  // and it comes back. The RESTORE is the second use (w37),
+  // and junk or absence must read Casual - a stored value
+  // must never quietly rate a game.
+  const ratedBack = () => vm.runInContext(`
+    (function () {
+      document.getElementById("seekRated").value = "";
+      wireRated();
+      return document.getElementById("seekRated").value;
+    })()
+  `, sandbox);
+  vm.runInContext(
+    'localStorage.removeItem("audioplay.web.rated");', sandbox);
+  check("a fresh browser seeks Casual", ratedBack() === "casual");
+  vm.runInContext(`
+    document.getElementById("seekRated").value = "rated";
+    document.getElementById("seekRated").on_change();
+  `, sandbox);
+  check("choosing Rated survives a reload", ratedBack() === "rated");
+  vm.runInContext(
+    'localStorage.setItem("audioplay.web.rated", "banana");', sandbox);
+  check("junk in storage reads as Casual", ratedBack() === "casual");
+  vm.runInContext(
+    'localStorage.removeItem("audioplay.web.rated");', sandbox);
+  // and the dropdown's word reaches the real seek handler
+  vm.runInContext(`
+    __seekGot = null; __realSeekW99 = startSeek;
+    startSeek = function (m, i, r) { __seekGot = [m, i, r]; };
+    document.getElementById("seekRated").value = "rated";
+  `, sandbox);
+  tcButtons.find(b => b.getAttribute("data-tc") === "15+10").on_click();
+  vm.runInContext('document.getElementById("btnSeek").on_click();', sandbox);
+  check("Rated reaches the seek as rated=true",
+        vm.runInContext("JSON.stringify(__seekGot)", sandbox) ===
+        "[15,10,true]");
+  vm.runInContext(`
+    startSeek = __realSeekW99;
+    document.getElementById("seekRated").value = "casual";
+    localStorage.removeItem("audioplay.web.timecontrol");
+    pickedTime = null; wireTimeRow();
+  `, sandbox);
+
   // acting with nothing picked names the missing thing and
   // sends nothing. (The repaint tick rewrites the status line
   // twice a second, so this reads it immediately, with no
