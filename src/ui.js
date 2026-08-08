@@ -436,11 +436,17 @@
         // used to refuse to act unless voice was on, so nothing
         // was left to notice. Turning voice back on is the one
         // moment we know the user expects to be connected, so
-        // it is the right place to make sure we are. startStream
-        // is a no-op in practice and on no game, and aborts its
-        // own predecessor, so calling it here cannot double up.
+        // it is the right place to make sure we are. This
+        // called startStream directly until w81, reasoning
+        // that aborting its own predecessor meant it "cannot
+        // double up" - true of the STREAMS, false of the
+        // announcements: restarting a healthy stream
+        // re-delivers gameFull, and a game joined seconds
+        // before the tap heard "connected... reconnected..."
+        // back to back. ensureStream restarts only a stream
+        // that has actually gone quiet (see lichess.js).
         else if (api.gameId && api.gameId !== "PRACTICE" && !api.over) {
-          startStream();
+          ensureStream();
         }
       } else {
         dryRun = false;
@@ -662,10 +668,13 @@
     if (CFG.showRatings && pl.rating != null) {
       parts.push('<span class="rating">' + esc(pl.rating) + "</span>");
     }
-    var toMove = !api.over && api.pos && api.pos.turn === colour;
-    var cls = (isMine ? "mine" : "") +
-              (!toMove && !api.over ? " idle" : "");
-    return '<span class="' + cls.trim() + '">' +
+    // THE NAME ROW NEVER DIMS (w81). w72's idle class was
+    // mirrored here from the clocks, and on the device the
+    // waiting side's name and rating sank below readable -
+    // .55 on the row times .65 on the rating. Dimming is the
+    // CLOCK's turn signal; whose turn it is says nothing
+    // about who the players ARE.
+    return '<span class="' + (isMine ? "mine" : "") + '">' +
       parts.join(" ") + "</span>";
   }
 

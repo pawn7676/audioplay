@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w80";
+  VERSION = "w81";
 
   var RULES = makeRules();
 
@@ -632,9 +632,35 @@
 
   var streamAbort = null;
 
+  /* A LIVE STREAM IS LEFT ALONE (w81). The voice button calls
+   * this rather than startStream: w50 made voice-on restart
+   * the stream so a death while voice was off could not go
+   * unnoticed, but restarting a HEALTHY stream re-delivers
+   * gameFull, and the page announced "connected. you are
+   * white." and "reconnected. you are white." back to back -
+   * the game of 7 Aug heard both, three seconds into the
+   * game. Lichess keeps the stream warm with a newline every
+   * few seconds, so bytes within the last fifteen mean it is
+   * alive and there is nothing to restart; a stream quiet
+   * longer than that is treated as dead, which is exactly the
+   * case w50 was written for. */
+  var streamBeatAt = 0;
+  var streamGameId = null;
+
+  function ensureStream() {
+    if (streamGameId === api.gameId && streamBeatAt &&
+        Date.now() - streamBeatAt < 15000) {
+      log("NET", "stream is live - leaving it alone");
+      return;
+    }
+    startStream();
+  }
+
   function startStream() {
     if (!api.gameId || dryRun || api.gameId === "PRACTICE") return;
     log("NET", "opening stream for " + api.gameId);
+    streamGameId = api.gameId;
+    streamBeatAt = 0;
     try { if (streamAbort) streamAbort.abort(); } catch (e) {}
     streamAbort = (typeof AbortController !== "undefined") ? new AbortController() : null;
     var opts = { headers: authHeaders() };
@@ -644,6 +670,7 @@
       .then(function (r) {
         if (!r.ok) throw new Error("stream HTTP " + r.status);
         if (!r.body || !r.body.getReader) throw new Error("no streaming body");
+        streamBeatAt = Date.now();
         streamFails = 0;          /* it opened: the ladder resets */
         stopPolling();            /* w62: one transport at a time - a
                                      transient body-less response must
@@ -654,7 +681,13 @@
         var buf = "";
         function pump() {
           return reader.read().then(function (res) {
-            if (res.done) { log("NET", "stream ended"); scheduleReconnect(); return; }
+            if (res.done) {
+              log("NET", "stream ended");
+              streamBeatAt = 0;      /* w81: dead means dead */
+              scheduleReconnect();
+              return;
+            }
+            streamBeatAt = Date.now();   /* keep-alives count too (w81) */
             buf += dec.decode(res.value, { stream: true });
             var lines = buf.split("\n");
             buf = lines.pop();
@@ -687,6 +720,7 @@
         // "reconnected. you are white. white to move." every
         // two seconds, for as long as the game lasted.
         if (String(e.name) === "AbortError") return;
+        streamBeatAt = 0;         /* w81: a failed stream is not live */
         log("ERR", "stream: " + e.message);
         /* a 429 jumps the ladder straight to its cap (w63):
          * the spec asks for a minute's grace, and the early
