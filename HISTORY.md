@@ -2383,3 +2383,23 @@ hold that line for the next session that finds a tempting common
 word: the table remains exact-only, it still cannot seed the
 fuzzy matcher, and a speculative entry has to clear a HIGHER bar
 than a logged one, since it arrives with no game behind it.
+
+### w79
+
+THE BOARD BORROWS LICHESS'S EYES. The mini board's square browns
+were already lichess.org's own pair, but the last-move tint was a
+leftover BoardEye blue and a king in check looked like any other
+king - the two states the site paints loudest. The owner plays on
+Lichess; a glance at this board should not need translating from
+a second colour language. So the last-move pair is now the flat
+colour Lichess's green overlay (rgba 155,199,0 at .41) composites
+to over each brown - the owner sampled ccd069 and a8a23b off the
+real site, and the arithmetic agrees - and a checked king sits on
+the site's red radial halo, stop for stop from its stylesheet.
+Constraint 6 wants the stylesheet to own what states look like,
+but CSS stops at the canvas edge; the colours live in board.js
+with the rest of the painting, and the harness stopped taking the
+canvas on faith to hold them there: the context stub now records
+its paints, so the tests ask which fill actually landed on d8, on
+h4, on the checked e1 - flipped and unflipped, because the halo
+goes through the same grid arithmetic that orientation bends.
