@@ -4303,6 +4303,21 @@ const sleep = ms =>
         cssBtnOn + ")",
         !!cssBtnOn &&
         vm.runInContext("BUTTON_ON", sandbox) === cssBtnOn);
+  // w94: same law for the text ON the green - the stylesheet
+  // says #fff (the clock box's white), and the JS painter
+  // must paint the same. Asked of a painted element.
+  const cssOnText = (fs.readFileSync("src/index.html", "utf8")
+    .match(/button\.on \{[^}]*color:\s*(#[0-9a-fA-F]{3,6})/) || [])[1];
+  const paintedText = vm.runInContext(`
+    (function () {
+      var el = document.createElement("button");
+      paintButton(el, true, "#000");
+      return el.style.color;
+    })()
+  `, sandbox);
+  check("and the painted ON text matches the stylesheet's (" +
+        cssOnText + ")",
+        !!cssOnText && paintedText === cssOnText);
 
   // ---- HARD CONSTRAINT 4: NEVER EXPOSE OR LOG A TOKEN ----
   // header.js lists four constraints. This is the only one
