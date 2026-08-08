@@ -237,17 +237,26 @@
                             Roboto, Arial, sans-serif;
                font-variant-numeric: tabular-nums;
                letter-spacing: .04em; line-height: 1.15; }
+  /* THE FOUR BOX COLOURS ARE MEASURED FROM LICHESS (w87):
+     the owner's screenshot pixel values, one per state -
+     waiting grey, to-move green, and the low red in both its
+     running and waiting shades. The waiting side used to
+     darken by opacity on the whole box (w72); with the
+     waiting colours now exact hexes, opacity over the page
+     surface would shift them off the measured values, so the
+     dim moved to the DIGITS alone - 62% white, checked
+     readable on #252420, the darkest of the four. What w72
+     established still holds: red stays red through the
+     opponent's move, just its waiting shade. And w81's
+     lesson stands unchanged - the dim is the CLOCK's turn
+     signal and never touches the names. */
   .sideClock .cbox { display: inline-block; padding: 2px 16px;
                      border-radius: 6px; color: #fff;
-                     background: #2e2b27; }
-  .sideClock .cbox.turn { background: #3a5a2a; }
-  .sideClock .cbox.low { background: #8c3a30; }
-  /* dim is orthogonal to colour (w72): the waiting side keeps
-     its box colour - red stays red - just noticeably darker.
-     THE CLOCK BOX ONLY (w81): the names dimmed with it once
-     and the waiting side's name was unreadable on the device.
-     A name is not a state; the box carries the turn alone. */
-  .sideClock .cbox.idle { opacity: .55; }
+                     background: #252420; }
+  .sideClock .cbox.turn { background: #374528; }
+  .sideClock .cbox.low { background: #77312b; }
+  .sideClock .cbox.low.idle { background: #4e2c28; }
+  .sideClock .cbox.idle { color: rgba(255,255,255,.62); }
   .sideName { font-family: Menlo, "SF Mono", monospace; font-size: .8rem;
               line-height: 1.5; margin: 2px 0; }
   /* brass still marks YOUR name (w68); the title is dimmer

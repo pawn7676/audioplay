@@ -132,16 +132,22 @@ function renderMiniBoard() {
   var board = api && api.pos ? api.pos.board : null;
   var tint = lastMoveGridSqs();
   var checkSq = checkGridSq();
+  var selSq = touchSelGridSq();   /* touch.js; -1 when nothing chosen */
   for (var i = 0; i < 64; i++) {
     var x = (i % 8) * MINI_CELL, y = Math.floor(i / 8) * MINI_CELL;
     // Lichess's last-move highlight is rgba(155,199,0,.41)
     // laid over the board browns; these are the flat colours
     // that compositing lands on, painted directly so the
-    // squares stay a single fill each.
+    // squares stay a single fill each. The chosen-square pair
+    // (w86) is the same idea for the touch selection: the
+    // owner's screenshot measurements of Lichess's own
+    // selected square over each brown, and it outranks the
+    // last-move tint because it answers the newer question.
     var moved = tint && tint.indexOf(i) >= 0;
+    var chosen = i === selSq;
     miniCtx.fillStyle = sqClass(i) === 0
-      ? (moved ? "#ccd069" : "#f0d9b5")
-      : (moved ? "#a8a23b" : "#b58863");
+      ? (chosen ? "#809668" : moved ? "#ccd069" : "#f0d9b5")
+      : (chosen ? "#636e40" : moved ? "#a8a23b" : "#b58863");
     miniCtx.fillRect(x, y, MINI_CELL, MINI_CELL);
     if (i === checkSq) {
       // Lichess's check halo, stop for stop. Its CSS ellipse

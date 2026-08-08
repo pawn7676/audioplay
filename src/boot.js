@@ -56,6 +56,7 @@
   function boot() {
     buildWebUI();
     initBoard();
+    initTouch();
     finishSignIn().then(function (returned) {
       loadStoredToken();
       if (storedToken()) {

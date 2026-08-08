@@ -2528,3 +2528,42 @@ bravo+2, but the word already sits in NATO meaning bare
 "bravo", and a logged meaning is never traded for a guessed
 one. The d-file offered nothing for squares either, as it
 offered nothing for pieces.
+
+### w86
+
+TOUCH TO MOVE, for the time scramble. Voice is the medium and
+stays it, but a spoken move costs seconds - recognition, the
+grammar, sometimes a question - and under a minute those
+seconds are the game (game11 was lost on exactly that clock).
+The glance board now takes two taps, piece then destination,
+checked against the same legal-move list the voice path asks
+and fed into the same acceptMove pipeline, so the busy guard,
+the post timeout, and every spoken error are shared rather
+than rebuilt. The choices, each the cheap end of its trade
+and each settled with the owner before a line was written:
+taps not drags (no animation, no fight with the page's own
+scrolling); click not pointerdown, so a scroll that begins on
+the board never picks up a piece; auto-queen on a tapped
+promotion, underpromotion staying a spoken move; and no
+read-back for a tapped move - two taps prove the eyes are on
+the screen, where the piece appearing is the answer, so the
+tapped path posts unarmed while every error still speaks. The
+piece appears when Lichess confirms: no optimistic paint, no
+resync debt. Whether that round trip feels slow at the board
+is the thing to watch for; revisit optimism only on that
+evidence.
+
+### w87
+
+THE CLOCK BOXES WEAR LICHESS'S MEASURED COLOURS. The glance
+board borrowed the site's browns and tints at w79 so a glance
+carries over; the owner measured the four clock-box colours
+from screenshots of the site itself - waiting grey, to-move
+green, and the low red in both its running and waiting shades
+- and the stylesheet now states those hexes. That ended the
+w72 whole-box opacity dim: over the page surface it would
+shift the boxes off the measured values, so the dim moved to
+the digits alone, 62% white, chosen to stay readable on the
+darkest of the four boxes. w72's rule survives the mechanism
+change - red stays red through the opponent's move - and so
+does w81's: the dim belongs to the clock, never the names.

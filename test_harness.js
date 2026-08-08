@@ -4092,6 +4092,112 @@ const sleep = ms =>
   vm.runInContext(
     "api.pos = new RULES.Position(); api.moves = [];", sandbox);
 
+  // ---- w86: touch to move ----
+  // Two taps on the glance board play the move. Driven as
+  // synthesized clicks at pixel coordinates against the stub
+  // rect (100x100 at left 40, top 500), asked of the built
+  // DOM and the recorded paints - the rect scaling, the grid,
+  // and the flip are exactly where a tap could quietly land
+  // on the wrong square.
+  const tapCell = 100 / 8;
+  const tap = (s, flipped) => {
+    let f = s.charCodeAt(0) - 97, r = s.charCodeAt(1) - 49;
+    let gr = 7 - r, gf = f;
+    if (flipped) { gr = 7 - gr; gf = 7 - gf; }
+    getEl("mini").on_click({ clientX: 40 + (gf + 0.5) * tapCell,
+                             clientY: 500 + (gr + 0.5) * tapCell });
+  };
+  const selTinted = () => getEl("mini")._paints.some(p =>
+    p.fillStyle === "#809668" || p.fillStyle === "#636e40");
+  vm.runInContext(`
+    dryRun = true; busy = false; pending = null; armedUci = null;
+    dryOpponentReply = function () {};
+    api.gameId = "PRACTICE"; api.over = false; api.myColor = "w";
+    api.pos = new RULES.Position(); api.moves = [];
+    initTouch();
+  `, sandbox);
+  heard();
+  getEl("mini")._paints.length = 0;
+  tap("e2");
+  // e2 is a light square at grid (4,6) -> pixels (384,576)
+  check("tapping your own piece paints the chosen-square tint",
+        fillsOf(384, 576).includes("#809668"));
+  check("and plays nothing yet",
+        vm.runInContext("api.moves.length", sandbox) === 0);
+  getEl("mini")._paints.length = 0;
+  tap("e4");
+  check("tapping its destination plays the move",
+        vm.runInContext("api.moves.join()", sandbox) === "e2e4");
+  check("the pawn stands on its new square",
+        vm.runInContext('api.pos.board[RULES.nameSq("e4")]',
+                        sandbox) === "P");
+  check("the tint leaves with the selection", !selTinted());
+  check("and a tapped move is NOT read back - the eye is on the screen",
+        heard().length === 0);
+
+  // the same feature from black's side: a feature used twice
+  // is a different feature, and the flip is the second use.
+  vm.runInContext(`
+    api.myColor = "b";
+    api.pos = new RULES.Position(
+      "rnbqkbnr/pppppppp/8/8/4P3/8/8/RNBQKBNR b KQkq e3 0 1");
+    api.moves = ["e2e4"];
+  `, sandbox);
+  tap("e7", true); tap("e5", true);
+  check("flipped, the taps land on the flipped squares",
+        vm.runInContext("api.moves.join()", sandbox) === "e2e4,e7e5");
+
+  // a tapped promotion queens without asking; the underdogs
+  // stay spoken moves
+  vm.runInContext(`
+    api.myColor = "w";
+    api.pos = new RULES.Position("3k4/4P3/8/8/8/8/8/4K3 w - - 0 1");
+    api.moves = [];
+  `, sandbox);
+  tap("e7"); tap("e8");
+  check("a tapped promotion queens without asking",
+        vm.runInContext("api.moves.join()", sandbox) === "e7e8q");
+
+  // the guards: not our turn, and not our piece
+  vm.runInContext(`
+    api.pos = new RULES.Position(
+      "rnbqkbnr/pppppppp/8/8/4P3/8/8/RNBQKBNR b KQkq e3 0 1");
+    api.moves = []; api.myColor = "w";
+  `, sandbox);
+  getEl("mini")._paints.length = 0;
+  tap("e7");
+  check("a tap while the opponent thinks selects nothing",
+        !getEl("mini")._paints.length);
+  vm.runInContext(
+    "api.pos = new RULES.Position(); api.moves = [];", sandbox);
+  getEl("mini")._paints.length = 0;
+  tap("e7");
+  check("the opponent's piece cannot be picked up", !selTinted());
+
+  // in a REAL game the tapped move posts, but never arms the
+  // read-back: quiet all the way to the 200, loud on error
+  // paths only (those are shared with voice and tested above).
+  vm.runInContext(`
+    __tchPostMove = postMove;
+    postMove = function () {
+      return Promise.resolve({ status: 200, body: { ok: true } });
+    };
+    dryRun = false; api.gameId = "TCHGAME";
+    api.pos = new RULES.Position(); api.moves = [];
+    api.myColor = "w"; armedUci = null;
+  `, sandbox);
+  heard();
+  tap("e2"); tap("e4");
+  await sleep(20);
+  check("a real tapped move posts without arming the read-back",
+        vm.runInContext("armedUci === null && busy === false", sandbox));
+  check("and stays unspoken when the 200 lands",
+        heard().length === 0);
+  vm.runInContext(`
+    postMove = __tchPostMove; dryRun = true; api.gameId = "PRACTICE";
+    api.pos = new RULES.Position(); api.moves = [];
+  `, sandbox);
+
   // ---- HARD CONSTRAINT 4: NEVER EXPOSE OR LOG A TOKEN ----
   // header.js lists four constraints. This is the only one
   // whose consequence is measured in bans rather than bugs, and
