@@ -319,12 +319,14 @@
      inline SVG one is drawn in - a data: URI, self-contained
      (rule 3 is about fetching; nothing is fetched). Its
      stroke duplicates --accent because a data URI cannot
-     read a variable; move them together. The CHECKBOX is
-     left entirely native (w97): a green checked-state was
-     tried at w95 and the owner didn't love it, and its
-     unchecked square is the OS's own drawing anyway - not
-     reachable without rebuilding the control, and one small
-     square is not worth that. */
+     read a variable; move them together. The CHECKBOX wears
+     the page's ACCENT blue when checked (w98): the w95 green
+     checkmark was tried and not loved, w97's fully-native
+     state showed iOS's own blue - the right idea in the
+     wrong hex - and the accent is the page's colour for
+     actionable things anyway. Its unchecked square stays the
+     OS's own drawing: not reachable without rebuilding the
+     control, and one small square is not worth that. */
   select {
     font: inherit; font-weight: 600;
     padding: 8px 30px 8px 12px;
@@ -335,6 +337,7 @@
     border: 1px solid var(--border); border-radius: 8px;
     -webkit-appearance: none; appearance: none;
   }
+  input[type="checkbox"] { accent-color: var(--accent); }
   .row.opt { font-size: .85rem; color: var(--text); gap: 6px; }
   .row.opt label { display: flex; align-items: center; gap: 6px; }
 </style>
@@ -447,15 +450,15 @@
       <option value="maia1">maia1 (easiest)</option>
       <option value="maia5">maia5</option>
       <option value="maia9">maia9 (strongest)</option>
-      <option value="other">someone else</option>
+      <option value="other">Someone else</option>
     </select></label>
     <input id="challengeOther" class="whoin" type="text"
-      placeholder="lichess name" style="display:none"
+      placeholder="Lichess name" style="display:none"
       autocapitalize="off" autocorrect="off" spellcheck="false">
     <label>I play <select id="challengeColour">
-      <option value="random">random</option>
-      <option value="white">white</option>
-      <option value="black">black</option>
+      <option value="random">Random</option>
+      <option value="white">White</option>
+      <option value="black">Black</option>
     </select></label>
     <button id="btnChallenge" disabled>Challenge</button>
   </div>
