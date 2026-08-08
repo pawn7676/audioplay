@@ -91,7 +91,6 @@
         // here and there, which is how the account stream came
         // to be closed by neither (w50).
         dryRun = true; running = true;
-        armKeepAlive();
         startListening();
         dryStart();
       }
@@ -417,8 +416,11 @@
       setTimeout(loadVoices, 300);
       running = !running;
       if (running) {
-        dryRun = false;
-        armKeepAlive();
+        // and the same halfway flip lived here (w90): voice
+        // back ON during practice dropped dryRun with the
+        // practice board still up. Practice now survives the
+        // voice button in BOTH directions; the practice
+        // button is what ends it.
         startListening();
         // WEB (delta 2): no connect() - sign-in owns the
         // connection; the button owns the voice. The two
@@ -449,9 +451,22 @@
           ensureStream();
         }
       } else {
-        dryRun = false;
+        // VOICE OFF NO LONGER ENDS PRACTICE (w90). dryRun was
+        // flipped false here, which did two wrong things at
+        // once. It ended practice SILENTLY and HALFWAY: the
+        // practice board and gameId stayed up, only the flag
+        // dropped - unreachable while voice was the only way
+        // to move, but from w86 a board TAP in that half-state
+        // would have POSTed a move to a "game" called PRACTICE
+        // on the real Lichess API, token and all. And it stood
+        // in the way of the mic-isolation experiment the owner
+        // asked for during the lag hunt: practice with the mic
+        // CLOSED is now a mode that works - taps move, the
+        // opponent still replies aloud - and the practice
+        // button remains the one thing that ends practice,
+        // tearing it down properly (rejoinCurrent) instead of
+        // halfway.
         pauseMic();
-        disarmKeepAlive();
         clearDialogue();
         // WEB (delta 2): no stream/poll teardown here.
         // nothing spoken, as with practice mode off: the

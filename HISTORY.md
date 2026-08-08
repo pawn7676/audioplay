@@ -2623,3 +2623,44 @@ play now that the route is no longer held warm between
 utterances - the v-era reason the holder ran continuously in
 the first place. If the second returns, the fix will need a
 different shape, and this entry is where the trail starts.
+
+### w90
+
+SCREEN-OFF PLAY IS REMOVED, ON THE OWNER'S ORDER. w88 made
+the keep-alive's retry polite and the lag stayed; w89 kept
+the holder off the field while the screen was on and declared
+the audio session, and the very next log showed the prime
+refused and the lag still there - then a later log showed
+session-holder churn back anyway. Three theories, three
+versions, and the thing they were all defending is a fallback
+for a mode of play that was costing the primary one: the
+owner called it - no more experiments, rip out screen-off
+play, lagginess will not be tolerated, and any future
+screen-off feature starts from a fresh baseline rather than
+from this file's shape. keepalive.js is deleted whole: the
+silent WAV, the session holder, the w88 backoff ladder, the
+w89 arming and visibility gating, and the audio-session
+declaration that rode along with it. The full cost of
+removal - a page that suspends silently with the screen off,
+an opponent's move that can arrive unannounced - is recorded
+in the header's closed case, which supersedes the "THE
+KEEP-ALIVE STAYS" paragraph that stood there since the w20
+rebuild.
+
+Two things ship with the removal. THE STALL WATCH
+(watchdog.js): a quarter-second heartbeat that logs "LAG main
+thread stalled ~Ns" when a beat arrives late, hidden-page
+timer naps excluded - because the lag hunt just spent three
+versions on a suspect the logs later cleared, and the next
+theory has to fit measured numbers sitting beside the SAY and
+MIC lines that name what was running. And THE VOICE BUTTON NO
+LONGER HALF-ENDS PRACTICE: both directions of the button
+dropped dryRun while leaving the practice board and gameId
+standing - harmless while voice was the only way to move, but
+since w86 a board tap in that half-state would have POSTed a
+move to a "game" called PRACTICE on the real API. Practice
+now survives the voice button both ways (the practice button
+is what ends it, tearing down properly), which also makes
+practice with the mic closed a working mode: taps move, the
+opponent replies aloud - the isolation experiment the owner
+asked for during the hunt and could not run.

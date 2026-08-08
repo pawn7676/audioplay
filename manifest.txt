@@ -18,6 +18,7 @@
 header.js
 settings.js
 log.js
+watchdog.js
 vocabulary.js
 parsing.js
 matching.js
@@ -27,7 +28,6 @@ repairs.js
 speech-out.js
 chimes.js
 mic.js
-keepalive.js
 lichess.js
 board.js
 touch.js
