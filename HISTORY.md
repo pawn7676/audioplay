@@ -2836,3 +2836,27 @@ opponent row, restored through wireRated() so the harness can
 drive the return visit (w37's lesson). Casual unless the
 stored value says exactly "rated" - a missing or junk key
 must never quietly rate a game.
+
+### w100
+
+THE SPOKEN CLOCK QUERY RETIRES, OUTLIVED BY ITS OWN OVERLAY.
+Bare "clock" (or "time") spoke the remaining times since the
+userscript era, built for a player across the room from
+digits too small to read. Clock mode has answered that
+question better since the overlay grew its large digits - big
+enough from the real board, extrapolating both sides, always
+current - and after w90 made screen-on the only mode of play,
+the owner called the redundancy: the overlay is the answer,
+delete the command. (The first proposal was to delete ALL
+clock commands as screen-off leftovers; the spoken query was
+never screen-off code, and the distinction - eyes-free is not
+screen-off - is argued in the w90 tombstone's terms. "Flip
+clock" stays: it configures the screen, it does not read it.)
+What retiring buys beyond simplicity: "clock", "time" and
+"timer" stop being bare trigger words next to an always-open
+mic - each was one everyday word away from an unwanted
+answer during real games. Bare "clock" is stray talk now,
+the third documented exception to constraint 5, beside the
+other stray talk it now is. And the settings pills say ON and
+OFF at weight 600 - they inherited the body's regular weight
+and read thinner than every button above them.
