@@ -71,6 +71,13 @@
        clock - now means "on" in one colour, the one measured
        from Lichess's own clock at w87 */
     --button-on: #374528;
+    /* the ONE white for everything lit (w95): clock digits in
+       all four box colours, and the text on every green
+       button. A tick below pure #fff at the owner's ask -
+       full white read as glaring next to the softened page.
+       ui.js paints the same value from BUTTON_TEXT_ON; the
+       harness pins the pair together. */
+    --bright:  #e9e9e6;
     --warn:    #d0a24c;
     --dim:     #6b6b6b;
     --ok: var(--green); --bad: var(--red); --brass: var(--accent);
@@ -111,7 +118,7 @@
      them drift. Same green as .tc.picked and #timeCustom.picked
      on purpose: it means the same thing in all four places. */
   .panel button.on {
-    background: var(--button-on); color: #fff;
+    background: var(--button-on); color: var(--bright);
     border-color: var(--button-on);
   }
   /* THE ARMED QUESTION (w77): the account button while
@@ -136,7 +143,7 @@
   .panel button.tc { flex: 0 0 auto; padding: 10px 12px;
     font-variant-numeric: tabular-nums; }
   .panel button.tc.picked { background: var(--button-on);
-    color: #fff; border-color: var(--button-on); }
+    color: var(--bright); border-color: var(--button-on); }
   /* The custom box is a BUTTON THAT YOU TYPE IN (w36), not
      a form field: same surface, text and border as the
      presets beside it, and the same green when picked. It
@@ -153,7 +160,7 @@
   }
   #timeCustom::placeholder { color: var(--dim); font-weight: 600; }
   #timeCustom.picked {
-    background: var(--button-on); color: #fff;
+    background: var(--button-on); color: var(--bright);
     border-color: var(--button-on);
   }
   .panel { background: var(--surface); border-radius: 8px; padding: 12px; margin-top: 12px; }
@@ -167,7 +174,18 @@
   .panel > details:not([open]) > summary { margin-bottom: 0; }
   .stats { font-family: Menlo, "SF Mono", monospace; font-size: .8rem; line-height: 1.5; white-space: pre-wrap; }
   #mini {
-    display: block; width: 100%; max-width: 360px; aspect-ratio: 1;
+    display: block; width: 100%; aspect-ratio: 1;
+    /* THE CAP IS TWO CAPS (w96). 560px of width - up from
+       360 now that squares are TAP TARGETS, half again more
+       finger room each - and 85% of the small viewport
+       height, because the board is square and a phone held
+       sideways has less height than width: the 360 board was
+       CUT OFF there, never visible whole. svh measures the
+       viewport with Safari's bars showing, so the cap is
+       honest; the plain 560px line above is the fallback for
+       browsers without svh. */
+    max-width: 560px;
+    max-width: min(560px, 85svh);
     border: 1px solid var(--border); border-radius: 4px;
     margin: 0 auto; touch-action: manipulation;
   }
@@ -189,7 +207,7 @@
      of squeezing the board. */
   #boardRow { display: flex; flex-wrap: wrap; gap: 16px;
               align-items: stretch; justify-content: center; }
-  #boardRow #mini { margin: 0; flex: 0 1 360px; }
+  #boardRow #mini { margin: 0; flex: 0 1 560px; }
   /* THE RAIL IS AS WIDE AS WHAT IS IN IT (w82). It used to
      grow (flex 1 1 150px, capped at 260), and the centred row
      above centred board-plus-GROWN-rail - whose right third
@@ -256,12 +274,14 @@
      lesson stands unchanged - the dim is the CLOCK's turn
      signal and never touches the names. */
   .sideClock .cbox { display: inline-block; padding: 2px 16px;
-                     border-radius: 6px; color: #fff;
+                     border-radius: 6px; color: var(--bright);
                      background: #252420; }
   .sideClock .cbox.turn { background: #374528; }
   .sideClock .cbox.low { background: #77312b; }
   .sideClock .cbox.low.idle { background: #4e2c28; }
-  .sideClock .cbox.idle { color: rgba(255,255,255,.62); }
+  /* the same --bright, at 62%: keep the rgb triplet in step
+     with the variable above if it ever moves */
+  .sideClock .cbox.idle { color: rgba(233,233,230,.62); }
   .sideName { font-family: Menlo, "SF Mono", monospace; font-size: .8rem;
               line-height: 1.5; margin: 2px 0; }
   /* brass still marks YOUR name (w68); the title is dimmer
@@ -272,7 +292,29 @@
   .sideName .mine { color: var(--brass); }
   .sideName .title { opacity: .65; }
   input.whoin { width: 9em; padding: 4px; font: inherit; }
-  select { font: inherit; padding: 4px; }
+  /* NATIVE CONTROLS JOIN THE PAGE (w95). The two dropdowns
+     rendered as iOS's own bright pills and were the last
+     unstyled things on a dark page; they now wear the same
+     surface, text and border as every other control.
+     appearance:none costs the native chevron, so a small
+     inline SVG one is drawn in - a data: URI, self-contained
+     (rule 3 is about fetching; nothing is fetched). Its
+     stroke duplicates --accent because a data URI cannot
+     read a variable; move them together. The CHECKBOX only
+     declares its checked colour - the unchecked square is
+     the OS's own drawing, not reachable without rebuilding
+     the control, and one native square is not worth that. */
+  select {
+    font: inherit; font-weight: 600;
+    padding: 8px 30px 8px 12px;
+    color: var(--accent);
+    background: var(--btn-bg)
+      url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2391bddf' stroke-width='1.5'/%3E%3C/svg%3E")
+      no-repeat right 10px center;
+    border: 1px solid var(--border); border-radius: 8px;
+    -webkit-appearance: none; appearance: none;
+  }
+  input[type="checkbox"] { accent-color: var(--button-on); }
   .row.opt { font-size: .85rem; color: var(--text); gap: 6px; }
   .row.opt label { display: flex; align-items: center; gap: 6px; }
 </style>
@@ -325,7 +367,7 @@
        their own pieces - instead of both wrapping underneath.
        The renderers only know the four inner ids. -->
   <div id="boardRow">
-    <canvas id="mini" width="768" height="768"></canvas>
+    <canvas id="mini" width="1152" height="1152"></canvas>
     <div id="boardSide">
       <div class="sideBlock" id="sideTop">
         <div class="sideClock" id="clockTop"></div>

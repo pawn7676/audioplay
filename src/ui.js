@@ -46,6 +46,7 @@
   // stylesheet's pair ever moves again, move them together.
   var BUTTON_OFF = "#242220";
   var BUTTON_ON = "#374528";
+  var BUTTON_TEXT_ON = "#e9e9e6";   /* = --bright, same law */
 
   // A lit button means that thing is currently ON, matching
   // the voice button. Called from renderButton so every
@@ -53,10 +54,10 @@
   function paintButton(el, on, offColor) {
     if (!el) return;
     el.style.background = on ? BUTTON_ON : BUTTON_OFF;
-    // pure white, the clock box's own (w94): the clock is the
-    // element read across a room, so its maximum-contrast
-    // white is the standard and every green wears it
-    el.style.color = on ? "#fff" : offColor;
+    // the clock box's own white (w94), softened with it at
+    // w95: one --bright for everything lit, and the clock is
+    // the standard the buttons follow
+    el.style.color = on ? BUTTON_TEXT_ON : offColor;
   }
 
   function renderButton() {

@@ -2736,3 +2736,43 @@ element this project reads at a glance across a room, so its
 maximum-contrast white is the standard and the buttons rise
 to it, not the other way down. The harness extends the w93
 drift check to the text colour, asked of a painted element.
+
+### w95
+
+ONE BRIGHT, A TICK BELOW WHITE, AND THE NATIVE CONTROLS JOIN
+THE PAGE. w94's pure #fff read as glaring on the device - the
+owner asked for "a tick down" - so the lit text everywhere is
+now --bright (#e9e9e6), one variable for the clock digits in
+all four box colours and the text on every green, with the JS
+painter's copy pinned by the harness as before. The same
+screenshot review found the last things on the page still
+wearing iOS's own colours: the two dropdowns (bright native
+pills) and the Rated checkbox. The dropdowns now wear the
+page's surface, text and border, with a small inline SVG
+chevron replacing the native one that appearance:none costs;
+the checkbox declares only its checked colour - its unchecked
+square is the OS's own drawing, and rebuilding a whole
+control to recolour one square is a bad trade, recorded here
+so it is not re-proposed lightly.
+
+### w96
+
+THE BOARD GROWS TO ITS ROOM, AND STOPS BEING CUT OFF. The
+360px cap predates touch play; with squares now tap targets
+the owner's 13-inch iPad showed a small board in a sea of
+margin, while the iPhone mini HELD SIDEWAYS showed the
+opposite failure - a square board capped only by WIDTH on a
+screen with less height than width, cut off below since the
+day the rail layout landed. One rule answers both: the cap is
+now min(560px, 85svh) - the owner's 560 where there is room,
+85% of the small viewport height where there is not, with a
+plain 560px fallback for browsers without svh. The canvas
+resolution grew with it (MINI_CELL 96 -> 144) so 560 CSS
+pixels on a retina screen stay sharp; the coordinate labels
+became cell-fractions that round to the old hand-tuned pixels
+at 96 exactly, and the harness derives its expected pixels
+from MINI_CELL instead of pinning the old resolution in
+literals. A size SETTING was considered and declined for now:
+the cap already adapts per device, and a setting is standing
+complexity to revisit only if one device genuinely wants two
+sizes.
