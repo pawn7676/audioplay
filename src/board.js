@@ -29,7 +29,12 @@
  */
 
 var mini = null, miniCtx = null;
-var MINI_CELL = 96, MINI_PX = MINI_CELL * 8;
+/* 96 until w96, when the DISPLAYED board grew from 360 to
+ * 560 CSS pixels: 96-cell art stretched over 560x2 device
+ * pixels goes soft, so the cell grew with it. Everything
+ * downstream - labels, halo, bakes - is CELL-relative, so
+ * this one number is the whole resolution. */
+var MINI_CELL = 144, MINI_PX = MINI_CELL * 8;
 var BOARD_FILES = "abcdefgh";
 
 var PIECE_ID = {
@@ -175,18 +180,27 @@ function renderMiniBoard() {
   // rightmost file. Each label is inked in its square's
   // opposite colour, so the number column keys off the RIGHT
   // edge's squares now that it lives there.
-  miniCtx.font = '600 20px Menlo, "SF Mono", monospace';
+  // sized and placed as FRACTIONS of the cell (w96): at the
+  // old 96 cell these round to exactly the hand-tuned 20px
+  // font and 6/25/17/5 offsets, so the look is unchanged and
+  // the next resolution bump costs nothing here.
+  miniCtx.font = "600 " + Math.round(MINI_CELL * 0.21) +
+                 'px Menlo, "SF Mono", monospace';
   miniCtx.textBaseline = "top";
   var flip = boardFlipped();
+  var padX = Math.round(MINI_CELL * 0.0625);
+  var letterY = MINI_PX - Math.round(MINI_CELL * 0.26);
+  var numberX = MINI_PX - Math.round(MINI_CELL * 0.177);
+  var padY = Math.round(MINI_CELL * 0.052);
   for (var f = 0; f < 8; f++) {
     miniCtx.fillStyle = sqClass(56 + f) === 0 ? "#b58863" : "#f0d9b5";
     miniCtx.fillText(BOARD_FILES[flip ? 7 - f : f],
-                     f * MINI_CELL + 6, MINI_PX - 25);
+                     f * MINI_CELL + padX, letterY);
   }
   for (var r = 0; r < 8; r++) {
     miniCtx.fillStyle = sqClass(r * 8 + 7) === 0 ? "#b58863" : "#f0d9b5";
     miniCtx.fillText(String(flip ? r + 1 : 8 - r),
-                     MINI_PX - 17, r * MINI_CELL + 5);
+                     numberX, r * MINI_CELL + padY);
   }
 }
 

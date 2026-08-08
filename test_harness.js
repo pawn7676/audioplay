@@ -4064,6 +4064,11 @@ const sleep = ms =>
   // colour in the source proves nothing about the square it
   // lands on, and the square arithmetic (grid, flip) is
   // exactly where this could quietly be wrong.
+  // coordinates derive from MINI_CELL (w96): the cell grew
+  // when the displayed board did, and pixel literals would
+  // have silently pinned the tests to the old resolution
+  const CELL = vm.runInContext("MINI_CELL", sandbox);
+  const CPX = CELL * 8;
   function paintsAt(x, y) {
     return getEl("mini")._paints.filter(p =>
       p.op === "fillRect" && p.args[0] === x && p.args[1] === y);
@@ -4085,10 +4090,10 @@ const sleep = ms =>
   `, sandbox);
   // d8 and h4 are both dark squares: the dark-square tint
   check("the moved-from square wears the dark last-move green",
-        fillsOf(288, 0).includes("#a8a23b"));
+        fillsOf(3 * CELL, 0).includes("#a8a23b"));
   check("so does the moved-to square",
-        fillsOf(672, 384).includes("#a8a23b"));
-  const e1fills = fillsOf(384, 672);
+        fillsOf(7 * CELL, 4 * CELL).includes("#a8a23b"));
+  const e1fills = fillsOf(4 * CELL, 7 * CELL);
   const isHalo = f => f && typeof f === "object" && f.stops &&
         f.stops.length === 4 && f.stops[0][1] === "rgb(255,0,0)" &&
         /rgba\(158,0,0,0\)/.test(f.stops[3][1]);
@@ -4106,7 +4111,7 @@ const sleep = ms =>
   getEl("mini")._paints.length = 0;
   vm.runInContext('api.myColor = "b"; renderMiniBoard();', sandbox);
   check("flipped, the halo follows the king to its flipped square",
-        fillsOf(288, 0).some(isHalo));
+        fillsOf(3 * CELL, 0).some(isHalo));
   // and a light-square last move, for the other tint: 1.e4
   getEl("mini")._paints.length = 0;
   vm.runInContext(`
@@ -4116,8 +4121,8 @@ const sleep = ms =>
     renderMiniBoard();
   `, sandbox);
   check("a light-square last move wears the light green",
-        fillsOf(384, 576).includes("#ccd069") &&
-        fillsOf(384, 384).includes("#ccd069"));
+        fillsOf(4 * CELL, 6 * CELL).includes("#ccd069") &&
+        fillsOf(4 * CELL, 4 * CELL).includes("#ccd069"));
   check("and no halo when nobody is in check",
         !getEl("mini")._paints.some(p => isHalo(p.fillStyle)));
 
@@ -4131,9 +4136,11 @@ const sleep = ms =>
   const texts = getEl("mini")._paints.filter(p => p.op === "fillText");
   const at = (s, x, y) => texts.some(p =>
     p.args[0] === s && p.args[1] === x && p.args[2] === y);
-  check("the a-file letter sits in a1's lower left", at("a", 6, 743));
+  const padX = Math.round(CELL * 0.0625), padY = Math.round(CELL * 0.052);
+  const letterY = CPX - Math.round(CELL * 0.26), numberX = CPX - Math.round(CELL * 0.177);
+  check("the a-file letter sits in a1's lower left", at("a", padX, letterY));
   check("the rank numbers sit in the right file's upper right",
-        at("8", 751, 5) && at("1", 751, 677));
+        at("8", numberX, padY) && at("1", numberX, 7 * CELL + padY));
   const ink = s => (texts.find(p => p.args[0] === s) || {}).fillStyle;
   check("each label is inked in its square's opposite colour",
         ink("a") === "#f0d9b5" && ink("b") === "#b58863" &&
@@ -4170,7 +4177,7 @@ const sleep = ms =>
   tap("e2");
   // e2 is a light square at grid (4,6) -> pixels (384,576)
   check("tapping your own piece paints the chosen-square tint",
-        fillsOf(384, 576).includes("#809668"));
+        fillsOf(4 * CELL, 6 * CELL).includes("#809668"));
   check("and plays nothing yet",
         vm.runInContext("api.moves.length", sandbox) === 0);
   getEl("mini")._paints.length = 0;
@@ -4303,11 +4310,12 @@ const sleep = ms =>
         cssBtnOn + ")",
         !!cssBtnOn &&
         vm.runInContext("BUTTON_ON", sandbox) === cssBtnOn);
-  // w94: same law for the text ON the green - the stylesheet
-  // says #fff (the clock box's white), and the JS painter
-  // must paint the same. Asked of a painted element.
+  // w94/w95: same law for the text ON the green - the
+  // stylesheet's rules point at --bright (the clock box's
+  // white, softened at w95), and the JS painter must paint
+  // that value. Asked of a painted element.
   const cssOnText = (fs.readFileSync("src/index.html", "utf8")
-    .match(/button\.on \{[^}]*color:\s*(#[0-9a-fA-F]{3,6})/) || [])[1];
+    .match(/--bright:\s*(#[0-9a-fA-F]{3,6})/) || [])[1];
   const paintedText = vm.runInContext(`
     (function () {
       var el = document.createElement("button");
