@@ -2567,3 +2567,30 @@ the digits alone, 62% white, chosen to stay readable on the
 darkest of the four boxes. w72's rule survives the mechanism
 change - red stays red through the opponent's move - and so
 does w81's: the dim belongs to the clock, never the names.
+
+### w88
+
+THE KEEP-ALIVE RESUME BACKS OFF. w63 taught the session
+holder to resume itself when the OS pauses it, and assumed
+the OS pauses once - Siri, a call - so one immediate retry
+was the whole answer. The owner's w87 logs showed the other
+case: iPadOS refusing continuously, on the plain speaker with
+no Bluetooth anywhere, and on that build the abort of a
+refused play() fires ANOTHER pause event, closing the loop -
+pause, play, abort, pause, at up to eighty-six log events a
+second, for minutes, surviving even the end of practice mode.
+The page's buttons died under it, which is what "something in
+the background is eating the whole iPad" turned out to be: a
+native play() per cycle, a log line per half-cycle, and with
+the log panel open each line rejoins and re-lays the whole
+three-thousand-line panel. The fix keeps w63 whole - the
+first pause of a streak still resumes immediately - and makes
+every re-pause inside a ten-second calm window wait its turn,
+doubling from a quarter second to an eight-second ceiling,
+one pending retry at a time, the streak logged at milestones
+(x2, x10, x100, x1000) instead of per cycle. A calm stretch
+resets the ladder, so the moment the OS relents the holder is
+back at full speed; a deliberate stop cancels the pending
+retry with it. WHY iPadOS refuses the session at all remains
+an open question for a future log - this entry settles how
+the page behaves while being refused, which is quietly.

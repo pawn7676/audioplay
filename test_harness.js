@@ -2185,6 +2185,55 @@ const sleep = ms =>
   check("an OS pause of the keep-alive is resumed", kaOut.os === 1);
   check("a deliberate stop is respected", kaOut.ours === 1);
 
+  // w88: an OS that RE-pauses the resumed holder meets a
+  // backoff, not a fight. The owner's log: pause -> play ->
+  // abort -> pause in a closed loop, ~86 log events a second
+  // for minutes, the page's buttons dead under it - and with
+  // the log panel open, every line rejoined and re-laid the
+  // whole 3000-line panel. The first pause of a streak must
+  // keep w63's immediate resume; every re-pause inside the
+  // calm window must wait its doubling turn, one pending
+  // retry at a time, milestones logged instead of cycles.
+  const kaStorm = vm.runInContext(`
+    (function () {
+      kaStreak = 0; kaPausedAt = 0;
+      clearTimeout(kaRetryTimer); kaRetryTimer = null;
+      startKeepAlive();
+      __kaPlays = 0;
+      keepAlive.play = function () { __kaPlays++; return Promise.resolve(); };
+      LOG.length = 0;
+      for (var i = 0; i < 500; i++) keepAlive.on_pause();
+      return { plays: __kaPlays,
+               lines: LOG.filter(function (l) {
+                 return l.indexOf("session holder") >= 0; }).length,
+               timerArmed: kaRetryTimer !== null };
+    })()
+  `, sandbox);
+  check("a 500-pause storm gets ONE immediate resume, not 500",
+        kaStorm.plays === 1);
+  check("and a handful of milestone log lines, not a flooded panel",
+        kaStorm.lines > 0 && kaStorm.lines <= 5);
+  check("and one armed retry waiting on the backoff",
+        kaStorm.timerArmed === true);
+  await sleep(1000);             // the REAL 250ms first rung, unscaled:
+                                 // sleep is scaled to .35, the rung is not
+  check("the backed-off retry does ask the OS again",
+        vm.runInContext("__kaPlays", sandbox) === 2 &&
+        vm.runInContext("kaRetryTimer", sandbox) === null);
+  // and OUR stop cancels a pending retry outright
+  const kaCancel = vm.runInContext(`
+    (function () {
+      keepAlive.on_pause();          /* streak continues: re-arms */
+      var armed = kaRetryTimer !== null;
+      stopKeepAlive();
+      return { armed: armed, after: kaRetryTimer === null };
+    })()
+  `, sandbox);
+  check("a deliberate stop cancels the pending retry too",
+        kaCancel.armed === true && kaCancel.after === true);
+  vm.runInContext("startKeepAlive();", sandbox);   /* leave it as found */
+  heard();
+
   // 125: a wake lock that resolves after exit is released, not
   // kept forever
   const lockOut = await vm.runInContext(`

@@ -2,6 +2,13 @@
 
   var keepAlive = null;
   var keepAliveWanted = false;   // w63: did WE stop it, or the OS?
+  // w88: the re-pause ladder - see the pause handler's note.
+  // A quiet stretch this long forgets the streak, so an
+  // isolated pause months of ticks later still resumes at
+  // full speed.
+  var KA_CALM_MS = 10000;
+  var KA_BASE_MS = 250, KA_MAX_MS = 8000;
+  var kaPausedAt = 0, kaStreak = 0, kaRetryTimer = null;
   // A WebAudio oscillator does not hold the iOS audio
   // session; a PLAYING media element does. Without one, iOS
   // tears the session down between utterances and the next
@@ -70,12 +77,53 @@
         // repeatLast. If the pause was not OURS, ask to play
         // again; a refusal is logged and the next user gesture
         // still heals it, as before.
+        //
+        // AND THE ASKING MUST BACK OFF (w88). w63 assumed the
+        // OS pauses ONCE; the owner's iPad showed it refusing
+        // CONTINUOUSLY, and on that build the abort of a
+        // refused play() fires another pause event - which
+        // made this handler a closed loop: pause -> play ->
+        // abort -> pause, up to eighty-six log events a
+        // second, for minutes, on the speaker with no
+        // Bluetooth anywhere. The page's buttons died under
+        // it: each cycle burned a native play() plus a log
+        // line, and with the log panel open every line
+        // rejoins and re-lays the whole three-thousand-line
+        // panel. So: the FIRST pause of a streak still
+        // resumes immediately - the Siri case is untouched -
+        // but a RE-pause inside KA_CALM_MS waits, doubling
+        // from KA_BASE_MS to a KA_MAX_MS ceiling, one pending
+        // retry at a time, and the streak is narrated at
+        // milestones instead of per cycle. A calm stretch
+        // resets the ladder, so recovery is automatic the
+        // moment the OS relents.
         keepAlive.addEventListener("pause", function () {
           if (!keepAliveWanted) return;
-          log("AUD", "session holder paused externally - resuming");
-          keepAlive.play().catch(function (e) {
-            log("AUD", "resume blocked: " + e.message);
-          });
+          var now = Date.now();
+          if (now - kaPausedAt > KA_CALM_MS) kaStreak = 0;
+          kaPausedAt = now;
+          kaStreak++;
+          if (kaStreak === 1) {
+            log("AUD", "session holder paused externally - resuming");
+            keepAlive.play().catch(function (e) {
+              log("AUD", "resume blocked: " + e.message);
+            });
+            return;
+          }
+          if (kaStreak === 2 || kaStreak === 10 || kaStreak === 100 ||
+              kaStreak === 1000) {
+            log("AUD", "session holder re-paused x" + kaStreak +
+                " - backing off");
+          }
+          if (kaRetryTimer) return;    /* one pending retry at a time */
+          var wait = Math.min(KA_BASE_MS * Math.pow(2, kaStreak - 2),
+                              KA_MAX_MS);
+          kaRetryTimer = setTimeout(function () {
+            kaRetryTimer = null;
+            if (!keepAliveWanted) return;
+            /* refusals inside a streak are counted, not logged */
+            keepAlive.play().catch(function () {});
+          }, wait);
         });
         document.body.appendChild(keepAlive);
         log("AUD", "audio session holder created");
@@ -98,6 +146,8 @@
 
   function stopKeepAlive() {
     keepAliveWanted = false;      /* w63: OUR pause, not the OS's */
+    clearTimeout(kaRetryTimer);   /* w88: and no retry outlives us */
+    kaRetryTimer = null;
     try { if (keepAlive) keepAlive.pause(); } catch (e) {}
   }
 
