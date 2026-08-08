@@ -3851,6 +3851,24 @@ const sleep = ms =>
         fillsOf(384, 384).includes("#ccd069"));
   check("and no halo when nobody is in check",
         !getEl("mini")._paints.some(p => isHalo(p.fillStyle)));
+
+  // ---- w80: the coordinates sit where Lichess sits them ----
+  // letters in the lower LEFT of the bottom rank, numbers in
+  // the upper RIGHT of the rightmost file — asked of the same
+  // recorded paints (still the unflipped 1.e4 render), because
+  // the labels' contrast colour keys off the squares they sit
+  // on, and moving the numbers across the board is exactly the
+  // kind of change that could leave that keyed to the old edge.
+  const texts = getEl("mini")._paints.filter(p => p.op === "fillText");
+  const at = (s, x, y) => texts.some(p =>
+    p.args[0] === s && p.args[1] === x && p.args[2] === y);
+  check("the a-file letter sits in a1's lower left", at("a", 6, 743));
+  check("the rank numbers sit in the right file's upper right",
+        at("8", 751, 5) && at("1", 751, 677));
+  const ink = s => (texts.find(p => p.args[0] === s) || {}).fillStyle;
+  check("each label is inked in its square's opposite colour",
+        ink("a") === "#f0d9b5" && ink("b") === "#b58863" &&
+        ink("8") === "#f0d9b5" && ink("7") === "#b58863");
   vm.runInContext(
     "api.pos = new RULES.Position(); api.moves = [];", sandbox);
 

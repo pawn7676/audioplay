@@ -2403,3 +2403,18 @@ canvas on faith to hold them there: the context stub now records
 its paints, so the tests ask which fill actually landed on d8, on
 h4, on the checked e1 - flipped and unflipped, because the halo
 goes through the same grid arithmetic that orientation bends.
+
+### w80
+
+THE COORDINATES MOVED INTO LICHESS'S CORNERS. w79 matched the
+site's colours and the owner immediately saw the one thing left
+unmatched: BoardEye had parked the letters in the bottom rank's
+lower-right and the numbers down the LEFT edge, where Lichess
+writes letters lower-left and numbers up the RIGHT edge, upper
+corner. Same reason as w79 - one colour language, one geography,
+no translating between this board and the site's. The subtlety
+worth a test: each label is inked in its square's opposite
+colour, and the number column's contrast was keyed to the left
+edge's squares. Moved without re-keying, every number would sit
+on its square's OWN colour and vanish - so the harness asks the
+recorded paints where each glyph landed and what ink it wore.

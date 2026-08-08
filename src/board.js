@@ -164,19 +164,23 @@ function renderMiniBoard() {
       if (art) miniCtx.drawImage(art, x, y);
     }
   }
-  // coordinates in the board's own corners, BoardEye-style
+  // coordinates where Lichess puts them: letters in the lower
+  // LEFT of the bottom rank, numbers in the upper RIGHT of the
+  // rightmost file. Each label is inked in its square's
+  // opposite colour, so the number column keys off the RIGHT
+  // edge's squares now that it lives there.
   miniCtx.font = '600 20px Menlo, "SF Mono", monospace';
   miniCtx.textBaseline = "top";
   var flip = boardFlipped();
   for (var f = 0; f < 8; f++) {
     miniCtx.fillStyle = sqClass(56 + f) === 0 ? "#b58863" : "#f0d9b5";
     miniCtx.fillText(BOARD_FILES[flip ? 7 - f : f],
-                     f * MINI_CELL + MINI_CELL - 17, MINI_PX - 25);
+                     f * MINI_CELL + 6, MINI_PX - 25);
   }
   for (var r = 0; r < 8; r++) {
-    miniCtx.fillStyle = sqClass(r * 8) === 0 ? "#b58863" : "#f0d9b5";
-    miniCtx.fillText(String(flip ? r + 1 : 8 - r), 6,
-                     r * MINI_CELL + 5);
+    miniCtx.fillStyle = sqClass(r * 8 + 7) === 0 ? "#b58863" : "#f0d9b5";
+    miniCtx.fillText(String(flip ? r + 1 : 8 - r),
+                     MINI_PX - 17, r * MINI_CELL + 5);
   }
 }
 
