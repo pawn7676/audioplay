@@ -185,7 +185,19 @@
   #boardRow { display: flex; flex-wrap: wrap; gap: 16px;
               align-items: stretch; justify-content: center; }
   #boardRow #mini { margin: 0; flex: 0 1 360px; }
-  #boardSide { flex: 1 1 150px; min-width: 150px; max-width: 260px;
+  /* THE RAIL IS AS WIDE AS WHAT IS IN IT (w82). It used to
+     grow (flex 1 1 150px, capped at 260), and the centred row
+     above centred board-plus-GROWN-rail - whose right third
+     was empty, since the clocks hug the rail's left edge. The
+     visible cluster landed left of centre: board almost on the
+     panel's edge, a wide blank right of the clocks. Sized to
+     its content, the block the row centres IS what the eye
+     sees, so the board's left edge and the clocks' right edge
+     sit about the same distance in from the panel's sides.
+     The cap stays, so a marathon username cannot squeeze the
+     board; min-width keeps the wrap threshold where the 600px
+     media query below expects it. */
+  #boardSide { flex: 0 1 auto; min-width: 150px; max-width: 260px;
                display: flex; flex-direction: column;
                justify-content: center; }
   .sideBlock { display: flex; flex-direction: column; }

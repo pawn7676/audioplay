@@ -769,6 +769,15 @@ const sleep = ms =>
         !/\.sideName [^{]*\.idle/.test(tmplBoard));
   check("and the rating has no fade of its own",
         !/\.sideName \.rating/.test(tmplBoard));
+  // w82: the centred row must centre what the eye sees. The
+  // rail grew once (flex 1 1) and its empty growth counted in
+  // the centring, shoving the visible board-and-clocks cluster
+  // left of centre. Read from the rules' own text, as w73's
+  // checks are: the row centres, and the rail takes only its
+  // content's width.
+  check("the row centres a rail no wider than its content",
+        /#boardRow\s*\{[^}]*justify-content:\s*center/.test(tmplBoard) &&
+        /#boardSide\s*\{[^}]*flex:\s*0 1 auto/.test(tmplBoard));
   check("and it wraps under the board rather than squeezing it",
         /#boardRow\s*\{[^}]*flex-wrap:\s*wrap/.test(tmplBoard));
   // w73: on a narrow screen the clocks SPLIT around the board,

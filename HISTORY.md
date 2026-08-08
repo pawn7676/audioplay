@@ -2444,3 +2444,21 @@ ensureStream, which leaves a stream alone while bytes have
 arrived inside Lichess's keep-alive cadence and restarts only
 one that has actually gone quiet - which is the case w50 was
 written for, and it still works.
+
+### w82
+
+THE BOARD SAT LEFT OF WHERE IT LOOKED CENTRED. The owner
+noticed it from a screenshot: the board nearly touching the
+Board panel's left edge, a wide blank to the right of the
+clocks. #boardRow centres its contents, and had since w70 - but
+the rail was allowed to GROW to its 260px cap while the clocks
+inside it hug its left edge, so the row centred a block whose
+right third was invisible. What the eye takes for the thing
+being centred is the board through the clock boxes; what the
+browser was centring was that plus the rail's empty growth. The
+rail now takes only its content's width and the two agree: the
+board's left edge and the clocks' right edge sit about the same
+distance in from the panel's sides, which is the shape the owner
+asked for in as many words. The cap stays against marathon
+usernames; the min-width keeps the wrap threshold where the
+portrait media query expects it.
