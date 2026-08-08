@@ -61,16 +61,21 @@
     --surface: #1f1d1a;
     --border:  #3a3530;
     --accent:  #91bddf;
-    --green:   #7cb444;
-    --red:     #f34335;
     --text:    #888888;
     --btn-bg:  #242220;
-    /* the same green as the running clock box (w92): every
-       green thing on the page - Listening, Practice, the
-       signed-in account, a picked time control, the active
-       clock - now means "on" in one colour, the one measured
-       from Lichess's own clock at w87 */
-    --button-on: #374528;
+    /* THE CONTROLS' GREEN, AND THE CLOCK'S IS NOT IT (w101).
+       w92 gave every green on the page the clock box's
+       measured #374528, reasoning that one colour should mean
+       "on" everywhere. Lived with, it read drab - and it is:
+       of every green this project has used, that one is the
+       darkest, and Lichess itself puts that colour ONLY on
+       its clock. So the pre-w92 button green comes back, 60%
+       brighter and the livelier for it, and the clock keeps
+       its own measured value (which it never took from here -
+       the .cbox rules carry their four literals directly, so
+       this variable moves alone). ui.js paints the same value
+       from BUTTON_ON; the harness pins the pair together. */
+    --button-on: #3a5a2a;
     /* the ONE white for everything lit (w95): clock digits in
        all four box colours, and the text on every green
        button. Landed at #f2f2ef on the second try (w97):
@@ -81,7 +86,13 @@
     --bright:  #f2f2ef;
     --warn:    #d0a24c;
     --dim:     #6b6b6b;
-    --ok: var(--green); --bad: var(--red); --brass: var(--accent);
+    /* --brass marks YOUR name in the player rail. It sat here
+       beside --ok and --bad, and those two - with the --green
+       and --red they aliased - were dead the whole time:
+       copied in with reference/'s palette at the w20 rebuild
+       and never once referenced by a rule or a line of JS.
+       Deleted at w101; the repo does not keep fossils. */
+    --brass: var(--accent);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body {
