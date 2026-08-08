@@ -2817,3 +2817,22 @@ own blue - the right idea in the wrong hex - and the accent
 is already the page's colour for actionable things. The
 unchecked square remains the OS's drawing, as recorded at
 w97.
+
+### w99
+
+THE RATED CHECKBOX IS A DROPDOWN, because the fourth try at
+dressing it was the charm of realising the control was the
+problem. w95 checked it green (not loved), w97 went native
+(iOS's blue, off-palette), w98 tinted it the page's accent -
+and the owner's screenshot showed a white checkmark on light
+blue, no contrast, because with accent-color the checkmark's
+colour is the browser's choice, not ours. Most of a checkbox
+is the OS's to paint; a two-option select is entirely ours,
+wears the select dress like everything beside it, and says it
+in Lichess's own words - Rated, Casual. It also gains what
+the checkbox never had and the owner asked for in the same
+breath: persistence, on the same localStorage pattern as the
+opponent row, restored through wireRated() so the harness can
+drive the return visit (w37's lesson). Casual unless the
+stored value says exactly "rated" - a missing or junk key
+must never quietly rate a game.
