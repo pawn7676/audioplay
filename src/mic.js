@@ -47,6 +47,32 @@
       log("MIC", "listening (cycle " + micCycles + ")" +
           (MIC_ALWAYS_ON ? "" : " switching"));
     };
+    // THE WEDGE IS OTHERWISE INVISIBLE (w91). The w90 log
+    // showed "listening (cycle 1)" and then nothing at all -
+    // no result, no error, no end - while spoken moves went
+    // unheard. A recognizer in that state fires none of the
+    // handlers below, so nothing could say WHERE voice died:
+    // no audio reaching it is a different disease from audio
+    // arriving and nothing recognised, and the two point at
+    // different culprits (the audio session vs the service).
+    // These lifecycle lines are the difference, at most one
+    // apiece per cycle. A healthy start shows "audio route
+    // open" within a moment of "listening"; its absence in a
+    // pasted log is the diagnosis.
+    var sawSound = false, sawSpeech = false;
+    recognition.onaudiostart = function () {
+      log("MIC", "audio route open");
+    };
+    recognition.onsoundstart = function () {
+      if (sawSound) return;
+      sawSound = true;
+      log("MIC", "sound reaching the recogniser");
+    };
+    recognition.onspeechstart = function () {
+      if (sawSpeech) return;
+      sawSpeech = true;
+      log("MIC", "speech detected");
+    };
     recognition.onresult = function (ev) {
       var res = ev.results[ev.results.length - 1];
       if (!res) return;
@@ -102,6 +128,32 @@
     restartTimer = setTimeout(function () {
       if (running && !speaking && !listening) startListening();
     }, ms);
+  }
+
+  /* DECLARE THE SESSION instead of letting Safari guess
+   * (w89; removed with the keep-alive at w90; RESTORED at
+   * w91, and moved here because it is MIC code, not
+   * keep-alive code). "play-and-record" is the web's version
+   * of the AVAudioSession category a native mic-and-speaker
+   * app names, and this page is exactly that: mic open,
+   * synthesizer speaking. It rode out in w90 only because it
+   * lived in the deleted file - and w90, the one build since
+   * the iPad trouble began with neither a declared session
+   * nor a session-holding element, is also the build where
+   * spoken moves went unheard. Suspicion, not proof; the
+   * lifecycle lines above are what will tell either way. A
+   * condition to DETECT, never the shape of the world:
+   * browsers without the API get a log line and nothing
+   * else. */
+  function declareAudioSession() {
+    try {
+      if (navigator.audioSession && "type" in navigator.audioSession) {
+        navigator.audioSession.type = "play-and-record";
+        log("AUD", "audio session declared play-and-record");
+      } else {
+        log("AUD", "no audio session API on this browser");
+      }
+    } catch (e) { log("AUD", "audio session declare failed: " + e.message); }
   }
 
   function pauseMic() {
