@@ -4275,9 +4275,16 @@ const sleep = ms =>
   check("a tap with the mic closed is still a practice move, not a POST",
         vm.runInContext("api.moves.join()", sandbox) === "e2e4" &&
         vm.runInContext("__fetches", sandbox) === 0);
+  heard();
   vm.runInContext("bigBtn.on_click();", sandbox);   /* voice back ON */
   check("voice back on leaves practice standing too",
         vm.runInContext("dryRun === true && running === true", sandbox));
+  // w92: mid-practice, voice-on says "voice on" - not the
+  // sign-in ask, which assumes a real game is coming and is a
+  // non-sequitur beside a practice board that needs no token
+  const backOn = heard().join(" | ");
+  check("and says voice on, not the sign-in ask (" + backOn + ")",
+        /voice on/i.test(backOn) && !/sign in/i.test(backOn));
   vm.runInContext("fetch = __realFetchW90;", sandbox);
   heard();
 
