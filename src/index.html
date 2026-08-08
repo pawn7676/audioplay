@@ -73,11 +73,12 @@
     --button-on: #374528;
     /* the ONE white for everything lit (w95): clock digits in
        all four box colours, and the text on every green
-       button. A tick below pure #fff at the owner's ask -
-       full white read as glaring next to the softened page.
-       ui.js paints the same value from BUTTON_TEXT_ON; the
-       harness pins the pair together. */
-    --bright:  #e9e9e6;
+       button. Landed at #f2f2ef on the second try (w97):
+       pure #fff read as glaring on the device, the first
+       correction #e9e9e6 as dingy, and the owner split the
+       difference. ui.js paints the same value from
+       BUTTON_TEXT_ON; the harness pins the pair together. */
+    --bright:  #f2f2ef;
     --warn:    #d0a24c;
     --dim:     #6b6b6b;
     --ok: var(--green); --bad: var(--red); --brass: var(--accent);
@@ -286,7 +287,7 @@
   .sideClock .cbox.low.idle { background: #4e2c28; }
   /* the same --bright, at 62%: keep the rgb triplet in step
      with the variable above if it ever moves */
-  .sideClock .cbox.idle { color: rgba(233,233,230,.62); }
+  .sideClock .cbox.idle { color: rgba(242,242,239,.62); }
   .sideName { font-family: Menlo, "SF Mono", monospace; font-size: .8rem;
               line-height: 1.5; margin: 2px 0; }
   /* brass still marks YOUR name (w68); the title is dimmer
@@ -296,7 +297,20 @@
      the name, and it is part of who you are playing. */
   .sideName .mine { color: var(--brass); }
   .sideName .title { opacity: .65; }
-  input.whoin { width: 9em; padding: 4px; font: inherit; }
+  /* THE NAME BOX IS A CONTROL LIKE THE ONES BESIDE IT (w97).
+     It only appears when the Opponent dropdown says "someone
+     else" - the second-use path where unstyled things hide -
+     and it surfaced as iOS's bright native input in a row of
+     dark controls. Dressed exactly as #timeCustom above: the
+     same box-you-type-in idea, so the same clothes. */
+  input.whoin {
+    width: 9em; font: inherit; font-weight: 600;
+    padding: 8px 12px; border-radius: 8px;
+    background: var(--btn-bg); color: var(--accent);
+    border: 1px solid var(--border);
+    -webkit-appearance: none; appearance: none;
+  }
+  input.whoin::placeholder { color: var(--dim); font-weight: 600; }
   /* NATIVE CONTROLS JOIN THE PAGE (w95). The two dropdowns
      rendered as iOS's own bright pills and were the last
      unstyled things on a dark page; they now wear the same
@@ -305,10 +319,12 @@
      inline SVG one is drawn in - a data: URI, self-contained
      (rule 3 is about fetching; nothing is fetched). Its
      stroke duplicates --accent because a data URI cannot
-     read a variable; move them together. The CHECKBOX only
-     declares its checked colour - the unchecked square is
-     the OS's own drawing, not reachable without rebuilding
-     the control, and one native square is not worth that. */
+     read a variable; move them together. The CHECKBOX is
+     left entirely native (w97): a green checked-state was
+     tried at w95 and the owner didn't love it, and its
+     unchecked square is the OS's own drawing anyway - not
+     reachable without rebuilding the control, and one small
+     square is not worth that. */
   select {
     font: inherit; font-weight: 600;
     padding: 8px 30px 8px 12px;
@@ -319,7 +335,6 @@
     border: 1px solid var(--border); border-radius: 8px;
     -webkit-appearance: none; appearance: none;
   }
-  input[type="checkbox"] { accent-color: var(--button-on); }
   .row.opt { font-size: .85rem; color: var(--text); gap: 6px; }
   .row.opt label { display: flex; align-items: center; gap: 6px; }
 </style>

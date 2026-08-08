@@ -2776,3 +2776,29 @@ literals. A size SETTING was considered and declined for now:
 the cap already adapts per device, and a setting is standing
 complexity to revisit only if one device genuinely wants two
 sizes.
+
+### w97
+
+THE w96 SIZES AND COLOURS, CORRECTED BY THE DEVICE - four
+screenshots' worth, and the owner stopped the first fix
+mid-build to settle it in one conversation instead of a
+volley of versions. The board: 560 was never seen as 560,
+because it broke the row first - the body is 760 wide, the
+board row offers 712, and 560 plus the rail's up-to-260
+overflows it, so flex wrapped the rail and dumped the clocks
+under the board. The new cap is DERIVED, not chosen: 712
+minus the 16 gap minus the rail's 260 maximum is 436, floored
+to 430, the widest board at which the rail provably cannot
+wrap. Sideways phones rise from 85 to 92svh - a fully visible
+square board on an iPhone mini held sideways tops out near
+310px and that is physics, not policy. The white: #fff was
+glaring (w94), #e9e9e6 dingy (w95), and the owner split the
+difference at #f2f2ef - still ONE variable, still pinned to
+the JS painter by the harness. The dropdowns keep their w95
+dark-with-blue dress by the owner's word, and the "lichess
+name" box - which only appears once "someone else" is picked,
+the second-use path where unstyled things hide - joins them,
+dressed exactly as the custom time box: the same
+box-you-type-in idea, the same clothes. The checkbox goes
+back to fully native: the w95 green checkmark was tried and
+not loved, and its unchecked square was never ours to paint.
