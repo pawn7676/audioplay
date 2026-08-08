@@ -106,8 +106,12 @@
    *  that does not matter and let it absorb the loss:
    *  "move", "play", "please", "okay", "um" are ignored.
    *
-   *  COMMANDS: "repeat" (or "say again"), "clock" (or
-   *  "time"), "flip clock", "cancel", "memo ...".
+   *  COMMANDS: "repeat" (or "say again"), "flip clock",
+   *  "cancel", "memo ...". Bare "clock" spoke the remaining
+   *  times until w100; clock mode's large digits are the
+   *  across-the-room answer now, and retiring the command
+   *  freed "clock", "time" and "timer" from being bare
+   *  trigger words next to an always-open mic.
    *  QUESTIONS: "whose turn", "what is on foxtrot three",
    *  "where are the knights", and the like.
    *
@@ -214,9 +218,9 @@
   // "flip clock" (or "swap clocks", "switch the clock")
   // swaps which side of the screen your clock is on. As
   // strict as its neighbors: a flip word AND a clock word,
-  // and any other content word disqualifies. It cannot
-  // collide with bare "clock", which needs no other content
-  // word at all.
+  // and any other content word disqualifies. (Bare "clock",
+  // which this once had to avoid colliding with, retired at
+  // w100 - the flip is the one thing CLOCK_WORDS serve now.)
   function classifyFlipClock(raw) {
     var toks = wordsOf(raw);
     var flip = 0, clk = 0, other = 0;
@@ -231,14 +235,13 @@
 
   function classifyCommand(raw) {
     var toks = wordsOf(raw);
-    var yes = 0, no = 0, cancel = 0, repeat = 0, clock = 0,
+    var yes = 0, no = 0, cancel = 0, repeat = 0,
         resign = 0, draw = 0, other = 0;
     toks.forEach(function (t) {
       if (YES_WORDS[t]) yes++;
       else if (NO_WORDS[t]) no++;
       else if (CANCEL_WORDS[t]) cancel++;
       else if (REPEAT_WORDS[t]) repeat++;
-      else if (CLOCK_WORDS[t]) clock++;
       else if (RESIGN_WORDS[t]) resign++;
       else if (DRAW_WORDS[t]) draw++;
       else if (t === "offer" || t === "offers") { /* neutral */ }
@@ -249,7 +252,6 @@
     if (draw && !other) return "draw";
     if (yes && !no && !other) return "yes";
     if (no && !yes && !other) return "no";
-    if (clock && !other) return "clock";
     if (repeat && !other) return "repeat";
     return null;
   }

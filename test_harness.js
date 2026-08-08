@@ -2856,11 +2856,18 @@ const sleep = ms =>
     api.wtime = 600000; api.btime = 60000;
     api.clockAt = Date.now() - 15000;    // black thinking 15s
   `, sandbox);
+  // w100 retired the spoken clock query - the overlay's large
+  // digits are the across-the-room answer - so bare "clock"
+  // must now land as STRAY TALK: no answer, and no move played
+  // out of it either. "flip clock" keeps working and has its
+  // own test above.
   say("clock");
   await sleep(80);
   const clkSaid = heard().join(" | ");
-  check("the opponent's clock is spoken extrapolated (" + clkSaid + ")",
-        /black 4[0-5] seconds/i.test(clkSaid));
+  check("bare clock is stray talk now, not a command (" +
+        (clkSaid || "silence") + ")", clkSaid === "");
+  check("and it moved nothing",
+        vm.runInContext("api.moves.length", sandbox) === 3);
   vm.runInContext("api.clockAt = null; dryRun = true;", sandbox);
 
   // 104: the glance board repaints when the colour is learned
@@ -3342,7 +3349,9 @@ const sleep = ms =>
   check("playing black, our clock lands on black (" + pollClocks + ")",
         vm.runInContext("api.btime", sandbox) === 90000);
   // the endpoint does not carry the opponent's clock, so the
-  // honest answer is "unknown" - which speakClocks already says
+  // honest value is null - the overlay shows a blank, never a
+  // wrong number (the spoken query that once said "unknown"
+  // retired at w100)
   check("and the clock it cannot know stays unset, not wrong",
         vm.runInContext("api.wtime", sandbox) === null);
 

@@ -34,7 +34,10 @@
    *  path out of here speaks, including the refusals, the
    *  busy path and the failures. Two deliberate exceptions are
    *  documented where they live: stray talk on the opponent's
-   *  clock, and a filler-only utterance.
+   *  clock, and a filler-only utterance. (A third joined them
+   *  at w100: bare "clock"/"time" is stray talk now, not a
+   *  command - the overlay's large digits answer that question
+   *  and the words are too common near an open mic.)
    *
    *  THE REPAIR CHAIN is an ordered list of named repairs, each
    *  stating its own constraint, tried in order until one can
@@ -403,44 +406,6 @@
     }
   }
 
-  // "black 5 15. white 6 35." — own clock first, minutes
-  // then seconds, no unit words (v65, was "black has 5
-  // minutes 15 seconds"). Seconds under ten are spoken with
-  // "oh" so 5:06 is "5 oh 6", not "5 6" which sounds like
-  // 56. Under a minute the minutes are dropped and the unit
-  // returns: "black 53 seconds." An exact minute count does
-  // the same the other way: "black 10 minutes", since v66 —
-  // 10:00 came out as the nonsense "10 oh 0". Seconds are
-  // FLOORED since v67: rounding spoke one second ahead of
-  // the screen (game4 note, 19:02:38), because Lichess
-  // truncates — 34:07.6 shows as 34:07 and must be spoken
-  // as "34 oh 7", not "34 oh 8".
-  function speakClocks() {
-    function fmt(ms) {
-      if (ms == null) return null;
-      var s = Math.max(0, Math.floor(ms / 1000));
-      var m = Math.floor(s / 60);
-      s = s % 60;
-      if (!m) return s + (s === 1 ? " second" : " seconds");
-      if (!s) return m + (m === 1 ? " minute" : " minutes");
-      return m + " " + (s < 10 ? "oh " + s : s);
-    }
-    var mine = fmt(myRemainingMs());
-    // EXTRAPOLATED LIKE MINE (w60). This read the opponent's
-    // raw base value, so asking "clock" during their think -
-    // exactly when you would ask - reported their time as of
-    // the LAST server event, overstating it by their whole
-    // think so far. remainingMs already knows how to do both
-    // colours; the overlay has always used it for both. Found
-    // independently by two reviewers, which is what a fault at
-    // a seam deserves.
-    var theirs = fmt(remainingMs(api.myColor === "w" ? "b" : "w"));
-    if (mine || theirs) {
-      speak(colorWord(api.myColor) + " " + (mine || "unknown") + ". " +
-            colorWord(api.myColor === "w" ? "b" : "w") + " " +
-            (theirs || "unknown") + ".");
-    } else speak("No clock information.");
-  }
 
   // The moves matching a one-word answer to an outstanding
   // piece question, or null if this is not one (v92). A
@@ -937,7 +902,6 @@
 
     if (cmd === "repeat") { repeatLast(); return; }
     if (classifyFlipClock(primary)) { flipClockSides(); return; }
-    if (cmd === "clock") { speakClocks(); return; }
 
     /* Questions about the position work on either side's clock */
     var q = classifyQuery(primary);

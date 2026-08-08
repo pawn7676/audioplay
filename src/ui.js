@@ -246,12 +246,15 @@
           "text-transform:uppercase;"
         : "color:#c9c2b8;font-size:13px;";
       var pill = document.createElement("button");
+      // weight 600 to match every other button label (w100):
+      // the pills inherited the body's regular weight and
+      // read thinner than the row of buttons above them
       pill.style.cssText =
         "font-size:11px;min-width:52px;padding:5px 0;" +
         "text-align:center;border-radius:10px;" +
-        "border:1px solid #3a3530;";
+        "font-weight:600;border:1px solid #3a3530;";
       var paint = function () {
-        pill.textContent = CFG[key] ? "on" : "off";
+        pill.textContent = CFG[key] ? "ON" : "OFF";
         paintButton(pill, CFG[key], "#91bddf");
       };
       pill.addEventListener("click", function () {
