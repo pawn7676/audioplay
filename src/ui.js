@@ -42,10 +42,13 @@
   // this constant kept the old #3a5a2a, so the settings pills
   // and the open-settings button wore last week's green until
   // the owner saw it in a screenshot within the hour (w93).
-  // These two lines are the shared-UI's paint pots; if the
-  // stylesheet's pair ever moves again, move them together.
+  // These lines are the shared-UI's paint pots; if the
+  // stylesheet's values ever move again, move them together -
+  // and they DID move again at w101, back to the very
+  // #3a5a2a named above, this time on both sides at once and
+  // with the harness comparing the two files.
   var BUTTON_OFF = "#242220";
-  var BUTTON_ON = "#374528";
+  var BUTTON_ON = "#3a5a2a";        /* w101: back off the clock's green */
   var BUTTON_TEXT_ON = "#f2f2ef";   /* = --bright, same law */
 
   // A lit button means that thing is currently ON, matching

@@ -2860,3 +2860,30 @@ the third documented exception to constraint 5, beside the
 other stray talk it now is. And the settings pills say ON and
 OFF at weight 600 - they inherited the body's regular weight
 and read thinner than every button above them.
+
+### w101
+
+THE CONTROLS TAKE THEIR GREEN BACK, AND THE CLOCK KEEPS ITS
+OWN. w92 unified every green on the page onto the clock box's
+measured #374528, on the reasoning that one colour should
+mean "on" everywhere. Nine versions of living with it said
+otherwise: it reads drab, and measurably so - of every green
+this project has used it is the darkest, and Lichess itself
+puts that value ONLY on its clock, exactly the split w92
+collapsed. So the pre-w92 button green returns, 60% brighter
+at the same hue family and 6.9:1 against the --bright text,
+while the clock keeps its four measured literals. The two
+were never coupled in the first place: the .cbox rules carry
+their colours directly, so --button-on moves alone - which is
+why this is a two-value change (the stylesheet's variable and
+ui.js's pinned copy) rather than a hunt. A brighter #578E1F
+was floated and rejected on sight as too much.
+
+Swept in the same pass, at the owner's word that fossils are
+not kept: --green (#7cb444), --red (#f34335) and their --ok
+and --bad aliases are deleted. They were copied in with
+reference/'s palette at the w20 rebuild and never referenced
+by a single rule or line of JS in the life of this page -
+each variable's one apparent "use" was feeding its own unused
+alias. --brass survives that block because it is real: it
+marks YOUR name in the player rail.
