@@ -53,7 +53,10 @@
   function paintButton(el, on, offColor) {
     if (!el) return;
     el.style.background = on ? BUTTON_ON : BUTTON_OFF;
-    el.style.color = on ? "#e6efe0" : offColor;
+    // pure white, the clock box's own (w94): the clock is the
+    // element read across a room, so its maximum-contrast
+    // white is the standard and every green wears it
+    el.style.color = on ? "#fff" : offColor;
   }
 
   function renderButton() {

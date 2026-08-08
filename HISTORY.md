@@ -2724,3 +2724,15 @@ the two sources directly - a source-text check made on
 purpose, this once, because the stub DOM computes no styles
 and the invariant IS that two constants in two files are one
 value.
+
+### w94
+
+ONE WHITE ON EVERY GREEN. w92-w93 unified the green; the
+owner then saw that the text on it was still two whites - the
+clock box's pure #fff and the buttons' softer #e6efe0, in
+three stylesheet rules and once more in the JS painter. Pure
+white won, and the direction matters: the clock is the
+element this project reads at a glance across a room, so its
+maximum-contrast white is the standard and the buttons rise
+to it, not the other way down. The harness extends the w93
+drift check to the text colour, asked of a painted element.
