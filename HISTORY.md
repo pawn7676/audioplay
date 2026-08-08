@@ -2802,3 +2802,18 @@ dressed exactly as the custom time box: the same
 box-you-type-in idea, the same clothes. The checkbox goes
 back to fully native: the w95 green checkmark was tried and
 not loved, and its unchecked square was never ours to paint.
+
+### w98
+
+SENTENCE CASE IN THE DROPDOWNS, AND THE CHECKBOX FINDS ITS
+BLUE. The option labels capitalise their first word - Someone
+else, Random, White, Black, and the Lichess name placeholder
+- except the maia entries, which are a product's own
+lowercase name and keep it. Labels only: the value attributes
+the code reads are untouched. And the checkbox's checked
+state, after three tries, lands on the page's accent blue:
+w95's green was not loved, w97's native state showed iOS's
+own blue - the right idea in the wrong hex - and the accent
+is already the page's colour for actionable things. The
+unchecked square remains the OS's drawing, as recorded at
+w97.
