@@ -30,6 +30,7 @@ mic.js
 keepalive.js
 lichess.js
 board.js
+touch.js
 ui.js
 rules.js
 clock.js

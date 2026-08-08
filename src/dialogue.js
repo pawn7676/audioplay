@@ -199,7 +199,11 @@
   // ONLY A MOVE WE POSTED IS ARMED. A move made by hand on
   // the Lichess board arrives through the same syncMoves
   // path with no arm behind it and stays unspoken, as it
-  // always has been.
+  // always has been. A TAPPED move (w86) is posted by us and
+  // still not armed, on purpose: two taps prove the eyes are
+  // on the screen, where the piece appearing is the answer,
+  // and in the time scramble the feature exists for, speech
+  // would talk over the next tap.
   var armedUci = null;
 
   // announce=false is a catch-up replay (reconnect,
@@ -218,7 +222,10 @@
     if (readBackMineNow()) speak(sanToSpeech(san), colorWord(api.myColor));
   }
 
-  function acceptMove(c) {
+  /* quiet=true is a tapped move (touch.js): no read-back, no
+   * arming - but every ERROR below still speaks, because a
+   * failure must be heard whichever way the move went in. */
+  function acceptMove(c, quiet) {
     if (busy) {
       // SILENCE IS NOT AN ANSWER, not even for "I am still
       // working on the last one" (w50). This logged and
@@ -242,7 +249,7 @@
       api.lastSan = c.san; api.lastSanW = c.san;
       busy = false;
       log("DRY", "you play " + uci + " = " + c.san + " (not sent)");
-      if (readBackMineNow())
+      if (!quiet && readBackMineNow())
         speak(sanToSpeech(c.san), colorWord(api.myColor || "w"));
       // CALLED BY NAME, NOT BY REFERENCE (w54). Passing the
       // function itself captures whatever it is bound to RIGHT
@@ -256,7 +263,7 @@
       return;
     }
 
-    armedUci = uci;                       /* v134: see readBackMine */
+    armedUci = quiet ? null : uci;        /* v134: see readBackMine */
     postMove(uci).then(function (r) {
       busy = false;
       var ok = r.status === 200 && r.body && r.body.ok !== false && !r.body.error;
