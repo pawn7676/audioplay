@@ -2708,3 +2708,19 @@ true until w90 let practice survive the voice button; beside
 a practice board that needs no token, a sign-in demand is a
 non-sequitur, and the owner heard it and asked whether it was
 meant. It was not.
+
+### w93
+
+THE DRIFT THE STYLESHEET WARNED ABOUT HAPPENED, ONE VERSION
+LATER. w92 moved --button-on to the clock's #374528; the
+settings pills and the open-settings button kept the old
+green, because the shared UI paints them from a JS constant
+that duplicates the variable - the exact arrangement the
+stylesheet's w54 note flagged with "duplicated where no
+stylesheet could see them drift". The owner saw it in a
+screenshot within the hour. The constant now matches, the
+comment beside it tells this story, and the harness compares
+the two sources directly - a source-text check made on
+purpose, this once, because the stub DOM computes no styles
+and the invariant IS that two constants in two files are one
+value.

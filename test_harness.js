@@ -4288,6 +4288,22 @@ const sleep = ms =>
   vm.runInContext("fetch = __realFetchW90;", sandbox);
   heard();
 
+  // ---- w93: the shared-UI paint pot matches the stylesheet ----
+  // paintButton colours the settings pills and mode buttons
+  // from JS constants that duplicate --button-on/--btn-bg,
+  // and at w92 they drifted exactly as the stylesheet's w54
+  // note warned: the variable moved to the clock green, the
+  // constant kept the old one, and the pills wore last week's
+  // colour. A source-text comparison ON PURPOSE, this once:
+  // the stub DOM computes no styles, and the invariant IS
+  // that the two constants are one value.
+  const cssBtnOn = (fs.readFileSync("src/index.html", "utf8")
+    .match(/--button-on:\s*(#[0-9a-fA-F]{6})/) || [])[1];
+  check("the JS BUTTON_ON matches the stylesheet's --button-on (" +
+        cssBtnOn + ")",
+        !!cssBtnOn &&
+        vm.runInContext("BUTTON_ON", sandbox) === cssBtnOn);
+
   // ---- HARD CONSTRAINT 4: NEVER EXPOSE OR LOG A TOKEN ----
   // header.js lists four constraints. This is the only one
   // whose consequence is measured in bans rather than bugs, and

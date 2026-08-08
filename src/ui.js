@@ -34,8 +34,18 @@
 
   var wrapEl, bigBtn, logPanel, logBtn, practiceBtn, clockBtn, settingsBtn, setPanel;
 
+  // THE SAME VALUES THE STYLESHEET HOLDS as --btn-bg and
+  // --button-on - and the duplication is exactly the hazard
+  // the stylesheet's own w54 note names: "duplicated where no
+  // stylesheet could see them drift". At w92 it DID drift -
+  // the stylesheet's green moved to the clock's #374528 and
+  // this constant kept the old #3a5a2a, so the settings pills
+  // and the open-settings button wore last week's green until
+  // the owner saw it in a screenshot within the hour (w93).
+  // These two lines are the shared-UI's paint pots; if the
+  // stylesheet's pair ever moves again, move them together.
   var BUTTON_OFF = "#242220";
-  var BUTTON_ON = "#3a5a2a";
+  var BUTTON_ON = "#374528";
 
   // A lit button means that thing is currently ON, matching
   // the voice button. Called from renderButton so every
