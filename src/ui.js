@@ -46,7 +46,7 @@
   // stylesheet's pair ever moves again, move them together.
   var BUTTON_OFF = "#242220";
   var BUTTON_ON = "#374528";
-  var BUTTON_TEXT_ON = "#e9e9e6";   /* = --bright, same law */
+  var BUTTON_TEXT_ON = "#f2f2ef";   /* = --bright, same law */
 
   // A lit button means that thing is currently ON, matching
   // the voice button. Called from renderButton so every
