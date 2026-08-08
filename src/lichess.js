@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w82";
+  VERSION = "w83";
 
   var RULES = makeRules();
 
@@ -56,6 +56,12 @@
     players: { w: null, b: null },
     pos: null,
     moves: [],            // uci list already applied
+    movesBefore: 0,       // plies played before this list began -
+                          // zero except a mid-game poll join,
+                          // where the list starts empty against a
+                          // game already underway (w83: the pair's
+                          // sum is the true ply count, which is
+                          // what says whether the clocks run)
     lastSan: "", lastSanW: "", lastSanB: "",
     wtime: null, btime: null,
     clockAt: null,        // when wtime/btime were last true (w60:
@@ -222,6 +228,7 @@
     api.myColor = null;
     api.pos = null;
     api.moves = [];
+    api.movesBefore = 0;
     api.over = false;
     api.wtime = null; api.btime = null; api.clockAt = null;  /* w60 */
     api.players = { w: null, b: null };   /* w68, and see w60 */
@@ -498,10 +505,22 @@
   // events, for either color: clock mode paints both. The
   // clock is frozen once the game is over (v73 — before,
   // the side to move at mate kept counting down).
+  //
+  // AND FROZEN BEFORE BOTH SIDES HAVE MOVED (w83). Lichess
+  // does not start the clocks until each player has made
+  // their first move - the first move of each side is
+  // untimed. This extrapolated anyway, so the moment the
+  // challenge was accepted the owner watched five minutes
+  // start draining while the board waited for e4, then snap
+  // back to 5:00 on the first server event. The ply count
+  // is movesBefore + moves.length so a mid-game poll join,
+  // whose move list starts empty against a game already
+  // underway, still knows the clocks are long since running.
   function remainingMs(color) {
     var base = color === "w" ? api.wtime : api.btime;
     if (base == null) return null;
-    if (api.pos && !api.over && api.pos.turn === color && api.clockAt) {
+    if (api.pos && !api.over && api.pos.turn === color && api.clockAt &&
+        api.movesBefore + api.moves.length >= 2) {
       return base - (Date.now() - api.clockAt);
     }
     return base;
@@ -557,6 +576,9 @@
     api.pos = new RULES.Position(g.initialFen && g.initialFen !== "startpos"
                                ? g.initialFen : undefined);
     api.moves = [];
+    api.movesBefore = 0;    // gameFull carries the WHOLE game;
+                            // syncMoves below rebuilds the list
+                            // from ply one, so nothing predates it
     var whiteId = ((g.white && g.white.id) || "").toLowerCase();
     api.myColor = (whiteId && whiteId === api.myId) ? "w" : "b";
     api.players.w = playerOf(g.white);
@@ -934,6 +956,18 @@
         api.pos = new RULES.Position();
         if (g.fen) api.pos.load(g.fen);
         api.moves = [];
+        /* THE FEN SAYS HOW FAR ALONG THE GAME IS (w83). The
+         * list above is a position marker here, not a record,
+         * so it alone would read "nobody has moved yet" and
+         * remainingMs would hold the clocks frozen for a game
+         * that may be thirty moves in. The fen's fullmove
+         * field carries the truth; an unparseable fen falls
+         * back to "running", which is the old behaviour and
+         * right for every mid-game join. */
+        var fp = String(g.fen || "").split(" ");
+        var fm = parseInt(fp[5], 10);
+        api.movesBefore = fm > 0
+          ? (fm - 1) * 2 + (fp[1] === "b" ? 1 : 0) : 2;
         speak((everConnected ? "reconnected" : "connected") +
               ". You are " + g.color + ". " +
               colorWord(api.pos.turn) + " to move.");
@@ -1188,6 +1222,7 @@
     api.myColor = null;
     api.pos = null;
     api.moves = [];
+    api.movesBefore = 0;
     api.over = false;
     offerState = { draw: false, takeback: false };
     oppGone = false; claimAsked = false;   /* w61 */

@@ -743,6 +743,58 @@ const sleep = ms =>
         /cbox low/.test(overRail.top) && /cbox"/.test(overRail.bottom));
   vm.runInContext('api.over = false; api.myColor = "b";', sandbox);
 
+  // ---- w83: the clocks do not run until both sides have
+  // moved ----
+  // Lichess's rule: each player's FIRST move is untimed. The
+  // page extrapolated from the moment the challenge was
+  // accepted, so the owner watched five minutes drain while
+  // the board waited for e4, then snap back to 5:00 on the
+  // first server event. Asked of the built rail with the
+  // anchor set 15 seconds stale - the state the bug lived in.
+  vm.runInContext(`
+    api.myColor = "w"; api.over = false;
+    api.pos = new RULES.Position();
+    api.moves = []; api.movesBefore = 0;
+    api.wtime = 300000; api.btime = 300000;
+    api.clockAt = Date.now() - 15000;
+  `, sandbox);
+  const untimed0 = rail();
+  check("before anyone moves, a stale anchor drains nothing (" +
+        (untimed0.top + " / " + untimed0.bottom)
+          .replace(/<[^>]+>/g, "") + ")",
+        /5:00/.test(untimed0.top) && /5:00/.test(untimed0.bottom));
+  vm.runInContext(`
+    api.pos.applyUci("e2e4"); api.moves = ["e2e4"];  // black to move
+    api.clockAt = Date.now() - 15000;
+  `, sandbox);
+  const untimed1 = rail();
+  check("black's first move is untimed too",
+        /5:00/.test(untimed1.top) && /5:00/.test(untimed1.bottom));
+  vm.runInContext(`
+    api.pos.applyUci("e7e5"); api.moves = ["e2e4", "e7e5"];
+    api.clockAt = Date.now() - 15000;    // white thinking, move 2
+  `, sandbox);
+  const timed2 = rail();
+  check("once both have moved the running side drains (" +
+        (timed2.top + " / " + timed2.bottom)
+          .replace(/<[^>]+>/g, "") + ")",
+        /4:4[0-9]/.test(timed2.bottom) && /5:00/.test(timed2.top));
+  // a mid-game poll join has an empty move list against a game
+  // long underway; movesBefore carries the fen's ply count so
+  // the clocks are known to be running already
+  vm.runInContext(`
+    api.moves = []; api.movesBefore = 24;
+    api.clockAt = Date.now() - 15000;
+  `, sandbox);
+  const midJoin = rail();
+  check("a mid-game join knows the clocks already run (" +
+        (midJoin.top + " / " + midJoin.bottom)
+          .replace(/<[^>]+>/g, "") + ")",
+        /4:4[0-9]/.test(midJoin.bottom));
+  vm.runInContext(
+    'api.clockAt = null; api.movesBefore = 0; api.moves = [];' +
+    'api.myColor = "b"; api.pos = null;', sandbox);
+
   // w70: the rail is BESIDE the board, not under it. The
   // renderers above prove the contents; this proves the shape
   // they render into actually exists, since a rail whose CSS
@@ -2697,12 +2749,19 @@ const sleep = ms =>
   check("so the practice clock is frozen at 10 minutes, not ticking",
         vm.runInContext('remainingMs("w")', sandbox) === 600000);
 
-  // 127: the opponent's spoken clock is extrapolated too
+  // 127: the opponent's spoken clock is extrapolated too.
+  // (Three plies in since w83, because one ply is a state
+  // where the clocks are not yet running at all - the old
+  // one-ply fixture only ever passed because the page shared
+  // the bug it was checking against.)
   heard();
   vm.runInContext(`
     dryRun = false; api.myColor = "w"; api.over = false;
-    api.pos = new RULES.Position(); api.pos.applyUci("e2e4"); // black to move
-    api.moves = ["e2e4"];
+    api.pos = new RULES.Position();
+    api.pos.applyUci("e2e4"); api.pos.applyUci("e7e5");
+    api.pos.applyUci("g1f3");            // black to move
+    api.moves = ["e2e4", "e7e5", "g1f3"];
+    api.movesBefore = 0;
     api.wtime = 600000; api.btime = 60000;
     api.clockAt = Date.now() - 15000;    // black thinking 15s
   `, sandbox);

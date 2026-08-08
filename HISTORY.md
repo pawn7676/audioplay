@@ -2462,3 +2462,22 @@ distance in from the panel's sides, which is the shape the owner
 asked for in as many words. The cap stays against marathon
 usernames; the min-width keeps the wrap threshold where the
 portrait media query expects it.
+
+### w83
+
+THE CLOCK RAN BEFORE THE GAME DID. Lichess does not start the
+clocks until each player has made their first move - both first
+moves are untimed. remainingMs never knew that rule: it
+extrapolated for the side to move from the moment clockAt was
+set, which is the moment the challenge is accepted. So the owner
+watched five minutes start draining while the board still waited
+for e4, and snap back to full on the first server event - a
+clock that lies for its first fifteen seconds, on a page whose
+whole premise is that what it says can be believed. The guard is
+the true ply count, which is almost always the length of
+api.moves - except a mid-game poll join, where the list starts
+empty as a position marker against a game already underway, so
+movesBefore carries what the fen's fullmove field says came
+before. The one-ply fixture in the opponent's-spoken-clock test
+was moved to three plies: it only ever passed because the page
+shared its bug.
