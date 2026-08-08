@@ -2418,3 +2418,29 @@ colour, and the number column's contrast was keyed to the left
 edge's squares. Moved without re-keying, every number would sit
 on its square's OWN colour and vanish - so the harness asks the
 recorded paints where each glyph landed and what ink it wore.
+
+### w81
+
+TWO FINDINGS FROM THE GAME OF 7 AUG, both reported from the
+device. First: the names and ratings were dimming with the
+clocks. w72 made dimming the clock's turn signal and the idle
+class was mirrored onto the name row, where it compounded - .55
+on the row, .65 on the rating inside it - into a grey the owner
+could not read across the room. A name is not a state: whose
+turn it is says nothing about who is playing, so the names never
+dim now and the clock box carries the turn alone. The rating
+also lost its own fade, which at .65 read as a different
+typeface beside the name rather than a quieter one.
+
+Second: the game opened on "connected. you are white."
+immediately followed by "reconnected. you are white." w50 made
+voice-on restart the stream so a death while voice was off could
+not go unnoticed, and its comment reasoned that startStream
+"cannot double up" because it aborts its own predecessor - true
+of the streams, false of the announcements. Restarting a healthy
+stream re-delivers gameFull, and a game joined seconds before
+the tap announced itself twice. The button now goes through
+ensureStream, which leaves a stream alone while bytes have
+arrived inside Lichess's keep-alive cadence and restarts only
+one that has actually gone quiet - which is the case w50 was
+written for, and it still works.

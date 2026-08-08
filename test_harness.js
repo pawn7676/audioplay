@@ -758,6 +758,17 @@ const sleep = ms =>
   check("the rail carries a clock and a name at each end",
         /id="clockTop"/.test(tmplBoard) && /id="nameTop"/.test(tmplBoard) &&
         /id="nameBottom"/.test(tmplBoard) && /id="clockBottom"/.test(tmplBoard));
+  // w81: the renderer no longer writes idle onto the names
+  // (checked above, of the built DOM); this holds the CSS half
+  // of the same claim, read from the rule's own text like the
+  // w73 media-query checks - the idle dim belongs to the clock
+  // box alone, and the rating wears the name's own face rather
+  // than a faded one.
+  check("the stylesheet dims the clock box only, never a name",
+        /\.sideClock \.cbox\.idle/.test(tmplBoard) &&
+        !/\.sideName [^{]*\.idle/.test(tmplBoard));
+  check("and the rating has no fade of its own",
+        !/\.sideName \.rating/.test(tmplBoard));
   check("and it wraps under the board rather than squeezing it",
         /#boardRow\s*\{[^}]*flex-wrap:\s*wrap/.test(tmplBoard));
   // w73: on a narrow screen the clocks SPLIT around the board,
@@ -2486,6 +2497,13 @@ const sleep = ms =>
         /BOT/.test(shown));
   check("your own side is marked, as the clocks mark it",
         /class="mine"/.test(shown));
+  // w81: the name row never dims. w72's idle class was mirrored
+  // onto the names beside the clocks, and on the device the
+  // waiting side's name and rating sank below readable (.55 on
+  // the row, .65 on the rating inside it). Here white is to
+  // move and black is waiting - the state that used to dim.
+  check("and neither name dims while its side waits (" + shown + ")",
+        !/idle/.test(shown));
   // the log line says it too - a pasted log should name the
   // opponent, which until now it never did
   check("the log names the opponent",
@@ -3385,6 +3403,65 @@ const sleep = ms =>
         vm.runInContext("pollTimer === null", sandbox) === true);
   vm.runInContext(
     "fetch = __realFetch3; api.gameId = null; clearTimeout(reconnectTimer);",
+    sandbox);
+
+  // w81: voice-on leaves a LIVE stream alone. The button called
+  // startStream unconditionally (w50's safety net), which on a
+  // healthy stream re-delivered gameFull and spoke "connected.
+  // you are white." and "reconnected. you are white." back to
+  // back - the game of 7 Aug heard both, three seconds in. The
+  // stream that just delivered an event is fresh and stays;
+  // one quiet past the keep-alive window is dead and reopens.
+  const ensureOut = await vm.runInContext(`
+    (function () {
+      var opens = 0;
+      fetch = function () {
+        opens++;
+        return Promise.resolve({
+          ok: true, status: 200,
+          body: { getReader: function () {
+            var sent = false;
+            return { read: function () {
+              if (sent) return new Promise(function () {});  // held open
+              sent = true;
+              return Promise.resolve({ done: false,
+                value: new TextEncoder().encode(JSON.stringify({
+                  type: "gameFull",
+                  white: { id: "me", name: "pawn76" },
+                  black: { id: "maia5", name: "maia5", title: "BOT" },
+                  state: { moves: "" } }) + "\\n") });
+            } };
+          } }
+        });
+      };
+      api.gameId = "PG7"; api.over = false; api.myId = "me";
+      dryRun = false; authGone = false; streamFails = 0;
+      startStream();
+      return new Promise(function (res) {
+        setTimeout(function () {
+          var opened = opens;
+          ensureStream();                       // fresh: no reopen
+          setTimeout(function () {
+            var afterFresh = opens;
+            streamBeatAt = Date.now() - 60000;  // long quiet: dead
+            ensureStream();
+            setTimeout(function () {
+              res({ opened: opened, afterFresh: afterFresh,
+                    afterDead: opens });
+            }, 30);
+          }, 30);
+        }, 30);
+      });
+    })()
+  `, sandbox);
+  check("voice-on does not reopen a live stream (" +
+        ensureOut.opened + "," + ensureOut.afterFresh + "," +
+        ensureOut.afterDead + ")",
+        ensureOut.opened === 1 && ensureOut.afterFresh === 1 &&
+        ensureOut.afterDead === 2);
+  vm.runInContext(
+    "fetch = __realFetch3; api.gameId = null; api.over = false;" +
+    "streamBeatAt = 0; streamGameId = null; clearTimeout(reconnectTimer);",
     sandbox);
 
   // A REFUSED TOKEN IS SAID ONCE AND STOPS THE RETRYING.

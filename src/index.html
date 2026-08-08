@@ -231,16 +231,20 @@
   .sideClock .cbox.turn { background: #3a5a2a; }
   .sideClock .cbox.low { background: #8c3a30; }
   /* dim is orthogonal to colour (w72): the waiting side keeps
-     its box colour - red stays red - just noticeably darker */
-  .sideClock .cbox.idle, .sideName .idle { opacity: .55; }
+     its box colour - red stays red - just noticeably darker.
+     THE CLOCK BOX ONLY (w81): the names dimmed with it once
+     and the waiting side's name was unreadable on the device.
+     A name is not a state; the box carries the turn alone. */
+  .sideClock .cbox.idle { opacity: .55; }
   .sideName { font-family: Menlo, "SF Mono", monospace; font-size: .8rem;
               line-height: 1.5; margin: 2px 0; }
   /* brass still marks YOUR name (w68); the title is dimmer
      than the name because it qualifies it - BOT, GM - and at a
-     glance the name is what is wanted. */
+     glance the name is what is wanted. The RATING is not
+     faded (w81): at .65 it read as a different face beside
+     the name, and it is part of who you are playing. */
   .sideName .mine { color: var(--brass); }
   .sideName .title { opacity: .65; }
-  .sideName .rating { opacity: .65; }
   input.whoin { width: 9em; padding: 4px; font: inherit; }
   select { font: inherit; padding: 4px; }
   .row.opt { font-size: .85rem; color: var(--text); gap: 6px; }
