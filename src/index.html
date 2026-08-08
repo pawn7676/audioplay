@@ -175,17 +175,22 @@
   .stats { font-family: Menlo, "SF Mono", monospace; font-size: .8rem; line-height: 1.5; white-space: pre-wrap; }
   #mini {
     display: block; width: 100%; aspect-ratio: 1;
-    /* THE CAP IS TWO CAPS (w96). 560px of width - up from
-       360 now that squares are TAP TARGETS, half again more
-       finger room each - and 85% of the small viewport
+    /* THE CAP IS TWO CAPS (w96), AND THE WIDTH CAP IS THE
+       ROW'S NUMBER, NOT A TASTE (w97). w96 said 560 and the
+       owner's iPad showed the clocks dumped UNDER the board:
+       the body is 760 wide, so the board row offers 712, and
+       560 of board plus the rail's up-to-260 exceeds it -
+       flex wraps on hypothetical sizes, and the rail fell.
+       430 is derived, not chosen: 712 - 16 gap - 260 rail
+       max = 436, rounded down, so the rail provably CANNOT
+       wrap. The second cap is 92% of the small viewport
        height, because the board is square and a phone held
-       sideways has less height than width: the 360 board was
-       CUT OFF there, never visible whole. svh measures the
-       viewport with Safari's bars showing, so the cap is
-       honest; the plain 560px line above is the fallback for
+       sideways has less height than width - the old 360 was
+       cut off there. svh measures the viewport with Safari's
+       bars showing; the plain line above is the fallback for
        browsers without svh. */
-    max-width: 560px;
-    max-width: min(560px, 85svh);
+    max-width: 430px;
+    max-width: min(430px, 92svh);
     border: 1px solid var(--border); border-radius: 4px;
     margin: 0 auto; touch-action: manipulation;
   }
@@ -207,7 +212,7 @@
      of squeezing the board. */
   #boardRow { display: flex; flex-wrap: wrap; gap: 16px;
               align-items: stretch; justify-content: center; }
-  #boardRow #mini { margin: 0; flex: 0 1 560px; }
+  #boardRow #mini { margin: 0; flex: 0 1 430px; }
   /* THE RAIL IS AS WIDE AS WHAT IS IN IT (w82). It used to
      grow (flex 1 1 150px, capped at 260), and the centred row
      above centred board-plus-GROWN-rail - whose right third
