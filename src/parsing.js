@@ -323,6 +323,28 @@
         }
         continue;
       }
+      // SAFARI WRITES "delta" AS "down to" (w84). Three times
+      // across the games of 7 Aug - "Push down to three",
+      // "Bishop down to six", "Rock down to eight" - and every
+      // one survived only on a rival reading or the half-square
+      // repair. Two words, so no table can hold it; recovered
+      // here like the article "a" below, and ONLY in the logged
+      // shape: "down to" DIRECTLY BEFORE A RANK is the d-file,
+      // the "to" consumed as part of the word. Anything else -
+      // "down" alone, "down to" ending the utterance - stays
+      // exactly as unparsed as it was. "delta two" rendered as
+      // a trailing "down to" is this family's known untested
+      // member; it waits for a log before being guessed at,
+      // because guessing costs the v116 file-then-"to" reading
+      // its safety argument.
+      if (tk === "down" && toks[i + 1] === "to") {
+        var nxr = toks[i + 2];
+        if (nxr && (NUMS[nxr] || /^[1-8]$/.test(nxr))) {
+          syms.push({ t: "file", v: "d" });
+          i++;                      // the "to" was part of "delta"
+          continue;
+        }
+      }
       if (COMPOUND[tk]) {
         COMPOUND[tk].forEach(function (pair) {
           syms.push({ t: pair[0], v: pair[1] });

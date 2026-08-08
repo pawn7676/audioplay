@@ -2902,6 +2902,43 @@ const sleep = ms =>
   // as a from-rank. Asserting the destination square is what
   // catches that - a test that only asked "is it a knight"
   // would pass on the broken parse.
+
+  // ---- w84: two Safari spellings from the games of 7 Aug ----
+  // "echo four" came back as "Aquaphor" in BOTH readings, so
+  // as with rugby there was no undamaged rival: the move was
+  // lost outright ("Say again."). The first compound to fuse a
+  // whole SQUARE (file+rank) rather than piece+file. Board
+  // discipline as above: a bishop and a queen both reach e4,
+  // so the bare fused square is not decided and the piece word
+  // must survive beside it.
+  const AQUA = "8/8/8/7k/8/8/2B5/4QK2 w - - 0 1";
+  await onBoard(AQUA, "aquaphor",
+                /no pawn can go there.*(queen.*bishop|bishop.*queen)/i,
+                '"aquaphor" is the square e4, undecided on this board');
+  await onBoard(AQUA, "bishop aquaphor", /bishop echo 4/i,
+                '"bishop aquaphor" plays Be4');
+  // "delta" came back as "down to": "Bishop down to six",
+  // "Rock down to eight", and "Push down to three" the game
+  // before - each surviving only on a rival reading or the
+  // half-square repair. Here the repair is taken away: BOTH
+  // rooks reach rank 8, so "rook ... eight" alone is two
+  // moves and only the d-file itself answers.
+  const DOWNTO = "8/8/8/7k/8/8/8/R2RK3 w - - 0 1";
+  await onBoard(DOWNTO, "rook down to eight", /rook delta 8/i,
+                '"rook down to eight" is the rook to d8');
+  await onBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "push down to three", /delta 3/i,
+                '"push down to three" is the d-pawn, not eight-way ambiguous');
+  // the gate: "down to" NOT followed by a rank changes nothing
+  // - the branch consumes a possible v116 "to" and must not
+  // fire where the logged shape does not hold
+  const downGate = vm.runInContext(
+    'JSON.stringify((function () {' +
+    '  var r = parseTranscript("rook down to");' +
+    '  return [r.piece, r.fromFile, r.squares.length];' +
+    '})())', sandbox);
+  check('"down to" without a rank stays unparsed (' + downGate + ")",
+        downGate === '["r",null,0]');
   const drift = vm.runInContext(
     'JSON.stringify(parseTranscript("nightie four").squares || [])',
     sandbox);

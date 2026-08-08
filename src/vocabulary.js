@@ -194,7 +194,17 @@
     kinsey: [["piece", "k"], ["file", "c"]],
     kingie: [["piece", "k"], ["file", "e"]],
     kingy: [["piece", "k"], ["file", "e"]],
-    clingy: [["piece", "k"], ["file", "e"]]
+    clingy: [["piece", "k"], ["file", "e"]],
+    // A WHOLE SQUARE CAN FUSE TOO (w84, game of 7 Aug):
+    // "echo four" came back as "Aquaphor" - in BOTH readings
+    // of the utterance, so as with rugby there was no
+    // undamaged rival and the move was lost outright ("Say
+    // again."). The first entry to emit file+rank rather
+    // than piece+file; the parser replays any symbol
+    // sequence, so the shape costs nothing new. Both bars
+    // hold: a tight rendering of the sound, and a skin-cream
+    // brand is not a word said near numbers at a board.
+    aquaphor: [["file", "e"], ["rank", "4"]]
   };
 
   // "text" and "texts" are the take word with its k gone

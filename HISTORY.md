@@ -2481,3 +2481,23 @@ movesBefore carries what the fen's fullmove field says came
 before. The one-ply fixture in the opponent's-spoken-clock test
 was moved to three plies: it only ever passed because the page
 shared its bug.
+
+### w84
+
+TWO SAFARI SPELLINGS FROM THE GAMES OF 7 AUG, reported by the
+owner from the logs. "echo four" came back as "Aquaphor" - in
+both readings of the utterance, the rugby shape, no undamaged
+rival - and the move was lost outright. It joins COMPOUND as the
+first entry to fuse a whole square, file and rank together;
+the parser replays any symbol sequence, so the new shape cost
+nothing. And "delta" came back as "down to", three times across
+the two games, each surviving only on a rival reading or the
+half-square repair. Two words, so no table can hold it: the
+parser now reads "down to" directly before a rank as the
+d-file, consuming the "to" as part of the word, and fires in no
+other shape - "delta two" arriving as a bare trailing "down to"
+is the family's known untested member and waits for a log,
+because guessing at it would spend the safety argument the v116
+file-then-"to" rule rests on. A third report needed no change:
+"the ship takes night" was already understood, because "ship"
+has sat in the bishop table since the userscript era.
