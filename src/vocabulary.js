@@ -204,7 +204,33 @@
     // sequence, so the shape costs nothing new. Both bars
     // hold: a tight rendering of the sound, and a skin-cream
     // brand is not a word said near numbers at a board.
-    aquaphor: [["file", "e"], ["rank", "4"]]
+    aquaphor: [["file", "e"], ["rank", "4"]],
+    // AND THE SQUARE FAMILY WAS THEN SEARCHED, AS w78
+    // SEARCHED THE PIECE+FILE ONE (w85, owner's ask). Same
+    // two bars, and the logged mechanisms as the guide: the
+    // swallowed-consonant run-on (rugby, knife) and the o
+    // that becomes w before a vowel, which is what aquaphor
+    // proved for echo. "golfer" is the tightest here - golf
+    // and four share the f outright. What the search
+    // REJECTED is in HISTORY.md at w85; two rejections are
+    // load-bearing enough to restate: "alone" (alpha+1) is
+    // an everyday word said in asides near a live mic, and
+    // "bravado", a snug bravo+2, already sits in NATO
+    // meaning bare "bravo" - a logged meaning is never
+    // traded for a guessed one.
+    golfer: [["file", "g"], ["rank", "4"]],
+    golfers: [["file", "g"], ["rank", "4"]],
+    gopher: [["file", "g"], ["rank", "4"]],
+    gophers: [["file", "g"], ["rank", "4"]],
+    gofer: [["file", "g"], ["rank", "4"]],
+    chariot: [["file", "c"], ["rank", "8"]],
+    chariots: [["file", "c"], ["rank", "8"]],
+    equate: [["file", "e"], ["rank", "8"]],
+    // The owner's own hearing of bravo+8, looser than the
+    // rest of the batch - it grows a leading syllable - but
+    // it is not a word anyone says at a board, so a line
+    // that never fires costs nothing.
+    abbreviate: [["file", "b"], ["rank", "8"]]
   };
 
   // "text" and "texts" are the take word with its k gone

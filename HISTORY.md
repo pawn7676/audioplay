@@ -2501,3 +2501,30 @@ because guessing at it would spend the safety argument the v116
 file-then-"to" rule rests on. A third report needed no change:
 "the ship takes night" was already understood, because "ship"
 has sat in the bishop table since the userscript era.
+
+### w85
+
+THE SQUARE FAMILY, SEARCHED THE WAY w78 SEARCHED PIECE+FILE.
+Aquaphor (w84) proved that whole squares fuse, and the owner
+asked for the same sweep: a word list against every file+rank
+sound, the two logged mechanisms as the guide - the swallowed
+consonant of rugby and knife, and the o that turns to w before
+a vowel, which is what aquaphor demonstrated for echo. Kept:
+golfer (the tightest - golf and four share the f), gopher and
+gofer, all g4; chariot, c8, by the same ee-glide that made
+rookie; equate, e8, aquaphor's own mechanism; abbreviate, b8,
+the owner's hearing of bravo-eight and the loosest kept - it
+grows a syllable, but no one says it at a board, and a line
+that never fires costs nothing.
+
+What the search rejected, which w78 teaches matters more:
+echelon (echo's k is not echelon's sh), hotelier (said -yer,
+never -ate), golfed, dilate, equine, ecotour (each fails a
+vowel or consonant), "go for" (a bigram, and the start of a
+real aside - "go for the rook" - the exact hazard "nice one"
+is barred for), alone (alpha+1 with the f gone, and an
+everyday word said near a live mic), and bravado - a snug
+bravo+2, but the word already sits in NATO meaning bare
+"bravo", and a logged meaning is never traded for a guessed
+one. The d-file offered nothing for squares either, as it
+offered nothing for pieces.

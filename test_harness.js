@@ -2939,6 +2939,44 @@ const sleep = ms =>
     '})())', sandbox);
   check('"down to" without a rank stays unparsed (' + downGate + ")",
         downGate === '["r",null,0]');
+
+  // ---- w85: the square-fusion family, searched like w78's ----
+  // aquaphor proved square fusions are real; the owner asked
+  // for the same word-list sweep over file+rank that w78 ran
+  // over piece+file. The whole batch asked of the LOADED
+  // table, as the w78 check is.
+  const W85 = { golfer: "g 4", golfers: "g 4", gopher: "g 4",
+    gophers: "g 4", gofer: "g 4", chariot: "c 8", chariots: "c 8",
+    equate: "e 8", abbreviate: "b 8" };
+  const w85bad = Object.keys(W85).filter(function (w) {
+    const got = vm.runInContext(
+      "JSON.stringify(COMPOUND[" + JSON.stringify(w) + "] || null)", sandbox);
+    const want = W85[w].split(" ");
+    return got !== JSON.stringify([["file", want[0]], ["rank", want[1]]]);
+  });
+  check("every square fusion maps to its file and rank (" +
+        (w85bad.join(" ") || "all do") + ")", w85bad.length === 0);
+  // Representative boards, rugby discipline: two piece types
+  // reach the fused square, so the bare word asks and the
+  // spoken piece decides.
+  const GOLFER = "k7/8/8/8/8/8/8/3B1KQ1 w - - 0 1";
+  await onBoard(GOLFER, "golfer",
+                /no pawn can go there.*(queen.*bishop|bishop.*queen)/i,
+                '"golfer" is the square g4, undecided on this board');
+  await onBoard(GOLFER, "bishop golfer", /bishop golf 4/i,
+                '"bishop golfer" plays Bg4');
+  const CHARIOT = "8/8/8/7k/8/7B/8/2R1K3 w - - 0 1";
+  await onBoard(CHARIOT, "rook chariot", /rook charlie 8/i,
+                '"rook chariot" plays Rc8');
+  // the rest at parse level, destination asserted so a drift
+  // (word rescued as something else, square evaporating)
+  // cannot pass - the nightie lesson
+  const sq85 = vm.runInContext(
+    'JSON.stringify([parseTranscript("bishop equate").squares,' +
+    ' parseTranscript("rook abbreviate").squares,' +
+    ' parseTranscript("gopher").squares])', sandbox);
+  check("equate, abbreviate and gopher name their squares (" + sq85 + ")",
+        sq85 === '[["e8"],["b8"],["g4"]]');
   const drift = vm.runInContext(
     'JSON.stringify(parseTranscript("nightie four").squares || [])',
     sandbox);
