@@ -430,7 +430,14 @@
         // is spoken text, so it is spelled the way it
         // should sound; the site's name is still written
         // correctly everywhere it is READ.
-        if (!storedToken()) speak("sign in with lee chess first.");
+        // IN PRACTICE, THE ONLY TRUE HINT IS "VOICE ON" (w92).
+        // The sign-in and waiting-for-a-game lines below assume
+        // voice-on means heading into a real game; they predate
+        // practice surviving this button (w90). Mid-practice,
+        // "sign in first" is a non-sequitur - practice needs no
+        // token - and the owner heard exactly that and asked.
+        if (dryRun) speak("voice on.");
+        else if (!storedToken()) speak("sign in with lee chess first.");
         else if (!api.gameId) speak("voice on. waiting for a game.");
         // AND PICK THE GAME BACK UP (w50). Voice off leaves the
         // stream alone by design, but the stream can still die

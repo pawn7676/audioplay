@@ -2692,3 +2692,19 @@ also the build where spoken moves went unheard. That is
 suspicion, not proof, and it is written as such: the
 lifecycle lines are what will turn the next pasted log into
 the verdict.
+
+### w92
+
+TWO SMALL THINGS THE OWNER ASKED FOR, the morning after the
+w87-w91 storm, both signs of the page being LOOKED at again:
+every green on the page now means "on" in the same colour -
+--button-on takes the running clock box's #374528, measured
+from Lichess itself at w87, so Listening, Practice, the
+signed-in account, a picked time control and the active clock
+agree - and turning voice back on DURING practice says "voice
+on." instead of "sign in with lee chess first." That hint
+assumed voice-on meant heading into a real game, which was
+true until w90 let practice survive the voice button; beside
+a practice board that needs no token, a sign-in demand is a
+non-sequitur, and the owner heard it and asked whether it was
+meant. It was not.
