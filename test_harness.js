@@ -113,7 +113,33 @@ function element(id) {
     },
     get firstChild() { return this.children[0] || null; },
     remove() {},
-    getContext() { return new Proxy({}, { get: () => () => {} }); },
+    // the context RECORDS its paints — op, args, and the
+    // fillStyle in force — so a test can ask what the board
+    // actually drew. Same law as the DOM stubs: ask the built
+    // thing, never grep the source. Gradients come back as
+    // objects carrying their stops, for the same reason.
+    getContext() {
+      const el = this;
+      if (el._ctx) return el._ctx;
+      el._paints = [];
+      const state = {};
+      el._ctx = new Proxy(state, {
+        get(t, k) {
+          if (k in t) return t[k];
+          if (k === "createRadialGradient")
+            return (...a) => {
+              const g = { radial: a, stops: [] };
+              g.addColorStop = (off, col) => g.stops.push([off, col]);
+              return g;
+            };
+          return (...a) => {
+            el._paints.push({ op: k, args: a, fillStyle: t.fillStyle });
+          };
+        },
+        set(t, k, v) { t[k] = v; return true; }
+      });
+      return el._ctx;
+    },
     // a full rect: the settings anchoring reads .bottom and
     // .left, and a missing field silently anchors to NaN
     getBoundingClientRect() {
@@ -3760,6 +3786,73 @@ const sleep = ms =>
   check("a move dictated while busy is answered, not swallowed",
         /still sending/i.test(heard().join(" | ")));
   vm.runInContext("busy = false; dryRun = true;", sandbox);
+
+  // ---- w79: the board paints Lichess's colours ----
+  // The mini board mimics lichess.org so a glance carries
+  // over: the last-move pair in the site's green tint, a
+  // checked king under its red radial halo. Asked of the
+  // recorded canvas paints, not grepped from board.js — a
+  // colour in the source proves nothing about the square it
+  // lands on, and the square arithmetic (grid, flip) is
+  // exactly where this could quietly be wrong.
+  function paintsAt(x, y) {
+    return getEl("mini")._paints.filter(p =>
+      p.op === "fillRect" && p.args[0] === x && p.args[1] === y);
+  }
+  function fillsOf(x, y) {
+    return paintsAt(x, y).map(p => p.fillStyle);
+  }
+  vm.runInContext("initBoard();", sandbox);   // binds miniCtx if boot did not
+  // fool's mate: 1.f3 e5 2.g4 Qh4# — last move d8h4, white
+  // king on e1 in check (mate, in fact; the halo must not
+  // care which).
+  getEl("mini")._paints.length = 0;
+  vm.runInContext(`
+    api.pos = new RULES.Position(
+      "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3");
+    api.moves = ["f2f3", "e7e5", "g2g4", "d8h4"];
+    api.myColor = "w"; api.over = false;
+    renderMiniBoard();
+  `, sandbox);
+  // d8 and h4 are both dark squares: the dark-square tint
+  check("the moved-from square wears the dark last-move green",
+        fillsOf(288, 0).includes("#a8a23b"));
+  check("so does the moved-to square",
+        fillsOf(672, 384).includes("#a8a23b"));
+  const e1fills = fillsOf(384, 672);
+  const isHalo = f => f && typeof f === "object" && f.stops &&
+        f.stops.length === 4 && f.stops[0][1] === "rgb(255,0,0)" &&
+        /rgba\(158,0,0,0\)/.test(f.stops[3][1]);
+  check("the checked king's square is painted with the red halo",
+        e1fills.some(isHalo));
+  check("over its normal square colour (e1 is dark), not instead of it",
+        e1fills.includes("#b58863"));
+  check("and the halo lands on exactly one square",
+        getEl("mini")._paints.filter(p =>
+          p.op === "fillRect" && isHalo(p.fillStyle)).length === 1);
+
+  // the same position seen from black's side: the board flips,
+  // and the halo must flip WITH it — e1 drawn top-left-ish at
+  // grid (0,3). A feature used twice is a different feature.
+  getEl("mini")._paints.length = 0;
+  vm.runInContext('api.myColor = "b"; renderMiniBoard();', sandbox);
+  check("flipped, the halo follows the king to its flipped square",
+        fillsOf(288, 0).some(isHalo));
+  // and a light-square last move, for the other tint: 1.e4
+  getEl("mini")._paints.length = 0;
+  vm.runInContext(`
+    api.pos = new RULES.Position(
+      "rnbqkbnr/pppppppp/8/8/4P3/8/8/RNBQKBNR b KQkq e3 0 1");
+    api.moves = ["e2e4"]; api.myColor = "w";
+    renderMiniBoard();
+  `, sandbox);
+  check("a light-square last move wears the light green",
+        fillsOf(384, 576).includes("#ccd069") &&
+        fillsOf(384, 384).includes("#ccd069"));
+  check("and no halo when nobody is in check",
+        !getEl("mini")._paints.some(p => isHalo(p.fillStyle)));
+  vm.runInContext(
+    "api.pos = new RULES.Position(); api.moves = [];", sandbox);
 
   // ---- HARD CONSTRAINT 4: NEVER EXPOSE OR LOG A TOKEN ----
   // header.js lists four constraints. This is the only one

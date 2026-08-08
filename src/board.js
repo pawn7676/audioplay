@@ -6,9 +6,16 @@
  *  camera code stripped: no tap-to-inspect, no quietState,
  *  no calibration overlay. What remains draws ONE thing,
  *  the position in api.pos, with the last recorded move's
- *  two squares tinted — which is the whole job here: a
- *  board that mimics the game state, read at a glance to
- *  confirm the voice pipeline and Lichess agree.
+ *  two squares tinted and a checked king under a red halo —
+ *  which is the whole job here: a board that mimics the game
+ *  state, read at a glance to confirm the voice pipeline and
+ *  Lichess agree. The colours are Lichess's own, so the
+ *  glance carries over: the board browns, the green-tinted
+ *  last-move pair, and the check gradient are what
+ *  lichess.org itself paints. (Constraint 6 — stylesheet owns
+ *  the looks — stops at the canvas edge: CSS cannot reach
+ *  inside a canvas, so these colours live here, all of them
+ *  in this one file.)
  *
  *  Piece art is the cburnett SVG set carried in
  *  index.html's #pieceDefs block (the same block BoardEye
@@ -107,16 +114,47 @@ function lastMoveGridSqs() {
   return out.length === 2 ? out : null;
 }
 
+// the checked king's square as a grid index, or -1. The rules
+// object already knows both halves of the question — never
+// re-derive a chess fact the one truth can answer.
+function checkGridSq() {
+  if (!api || !api.pos) return -1;
+  if (!api.pos.inCheck(api.pos.turn)) return -1;
+  var k = api.pos.kingSq(api.pos.turn);
+  if (k < 0) return -1;
+  var r = 7 - (k >> 4), f = k & 15;
+  if (boardFlipped()) { r = 7 - r; f = 7 - f; }
+  return r * 8 + f;
+}
+
 function renderMiniBoard() {
   if (!miniCtx) return;
   var board = api && api.pos ? api.pos.board : null;
   var tint = lastMoveGridSqs();
+  var checkSq = checkGridSq();
   for (var i = 0; i < 64; i++) {
     var x = (i % 8) * MINI_CELL, y = Math.floor(i / 8) * MINI_CELL;
-    miniCtx.fillStyle = sqClass(i) === 0 ? "#f0d9b5" : "#b58863";
+    // Lichess's last-move highlight is rgba(155,199,0,.41)
+    // laid over the board browns; these are the flat colours
+    // that compositing lands on, painted directly so the
+    // squares stay a single fill each.
+    var moved = tint && tint.indexOf(i) >= 0;
+    miniCtx.fillStyle = sqClass(i) === 0
+      ? (moved ? "#ccd069" : "#f0d9b5")
+      : (moved ? "#a8a23b" : "#b58863");
     miniCtx.fillRect(x, y, MINI_CELL, MINI_CELL);
-    if (tint && tint.indexOf(i) >= 0) {
-      miniCtx.fillStyle = "rgba(145,189,223,.40)";
+    if (i === checkSq) {
+      // Lichess's check halo, stop for stop. Its CSS ellipse
+      // sizes to the square's farthest corner: half a cell
+      // times root two.
+      var cx = x + MINI_CELL / 2, cy = y + MINI_CELL / 2;
+      var halo = miniCtx.createRadialGradient(cx, cy, 0,
+                                              cx, cy, MINI_CELL * 0.708);
+      halo.addColorStop(0, "rgb(255,0,0)");
+      halo.addColorStop(0.25, "rgb(231,0,0)");
+      halo.addColorStop(0.89, "rgba(169,0,0,0)");
+      halo.addColorStop(1, "rgba(158,0,0,0)");
+      miniCtx.fillStyle = halo;
       miniCtx.fillRect(x, y, MINI_CELL, MINI_CELL);
     }
     var p = board ? board[gridTo0x88(i)] : startPieceAt(i);
