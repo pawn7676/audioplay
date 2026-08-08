@@ -2664,3 +2664,31 @@ is what ends it, tearing down properly), which also makes
 practice with the mic closed a working mode: taps move, the
 opponent replies aloud - the isolation experiment the owner
 asked for during the hunt and could not run.
+
+### w91
+
+VOICE WENT UNHEARD ON w90, AND TWO THINGS ANSWER IT. The
+owner spoke moves into a listening mic and nothing arrived -
+"listening (cycle 1)" and then silence, no result, no error,
+no end. A recognizer wedged that way fires no handler at all,
+so mic.js could not see the difference between a dead mic and
+a quiet room; nothing could say WHERE voice died. First
+change: the mic's lifecycle is now in the log - "audio route
+open" when the recognizer gets its audio stream, "sound
+reaching the recogniser" and "speech detected" once per cycle
+each. A healthy start shows the route line within a moment of
+"listening"; its absence in a pasted log means the audio
+session never fed the recognizer, which is a different
+disease - and a different culprit - from sound arriving and
+nothing being recognised. Second change: the audio-session
+declaration is RESTORED and rehomed in mic.js, where it
+always belonged. It was never screen-off code - it is the
+web's version of the AVAudioSession category a native
+mic-and-speaker app names - and it left in w90 only because
+it lived in the deleted keep-alive file. w90 was the one
+build since the iPad trouble began that had neither a
+declared session nor a session-holding element, and it is
+also the build where spoken moves went unheard. That is
+suspicion, not proof, and it is written as such: the
+lifecycle lines are what will turn the next pasted log into
+the verdict.

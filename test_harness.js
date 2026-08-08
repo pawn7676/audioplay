@@ -579,6 +579,29 @@ const sleep = ms =>
         vm.runInContext("__recStarted", sandbox) === 1);
   check("and the loop is marked live",
         vm.runInContext("listening", sandbox) === true);
+  // w91: the mic's lifecycle is visible in the log, so a
+  // wedged recognizer (started, then silent forever) can be
+  // told apart from a quiet room in a pasted log - and told
+  // apart from audio that arrives but is never recognised.
+  // no LOG reset here: the boot "loaded:" line is still in
+  // LOG and a later test reads it. These lines cannot
+  // pre-exist, so counting works on the full log.
+  vm.runInContext(`
+    recognition.onaudiostart();
+    recognition.onsoundstart(); recognition.onsoundstart();
+    recognition.onspeechstart(); recognition.onspeechstart();
+  `, sandbox);
+  check("the mic says when its audio route opens",
+        vm.runInContext(
+          "LOG.some(function (l) { return /audio route open/.test(l); })",
+          sandbox));
+  check("and when sound and speech reach it, once per cycle each",
+        vm.runInContext(
+          "LOG.filter(function (l) { return /sound reaching/.test(l); })" +
+          ".length", sandbox) === 1 &&
+        vm.runInContext(
+          "LOG.filter(function (l) { return /speech detected/.test(l); })" +
+          ".length", sandbox) === 1);
   vm.runInContext("startListening();", sandbox);
   check("a second start while listening is refused",
         vm.runInContext("__recBuilt", sandbox) === 1);
@@ -586,6 +609,21 @@ const sleep = ms =>
                   sandbox);
   check("and it will not start with the voice loop off",
         vm.runInContext("__recBuilt", sandbox) === 1);
+  // w91: the audio session is DECLARED where the API exists
+  // (restored - it left in w90 only because it lived in the
+  // deleted keep-alive file), and detected-absent elsewhere
+  const audDecl = vm.runInContext(`
+    (function () {
+      navigator.audioSession = { type: "auto" };
+      declareAudioSession();
+      var declared = navigator.audioSession.type;
+      delete navigator.audioSession;
+      declareAudioSession();        /* absent: a log line, no throw */
+      return declared;
+    })()
+  `, sandbox);
+  check("the audio session is declared play-and-record where supported",
+        audDecl === "play-and-record");
   // put the sandbox back to no-recogniser, which is what every
   // other test in this file has run under
   vm.runInContext(`
