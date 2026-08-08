@@ -57,10 +57,9 @@
     }
   }
 
-  function startKeepAlive() {
-    keepAliveWanted = true;
-    try {
-      if (!keepAlive) {
+  function ensureHolder() {
+    if (keepAlive) return;
+    {
         keepAlive = document.createElement("audio");
         keepAlive.src = silentWavUrl();
         keepAlive.load();
@@ -127,21 +126,121 @@
         });
         document.body.appendChild(keepAlive);
         log("AUD", "audio session holder created");
-      }
+    }
+    if ("mediaSession" in navigator) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: "Lichess voice play" });
+        ["play", "pause", "nexttrack", "previoustrack"].forEach(function (a) {
+          try { navigator.mediaSession.setActionHandler(a, repeatLast); } catch (e) {}
+        });
+      } catch (e) {}
+    }
+  }
+
+  function startKeepAlive() {
+    keepAliveWanted = true;
+    try {
+      ensureHolder();
       keepAlive.play().then(function () {
         log("AUD", "session holder playing");
       }).catch(function (e) {
         log("AUD", "session holder blocked: " + e.message);
       });
-      if ("mediaSession" in navigator) {
-        try {
-          navigator.mediaSession.metadata = new MediaMetadata({ title: "Lichess voice play" });
-          ["play", "pause", "nexttrack", "previoustrack"].forEach(function (a) {
-            try { navigator.mediaSession.setActionHandler(a, repeatLast); } catch (e) {}
-          });
-        } catch (e) {}
-      }
     } catch (e) { log("ERR", "keepalive: " + e.message); }
+  }
+
+  /*  THE HOLDER PLAYS ONLY WHILE THE PAGE IS HIDDEN (w89).
+   *
+   *  The w87-w88 iPad logs settled where the lag came from:
+   *  iPadOS evicting this element - pause, refused play,
+   *  abort, pause - while the mic and the synthesizer were
+   *  live, whole games spent inside the refused state with
+   *  the page's buttons dead under the churn. w88 made our
+   *  side of that fight polite; w89 removes our side of it.
+   *  The holder exists for ONE scenario - screen off, game
+   *  running, the opponent's move still announced - and it
+   *  was playing from the first button tap onward, including
+   *  the whole time the user is LOOKING at the page, where it
+   *  protects nothing and is exactly the thing iOS fights.
+   *
+   *  So the buttons now ARM it rather than start it: while
+   *  the page is visible the element sits paused, and the
+   *  visibilitychange listener starts it the moment the page
+   *  goes hidden (screen sleeping, app backgrounded) and
+   *  stops it - OUR pause, no resume fight - when the page
+   *  returns. Arming happens inside a real button tap, and
+   *  the prime below PLAYS THE ELEMENT ONCE in that gesture
+   *  and pauses it at once: iOS is far more willing to replay
+   *  an element a gesture has already blessed than to start a
+   *  cold one with the screen going dark. Whether that
+   *  blessing is honoured at the hidden moment is a thing
+   *  only the device can prove - the prime-blocked and
+   *  holder-blocked log lines are what to look for in a
+   *  pasted log if screen-off play goes quiet.
+   *
+   *  THE KNOWN TRADE, on the record: the always-playing
+   *  holder also kept the audio route warm BETWEEN utterances
+   *  while the screen was on - the original v-era reason it
+   *  exists at all ("the next one starts quiet while the
+   *  route is re-established"). If first words start sounding
+   *  faint again during screen-on play, this trade is where
+   *  to look, and the answer will need a different shape than
+   *  an always-on element the OS has started evicting.
+   */
+  var kaArmed = false;
+
+  function armKeepAlive() {
+    kaArmed = true;
+    if (document.visibilityState === "hidden") { startKeepAlive(); return; }
+    primeKeepAlive();
+  }
+
+  function disarmKeepAlive() {
+    kaArmed = false;
+    stopKeepAlive();
+  }
+
+  function primeKeepAlive() {
+    try {
+      ensureHolder();
+      keepAlive.play().then(function () {
+        // wanted can flip true if the screen went dark between
+        // the play and this resolving; then the holder is
+        // simply already doing its job and must not be paused
+        if (!keepAliveWanted) {
+          keepAlive.pause();
+          log("AUD", "session holder primed for screen-off");
+        }
+      }).catch(function (e) {
+        log("AUD", "session holder prime blocked: " + e.message);
+      });
+    } catch (e) { log("ERR", "keepalive: " + e.message); }
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (!kaArmed) return;
+    if (document.visibilityState === "hidden") startKeepAlive();
+    else stopKeepAlive();
+  });
+
+  /*  DECLARE THE SESSION instead of letting Safari guess
+   *  (w89). Native apps name their AVAudioSession category
+   *  and the OS arbitrates around them; the Audio Session
+   *  API is the web's recent version of the same lever, and
+   *  this page is the poster child for "play-and-record" -
+   *  mic open, synthesizer speaking, a media element holding
+   *  the session. Declared once at boot. A condition to
+   *  DETECT, never the shape of the world: browsers without
+   *  the API get a log line saying so, nothing else. */
+  function declareAudioSession() {
+    try {
+      if (navigator.audioSession && "type" in navigator.audioSession) {
+        navigator.audioSession.type = "play-and-record";
+        log("AUD", "audio session declared play-and-record");
+      } else {
+        log("AUD", "no audio session API on this browser");
+      }
+    } catch (e) { log("AUD", "audio session declare failed: " + e.message); }
   }
 
   function stopKeepAlive() {

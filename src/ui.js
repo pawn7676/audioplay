@@ -91,7 +91,7 @@
         // here and there, which is how the account stream came
         // to be closed by neither (w50).
         dryRun = true; running = true;
-        startKeepAlive();
+        armKeepAlive();
         startListening();
         dryStart();
       }
@@ -418,7 +418,7 @@
       running = !running;
       if (running) {
         dryRun = false;
-        startKeepAlive();
+        armKeepAlive();
         startListening();
         // WEB (delta 2): no connect() - sign-in owns the
         // connection; the button owns the voice. The two
@@ -451,7 +451,7 @@
       } else {
         dryRun = false;
         pauseMic();
-        stopKeepAlive();
+        disarmKeepAlive();
         clearDialogue();
         // WEB (delta 2): no stream/poll teardown here.
         // nothing spoken, as with practice mode off: the

@@ -2594,3 +2594,32 @@ back at full speed; a deliberate stop cancels the pending
 retry with it. WHY iPadOS refuses the session at all remains
 an open question for a future log - this entry settles how
 the page behaves while being refused, which is quietly.
+
+### w89
+
+THE HOLDER PLAYS ONLY WHILE THE PAGE IS HIDDEN, AND THE
+SESSION IS DECLARED. w88 quieted the page's side of the
+eviction fight and the next log showed the truth of the other
+side: iPadOS kept refusing the session anyway - a whole
+practice game inside the refused state, taps lagging five to
+ten seconds, then the next game granted and clean, same
+build, minutes apart. The owner's verdict was the right one:
+the refusal is the problem, not the retry. Two changes aim at
+it. First, the keep-alive now plays ONLY when it protects
+something: the buttons arm it, a gesture-blessed prime leaves
+it paused while the screen is on, and visibilitychange starts
+it when the page goes dark and stops it on return - so during
+every screen-on minute there is no element for iOS to evict,
+and the lag's mechanism is simply absent. Second, the page
+now declares what it is: navigator.audioSession.type =
+"play-and-record" where the API exists - the web's version of
+the AVAudioSession category native apps name, so Safari
+arbitrates around a declared session instead of guessing at
+one. Two device questions stay open, named in keepalive.js:
+whether iOS honours the blessed replay at the moment the
+screen goes dark (the prime-blocked/holder-blocked log lines
+answer it), and whether first words go faint during screen-on
+play now that the route is no longer held warm between
+utterances - the v-era reason the holder ran continuously in
+the first place. If the second returns, the fix will need a
+different shape, and this entry is where the trail starts.

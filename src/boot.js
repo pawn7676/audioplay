@@ -57,6 +57,7 @@
     buildWebUI();
     initBoard();
     initTouch();
+    declareAudioSession();
     finishSignIn().then(function (returned) {
       loadStoredToken();
       if (storedToken()) {

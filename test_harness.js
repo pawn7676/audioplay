@@ -2234,6 +2234,76 @@ const sleep = ms =>
   vm.runInContext("startKeepAlive();", sandbox);   /* leave it as found */
   heard();
 
+  // w89: the holder plays only while the page is HIDDEN. The
+  // w87-w88 iPad logs put the lag exactly inside iPadOS's
+  // eviction of the always-playing element; the element now
+  // sits primed-but-paused while the screen is on and starts
+  // at the visibilitychange. Driven through the real listener
+  // list, as the OS would.
+  vm.runInContext(`
+    kaArmed = false; kaStreak = 0; kaPausedAt = 0;
+    clearTimeout(kaRetryTimer); kaRetryTimer = null;
+    stopKeepAlive();
+    __kaPlays = 0; __kaPauses = 0;
+    keepAlive.play = function () { __kaPlays++; return Promise.resolve(); };
+    keepAlive.pause = function () { __kaPauses++; };
+    document.visibilityState = "visible";
+    armKeepAlive();                 /* the voice button, screen on */
+  `, sandbox);
+  await sleep(30);                  // the prime's play() resolves
+  check("arming while visible primes the holder but does not hold",
+        vm.runInContext("__kaPlays", sandbox) === 1 &&
+        vm.runInContext("__kaPauses", sandbox) >= 1 &&
+        vm.runInContext("keepAliveWanted", sandbox) === false);
+  vm.runInContext("LOG.length = 0; keepAlive.on_pause();", sandbox);
+  check("and an OS pause of the idle holder starts no fight",
+        vm.runInContext("LOG.length", sandbox) === 0 &&
+        vm.runInContext("__kaPlays", sandbox) === 1);
+  vm.runInContext(`
+    document.visibilityState = "hidden";
+    document._listeners.visibilitychange.slice()
+      .forEach(function (f) { f(); });
+  `, sandbox);
+  check("the page going hidden starts the holder",
+        vm.runInContext("__kaPlays", sandbox) === 2 &&
+        vm.runInContext("keepAliveWanted", sandbox) === true);
+  vm.runInContext(`
+    document.visibilityState = "visible";
+    document._listeners.visibilitychange.slice()
+      .forEach(function (f) { f(); });
+    LOG.length = 0;
+    keepAlive.on_pause();           /* the pause OUR stop caused */
+  `, sandbox);
+  check("returning visible stops it, OUR pause, no resume fight",
+        vm.runInContext("keepAliveWanted", sandbox) === false &&
+        vm.runInContext("LOG.length", sandbox) === 0 &&
+        vm.runInContext("__kaPlays", sandbox) === 2);
+  vm.runInContext(`
+    disarmKeepAlive();
+    document.visibilityState = "hidden";
+    document._listeners.visibilitychange.slice()
+      .forEach(function (f) { f(); });
+  `, sandbox);
+  check("a disarmed holder ignores the screen going dark",
+        vm.runInContext("__kaPlays", sandbox) === 2);
+  vm.runInContext('document.visibilityState = "visible";', sandbox);
+
+  // w89: the audio session is DECLARED where the API exists,
+  // and detected-absent everywhere else
+  const audRes = vm.runInContext(`
+    (function () {
+      navigator.audioSession = { type: "auto" };
+      declareAudioSession();
+      var declared = navigator.audioSession.type;
+      delete navigator.audioSession;
+      declareAudioSession();        /* absent: a log line, no throw */
+      return declared;
+    })()
+  `, sandbox);
+  check("the audio session is declared play-and-record where supported",
+        audRes === "play-and-record");
+  heard();
+
   // 125: a wake lock that resolves after exit is released, not
   // kept forever
   const lockOut = await vm.runInContext(`
