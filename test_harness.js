@@ -3089,6 +3089,27 @@ const sleep = ms =>
                 /queen charlie 2/i,
                 '"clean charlie two" plays the queen move');
 
+  // ---- w113: "light" is a knight (9 Aug practice log) ----
+  // "knight charlie three" came back as "Light Charlie
+  // three"; the fuzzy matcher can NEVER save this one -
+  // "light" sits one edit from "night" AND "eight", and an
+  // ambiguous near-miss is refused - so with the pawn guard
+  // off the bare c3 played the PAWN. A named spelling, and
+  // exact-only, so its -ight family cannot bend to knights.
+  check('"light" parses as the knight',
+        vm.runInContext('PIECES["light"]', sandbox) === "n");
+  check("and it is never a fuzzy target (right/might stay themselves)",
+        vm.runInContext('FUZZY_EXACT_ONLY["light"]', sandbox) === 1 &&
+        vm.runInContext('fuzzyToken("right")', sandbox) === null &&
+        vm.runInContext('fuzzyToken("might")', sandbox) === null);
+  await setBoard(
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+  say("light charlie three");
+  await sleep(120);
+  check('"light charlie three" plays the KNIGHT, not the c-pawn',
+        /knight charlie 3/i.test(heard().join(" | ")) &&
+        vm.runInContext("api.lastSan", sandbox) === "Nc3");
+
   // ---- w65: "rugby" and "rug" are rooks (game w64-1) ----
   // "Rook b8" fused into "Rugby" and "Rugby eight" - BOTH
   // readings of the one utterance, so unlike "Rug B8" later in

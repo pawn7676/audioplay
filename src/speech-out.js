@@ -136,6 +136,14 @@
   // Out loud the two lines stay identical: they describe
   // the same move, and the color belongs to the move rather
   // than to whoever is speaking it.
+  //
+  // BRACKETED IN THE LOG since w113, because unmarked it
+  // read as transcript: the owner saw "SAY white alpha 3"
+  // and rightly asked why the voice never said "white". A
+  // SAY line is the one place the log claims to quote what
+  // was spoken, so anything on it that was NOT spoken has
+  // to look like annotation - "[white] alpha 3" - or the
+  // log lies a little on every move.
   function speak(text, who) {
     if (!text) return;
     // EVERY output funnels through here, and since w110 it
@@ -150,7 +158,7 @@
     // proposed, this comment is its history. `who` is the
     // color word, passed for move announcements alone and
     // written to the LOG only - see its note below.
-    log("SAY", (who ? who + " " : "") + text);
+    log("SAY", (who ? "[" + who + "] " : "") + text);
     splitForSpeech(text).forEach(function (p) { speakQueue.push(p); });
     pumpSpeech();
   }

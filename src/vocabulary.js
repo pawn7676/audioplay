@@ -93,7 +93,18 @@
     r: "rook rooks rock rocks brook ruck roof rooke brooke ruts rug",
     b: "bishop bishops bishoff bishup fish fisher fishop ship bish " +
        "vision visions bitch",
-    n: "knight knights night nights nite note notes",
+    // "light" joined at w113 from the owner's 9 Aug practice
+    // log: "knight charlie three" came back as "Light
+    // Charlie three" (rival: "Light chili three"), the
+    // unknown word dropped, and with the pawn guard OFF the
+    // bare c3 played the PAWN. The fuzzy matcher can never
+    // rescue this one: "light" sits one edit from "night"
+    // AND one edit from "eight", and an ambiguous near-miss
+    // is refused rather than guessed - correctly, but the
+    // refusal reads as silence. Exact-only below, because
+    // it is an everyday word with an everyday -ight family
+    // around it.
+    n: "knight knights night nights nite note notes light",
     // "plant" and its family joined at w48 from game w47-1,
     // where the owner spent four minutes failing to say the
     // word: Safari returned pawn as Plants, Plant, Plantains,
@@ -378,7 +389,15 @@
     // things a person says at a board. As a fuzzy target it
     // would turn all six into queens; named as a spelling it
     // matches when spoken and seeds nothing.
-    "clean");
+    "clean " +
+    // w113. "light" is the first KNIGHT spelling that is an
+    // everyday word. Its -ight family - right, might, sight,
+    // fight, tight, flight - all sit within an edit or two,
+    // and while most are shielded by "eight" making the
+    // near-miss ambiguous, a shield that thin is not a
+    // policy. Named as a spelling it matches when spoken
+    // and seeds nothing.
+    "light");
 
   // Ordinary words sit one edit from vocabulary words and
   // were being converted silently: "good" became "gold", a

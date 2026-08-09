@@ -3237,3 +3237,37 @@ is the stronger: sound here has now failed while BROKEN
 (v67: played but unhearable) and failed while WORKING
 (w112: heard and empty). A case closed at both ends does
 not get reopened on either argument.
+
+### w113
+
+TWO THINGS FROM ONE PASTED LOG, the owner reading his own
+practice session - which is the project's oldest and best
+instrument working as designed.
+
+"LIGHT" IS A KNIGHT. "knight charlie three" arrived as
+"Light Charlie three", the unknown word was dropped, and
+with the pawn guard off the bare c3 played the PAWN - a
+wrong-but-legal move, the exact class the grammar is built
+to prevent. The owner was surprised the fuzzy matcher let
+it through, and the reason is worth recording because it is
+the matcher being RIGHT: "light" sits one edit from "night"
+and one edit from "eight", and an ambiguous near-miss is
+refused rather than guessed. Refusal was correct; the word
+was simply missing from the table. So it joins the knight
+spellings the w59 way - named, from a log, and exact-only,
+because "light" is the first knight spelling that is an
+everyday word and its -ight family (right, might, sight,
+fight, flight) must not start bending into knights. Most of
+that family is accidentally shielded by the same "eight"
+ambiguity, but a shield that thin is not a policy.
+
+AND THE LOG'S COLOR WORD WEARS BRACKETS. Since game18 the
+SAY line has carried the mover's color to tell a read-back
+from an announcement when recapture makes them the same
+sentence - log-only, never spoken. Unmarked, it read as
+transcript: the owner saw "SAY white alpha 3" and rightly
+asked why the voice never said "white". A SAY line is the
+one place the log claims to quote the voice, so what was
+not spoken now looks like annotation: "[white] alpha 3".
+The information stays; the log stops lying a little on
+every move.
