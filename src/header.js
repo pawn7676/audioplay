@@ -218,6 +218,13 @@
    *   audible, so any confirmation or alert MUST be spoken.
    *   (v80-v108 could also show it on screen in silent
    *   mode; that screen was deleted at v109.)
+   *   (Amended w108: the finding's two halves aged apart.
+   *   The <audio> half stands in full - re-proven at
+   *   w88-w90, session declared and all. The AudioContext
+   *   half lost its stage when w90 removed screen-off play,
+   *   and one WebAudio chime is ON TRIAL in the narrowest
+   *   spot - see the reopened sound case below and
+   *   chimes.js.)
    * - A PLAYING media element keeps the tab alive. The
    *   silent looping WAV in keepalive.js holds the iOS audio
    *   session; without it the page suspends with the screen
@@ -294,6 +301,32 @@
    * and flat repeated speech grates: it must carry
    * information to earn its airtime. chimes.js is the
    * detailed tombstone.
+   *
+   * REOPENED AT w108, ON ONE SQUARE INCH (owner's decision,
+   * 9 Aug 2026), with the new evidence the tombstone
+   * demanded. The arc above condemned three mechanisms, and
+   * time treated them differently: the <audio> route is
+   * deader than ever (w88-w90 watched iPadOS evict a media
+   * element with the mic live and the session declared),
+   * but the WebAudio route was condemned for dying with the
+   * screen off - and w90 deleted screen-off play itself, so
+   * that verdict lost its grounds. What returned is ONE
+   * WebAudio chime in the one spot with an audibility
+   * argument: confirming a move the user just heard read
+   * aloud as a question and answered "yes" - the route
+   * carried the question seconds earlier and the yes proves
+   * it was heard, and the read-back there repeated what the
+   * user had just approved, failing this arc's own airtime
+   * rule. Everything else stands: media elements never
+   * again, no chime on unconfirmed moves (that read-back
+   * still carries real information), a spoken "okay."
+   * whenever the chime cannot be scheduled, and the
+   * chimeConfirmed toggle as the in-game rollback. What no
+   * code can prove is audibility itself - that is game4's
+   * permanent lesson - so the trial is judged by ear, and
+   * an inaudible chime here degrades to the user re-saying
+   * the move, which speaks either way: a loud failure, not
+   * the silent kind that killed v67.
    *
    * FULLSCREEN-EXIT CORRUPTION — SOLVED AT v108 BY NOT
    * GOING FULLSCREEN. After any element fullscreen EXIT the

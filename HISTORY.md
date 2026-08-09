@@ -3055,3 +3055,49 @@ Both are body sans now. The log keeps monospace, where column
 alignment in a pasted dump is the whole point, and so do the
 board's coordinate labels, whose sizing was hand-tuned
 against that face on a canvas.
+
+### w108
+
+THE SOUND CASE REOPENS, ON ONE SQUARE INCH. The owner asked
+what had changed since the chimes died (v65-v68), and the
+audit split the tombstone in two. The <audio> route is
+condemned harder than ever: w88-w90 watched iPadOS evict a
+media element while the mic and the synthesizer were live,
+with the session declared - the exact conditions a chime
+plays under. But the WebAudio route was abandoned for dying
+with the screen off, and w90 deleted screen-off play itself;
+no log ever showed a WebAudio chime lost with the screen ON.
+A verdict whose grounds were removed is not a verdict, so
+the owner reopened the case - narrowly, and he chose the
+spot: "did you mean knight charlie delta five check?" -
+"yes" - and then the full move read back AGAIN, to a user
+who had just heard it and approved it. That read-back fails
+the sound arc's own airtime rule, and it is also the one
+moment in the program with an audibility ARGUMENT rather
+than an audibility hope: the question played through the
+same route seconds earlier, and the yes is proof it was
+heard.
+
+So: a confirmed move - answered yes to the exact move the
+question spoke, the pending branch and nothing else - now
+chimes instead of reading back. WebAudio only, two short
+rising notes, context born in the voice and practice taps
+because iOS starts one suspended anywhere else, state
+checked at play time. Whenever the chime cannot be SCHEDULED
+- no API, context not running - the same moment speaks
+"okay." instead, because rule 5 does not bend for a trial.
+Unconfirmed moves keep the full read-back: there it still
+carries information (it is the first time the user hears
+what was understood), and that half of the arc is untouched.
+Practice mode runs the same substitution, so the chime can
+be auditioned without a game at stake.
+
+What no version can fix is stated where it is load-bearing:
+no API reports audibility, game4's "SFX ok" on four silent
+chimes is permanent, and the harness can only prove the
+chime was handed to the audio stack. The trial is judged by
+ear over real games, chimeConfirmed in the settings panel is
+the mid-game rollback (off restores the full read-back after
+yes), and an inaudible chime here degrades to the user
+re-saying the move - which speaks an answer either way, a
+loud failure instead of the silent kind that killed v67.
