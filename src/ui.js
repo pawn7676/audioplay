@@ -719,7 +719,6 @@
   function nameCell(colour) {
     var pl = (api.players || {})[colour];
     if (!pl) return "";
-    var isMine = colour === (api.myColor || "w");
     // The name is unconditional since w75 - the switch that
     // could hide it is gone, so the rating can never be the
     // only thing here and needs no guard of its own.
@@ -735,8 +734,12 @@
     // .55 on the row times .65 on the rating. Dimming is the
     // CLOCK's turn signal; whose turn it is says nothing
     // about who the players ARE.
-    return '<span class="' + (isMine ? "mine" : "") + '">' +
-      parts.join(" ") + "</span>";
+    //
+    // AND IT NO LONGER MARKS WHICH ONE IS YOURS (w103). This
+    // wrapped the parts in a span carrying a "mine" class for
+    // one CSS rule that tinted your own name; both are gone,
+    // so the wrapper has nothing left to carry.
+    return parts.join(" ");
   }
 
   function renderPageClocks() {
