@@ -169,6 +169,7 @@
     pieceAsk = null;
     partialAsk = null;
     armedUci = null;
+    armedConfirmed = false;
     repairMayPlay = true;
   }
 
@@ -209,26 +210,55 @@
   // would talk over the next tap.
   var armedUci = null;
 
+  // CONFIRMED rides beside the arm (w108): true only when
+  // the user heard this exact move read aloud as a question
+  // and answered "yes", which is what licenses the chime in
+  // place of the full read-back - the read-back would only
+  // repeat what the user just approved. Set by acceptMove
+  // with its arm, consumed with it, and a stale value can
+  // never fire alone: readBackMine returns first on a bare
+  // armedUci, and every new arm writes this flag fresh.
+  var armedConfirmed = false;
+
+  // The confirmed-move feedback of the w108 trial: the
+  // chime when it can be scheduled, a spoken "okay." when
+  // it cannot (rule 5 - never silence). The color word
+  // rides along so clock mode's message gate treats the
+  // fallback as the move confirmation it is, not as a
+  // message for the strip.
+  function confirmFeedback() {
+    if (playConfirmChime()) return;
+    speak("okay.", colorWord(api.myColor || "w"));
+  }
+
   // announce=false is a catch-up replay (reconnect,
   // takeback rebuild): it still DISARMS - that move is
   // history now and must not be read back when some later
   // event happens to match - but speaks nothing.
   function readBackMine(san, uci, announce) {
     if (!armedUci || armedUci !== uci) return;
+    var confirmed = armedConfirmed;
     armedUci = null;
+    armedConfirmed = false;
     if (!announce) return;
     // v104's rule, moved here whole: a SAN ending in # ends
     // the game whoever gets there first, and the result
     // line says it better than a read-back can. api.over
     // alone was not enough then and is not now.
     if (api.over || /#$/.test(san)) return;
-    if (readBackMineNow()) speak(sanToSpeech(san), colorWord(api.myColor));
+    if (!readBackMineNow()) return;
+    if (confirmed && CFG.chimeConfirmed) { confirmFeedback(); return; }
+    speak(sanToSpeech(san), colorWord(api.myColor));
   }
 
   /* quiet=true is a tapped move (touch.js): no read-back, no
    * arming - but every ERROR below still speaks, because a
-   * failure must be heard whichever way the move went in. */
-  function acceptMove(c, quiet) {
+   * failure must be heard whichever way the move went in.
+   * confirmed=true means the user heard this exact move in a
+   * question and said yes (the pending branch is the only
+   * caller), which swaps the read-back for confirmFeedback
+   * - see armedConfirmed above. */
+  function acceptMove(c, quiet, confirmed) {
     if (busy) {
       // SILENCE IS NOT AN ANSWER, not even for "I am still
       // working on the last one" (w50). This logged and
@@ -252,8 +282,13 @@
       api.lastSan = c.san; api.lastSanW = c.san;
       busy = false;
       log("DRY", "you play " + uci + " = " + c.san + " (not sent)");
-      if (!quiet && readBackMineNow())
-        speak(sanToSpeech(c.san), colorWord(api.myColor || "w"));
+      if (!quiet && readBackMineNow()) {
+        // same substitution as the live path, so practice is
+        // where the chime can be heard without a game at
+        // stake - the trial's own test bench (w108)
+        if (confirmed && CFG.chimeConfirmed) confirmFeedback();
+        else speak(sanToSpeech(c.san), colorWord(api.myColor || "w"));
+      }
       // CALLED BY NAME, NOT BY REFERENCE (w54). Passing the
       // function itself captures whatever it is bound to RIGHT
       // NOW, so a reply already in flight could not be called
@@ -267,6 +302,7 @@
     }
 
     armedUci = quiet ? null : uci;        /* v134: see readBackMine */
+    armedConfirmed = !!(confirmed && !quiet);
     postMove(uci).then(function (r) {
       busy = false;
       var ok = r.status === 200 && r.body && r.body.ok !== false && !r.body.error;
@@ -825,7 +861,11 @@
     }
 
     if (pending) {
-      if (cmd === "yes") { acceptMove(pending.cands[pending.idx]); return; }
+      // confirmed: the question read this exact move aloud
+      // and yes is the proof it was heard (w108). Only this
+      // branch earns the flag - a piece answer or a re-said
+      // move below plays a move the question never spoke.
+      if (cmd === "yes") { acceptMove(pending.cands[pending.idx], false, true); return; }
       if (cmd === "no") { pending.idx++; askCandidate(); return; }
       if (cmd === "cancel") { pending = null; speak("Cancelled. Say the move again."); return; }
       // A PIECE NAME PICKS ITS CANDIDATE (v116). The guard

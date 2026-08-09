@@ -107,6 +107,7 @@
       "border:1px solid " + BORDER + ";";
     practiceBtn.addEventListener("click", function () {
       wakeSpeech();
+      primeChimes();   /* an AudioContext must be born in a gesture (w108) */
       setTimeout(loadVoices, 300);
       if (dryRun) {
         dryRun = false; running = false;
@@ -298,6 +299,7 @@
     settingHeader("all modes");
     settingRow("confirmMyMove", "confirm my move");
     settingRow("guardPawnPushes", "guard pawn pushes");
+    settingRow("chimeConfirmed", "chime after yes");
     // w68. Repaints on the spot rather than waiting for the
     // next game event: this is the one setting whose whole
     // effect is something already on screen, so a flip that
@@ -452,6 +454,7 @@
 
     bigBtn.addEventListener("click", function () {
       wakeSpeech();
+      primeChimes();   /* an AudioContext must be born in a gesture (w108) */
       setTimeout(loadVoices, 300);
       running = !running;
       if (running) {
