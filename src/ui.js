@@ -34,22 +34,40 @@
 
   var wrapEl, bigBtn, logPanel, logBtn, practiceBtn, clockBtn, settingsBtn, setPanel;
 
-  // THE SAME VALUES THE STYLESHEET HOLDS as --btn-bg and
-  // --button-on - and the duplication is exactly the hazard
-  // the stylesheet's own w54 note names: "duplicated where no
-  // stylesheet could see them drift". At w92 it DID drift -
-  // the stylesheet's green moved to the clock's #374528 and
-  // this constant kept the old #3a5a2a, so the settings pills
-  // and the open-settings button wore last week's green until
-  // the owner saw it in a screenshot within the hour (w93).
-  // These lines are the shared-UI's paint pots; if the
-  // stylesheet's values ever move again, move them together -
-  // and they DID move again at w101, back to the very
-  // #3a5a2a named above, this time on both sides at once and
-  // with the harness comparing the two files.
-  var BUTTON_OFF = "#242220";
-  var BUTTON_ON = "#3a5a2a";        /* w101: back off the clock's green */
-  var BUTTON_TEXT_ON = "#f2f2ef";   /* = --bright, same law */
+  /* THE SHARED UI'S PAINT POTS - the stylesheet's values, in
+   * the one place that cannot read the stylesheet.
+   *
+   * buildUI() builds its buttons with inline styles because it
+   * was written to float over lichess.org, where no CSS of
+   * ours could reach them. On our own page that means every
+   * colour it uses is a SECOND copy of a value :root already
+   * holds - "duplicated where no stylesheet could see them
+   * drift", as the stylesheet's own w54 note put it. At w92 it
+   * did drift: --button-on moved and this file's copy did not,
+   * so the settings pills wore last week's green until the
+   * owner caught it in a screenshot (w93).
+   *
+   * Until w102 only two of them were named; the rest were
+   * hex literals sprinkled through the style strings below -
+   * six copies of the blue, six of the border, three of the
+   * amber. Now every value that :root also holds is named
+   * here, once, and the harness compares this block against
+   * the stylesheet. To change one of these colours, change
+   * both files; the suite says so if you forget. */
+  var BUTTON_OFF = "#242220";       /* = --btn-bg  */
+  var BUTTON_ON = "#3a5a2a";        /* = --button-on (w101) */
+  var BUTTON_TEXT_ON = "#f2f2ef";   /* = --bright  */
+  var BLUE = "#91bddf";             /* = --blue, w102's rename */
+  var BORDER = "#3a3530";           /* = --border */
+  var AMBER = "#d0a24c";            /* = --warn   */
+  /* UI-ONLY, with no twin in :root and so nothing to pin: the
+   * settings panel's own surface and its two text weights, and
+   * the log body's green-grey. They exist only inside the
+   * built panels. */
+  var PANEL_BG = "#171513";
+  var PANEL_HEAD = "#7d766e";
+  var PANEL_LABEL = "#c9c2b8";
+  var LOG_TEXT = "#9fb0a0";
 
   // A lit button means that thing is currently ON, matching
   // the voice button. Called from renderButton so every
@@ -64,12 +82,12 @@
   }
 
   function renderButton() {
-    paintButton(practiceBtn, dryRun, "#d0a24c");
+    paintButton(practiceBtn, dryRun, AMBER);
     paintButton(logBtn, !!(logPanel && logPanel.style.display !== "none"),
-              "#91bddf");
-    paintButton(clockBtn, clockModeOn(), "#91bddf");
+              BLUE);
+    paintButton(clockBtn, clockModeOn(), BLUE);
     paintButton(settingsBtn, !!(setPanel && setPanel.style.display !== "none"),
-              "#91bddf");
+              BLUE);
     if (!bigBtn) return;
     // WEB (delta 4): a labelled pill, not a 72px circle -
     // see paintVoiceButton with the page furniture below.
@@ -85,8 +103,8 @@
     practiceBtn.textContent = "Practice";   /* WEB w30: capitalised */
     practiceBtn.style.cssText =
       "font-size:12px;padding:6px 12px;border-radius:10px;" +
-      "background:" + BUTTON_OFF + ";color:#d0a24c;" +
-      "border:1px solid #3a3530;";
+      "background:" + BUTTON_OFF + ";color:" + AMBER + ";" +
+      "border:1px solid " + BORDER + ";";
     practiceBtn.addEventListener("click", function () {
       wakeSpeech();
       setTimeout(loadVoices, 300);
@@ -134,15 +152,16 @@
     logBtn.textContent = "Log";   /* WEB w30: capitalised */
     logBtn.style.cssText =
       "font-size:12px;padding:6px 12px;border-radius:10px;" +
-      "background:" + BUTTON_OFF + ";color:#91bddf;" +
-      "border:1px solid #3a3530;";
+      "background:" + BUTTON_OFF + ";color:" + BLUE + ";" +
+      "border:1px solid " + BORDER + ";";
 
     bigBtn = document.createElement("button");
     bigBtn.style.cssText =
       "width:72px;height:72px;border-radius:50%;font-size:26px;line-height:1;" +
       "display:flex;align-items:center;justify-content:center;padding:0;" +
-      "background:" + BUTTON_OFF + ";color:#91bddf;" +
-      "border:1px solid #3a3530;touch-action:manipulation;-webkit-user-select:none;user-select:none;";
+      "background:" + BUTTON_OFF + ";color:" + BLUE + ";" +
+      "border:1px solid " + BORDER + ";touch-action:manipulation;" +
+      "-webkit-user-select:none;user-select:none;";
 
     clockBtn = document.createElement("button");
     clockBtn.textContent = "Clock";   /* WEB w30: capitalised */
@@ -183,7 +202,7 @@
     setPanel = document.createElement("div");
     setPanel.style.cssText =
       "position:fixed;right:10px;bottom:118px;z-index:99990;" +
-      "display:none;background:#171513;border:1px solid #3a3530;" +
+      "display:none;background:" + PANEL_BG + ";border:1px solid " + BORDER + ";" +
       "border-radius:14px;padding:10px 12px;min-width:230px;" +
       "font-family:-apple-system,system-ui,sans-serif;" +
       "-webkit-user-select:none;user-select:none;";
@@ -227,7 +246,7 @@
       var h = document.createElement("div");
       h.textContent = text;
       h.style.cssText =
-        "color:#7d766e;font-size:11px;letter-spacing:.08em;" +
+        "color:" + PANEL_HEAD + ";font-size:11px;letter-spacing:.08em;" +
         "text-transform:uppercase;margin:8px 0 4px;";
       setPanel.appendChild(h);
     }
@@ -245,9 +264,9 @@
       var lab = document.createElement("div");
       lab.textContent = label;
       lab.style.cssText = headerStyle
-        ? "color:#7d766e;font-size:11px;letter-spacing:.08em;" +
+        ? "color:" + PANEL_HEAD + ";font-size:11px;letter-spacing:.08em;" +
           "text-transform:uppercase;"
-        : "color:#c9c2b8;font-size:13px;";
+        : "color:" + PANEL_LABEL + ";font-size:13px;";
       var pill = document.createElement("button");
       // weight 600 to match every other button label (w100):
       // the pills inherited the body's regular weight and
@@ -255,10 +274,10 @@
       pill.style.cssText =
         "font-size:11px;min-width:52px;padding:5px 0;" +
         "text-align:center;border-radius:10px;" +
-        "font-weight:600;border:1px solid #3a3530;";
+        "font-weight:600;border:1px solid " + BORDER + ";";
       var paint = function () {
         pill.textContent = CFG[key] ? "ON" : "OFF";
-        paintButton(pill, CFG[key], "#91bddf");
+        paintButton(pill, CFG[key], BLUE);
       };
       pill.addEventListener("click", function () {
         CFG[key] = !CFG[key];
@@ -375,16 +394,16 @@
          is better spent on log. */
       "position:fixed;left:8px;right:8px;top:8px;bottom:8px;z-index:99998;" +
       "display:none;flex-direction:column;background:rgba(12,12,11,.97);" +
-      "border:1px solid #3a3530;border-radius:12px;overflow:hidden;";
+      "border:1px solid " + BORDER + ";border-radius:12px;overflow:hidden;";
     var verLabel = document.createElement("div");
     verLabel.textContent = "Audioplay " + VERSION;
     verLabel.style.cssText =
-      "color:#d0a24c;font-size:12px;padding:6px 4px;margin-left:auto;" +
+      "color:" + AMBER + ";font-size:12px;padding:6px 4px;margin-left:auto;" +
       "font-family:system-ui,sans-serif;";
 
     var bar = document.createElement("div");
     bar.style.cssText =
-      "display:flex;gap:8px;padding:8px;border-bottom:1px solid #3a3530;" +
+      "display:flex;gap:8px;padding:8px;border-bottom:1px solid " + BORDER + ";" +
       "font-family:system-ui,sans-serif;";
     // WEB: no "token" button - sign-in is PKCE, Sign out is on
     // the page (delta 1 in the header)
@@ -395,8 +414,8 @@
       var b = document.createElement("button");
       b.textContent = name.charAt(0).toUpperCase() + name.slice(1);
       b.style.cssText =
-        "font-size:12px;padding:6px 12px;border-radius:8px;background:#242220;" +
-        "color:#91bddf;border:1px solid #3a3530;";
+        "font-size:12px;padding:6px 12px;border-radius:8px;background:" + BUTTON_OFF + ";" +
+        "color:" + BLUE + ";border:1px solid " + BORDER + ";";
       b.addEventListener("click", function () {
         if (name === "copy") {
           try {
@@ -413,7 +432,7 @@
 
     logBody = document.createElement("pre");
     logBody.style.cssText =
-      "margin:0;padding:8px;flex:1;overflow:auto;color:#9fb0a0;font-size:11px;" +
+      "margin:0;padding:8px;flex:1;overflow:auto;color:" + LOG_TEXT + ";font-size:11px;" +
       "line-height:1.35;white-space:pre-wrap;word-break:break-word;" +
       "font-family:ui-monospace,Menlo,monospace;-webkit-overflow-scrolling:touch;";
     logBody.textContent = LOG.join("\n");

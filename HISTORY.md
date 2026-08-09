@@ -2887,3 +2887,36 @@ by a single rule or line of JS in the life of this page -
 each variable's one apparent "use" was feeding its own unused
 alias. --brass survives that block because it is real: it
 marks YOUR name in the player rail.
+
+### w102
+
+THE BLUE IS CALLED --blue, AND EVERY COPY OF IT IS NAMED.
+--accent was borrowed from another of the owner's programs,
+where the blue outlined certain boxes; here it does a
+different job and the word explained nothing. The owner's
+ruling: this page has no unified theme to be an accent OF,
+it is simply the only blue on the page, so call it blue. Its
+one alias, --brass, goes with it - .sideName .mine points at
+--blue directly now, with a comment on why your name in the
+rail borrows the control colour (it is the page's one bright
+foreground, and "which of these two is me" should answer
+itself at a glance). That empties the alias block --ok and
+--bad left at w101.
+
+The rename exposed the bigger thing. buildUI() styles its
+buttons inline, because it was written to float over
+lichess.org where no CSS of ours could reach them - so every
+colour it uses is a second copy of a value :root holds, and
+only two of them were named. Six copies of the blue, six of
+the border, three of the amber sat as bare hex in style
+strings, invisible to any search for the variable and immune
+to any change of it. All are named constants now, in one
+block at the top with their :root twin written beside each,
+and the harness compares the whole block against the
+stylesheet - including the select's chevron, which carries
+the blue percent-encoded inside a data: URI where nothing
+else could catch it drifting. Four more colours are named in
+the same block and deliberately NOT pinned: the settings
+panel's surface and text weights and the log body's
+green-grey exist only inside the built panels and have no
+twin to drift from.
