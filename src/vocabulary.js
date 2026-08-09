@@ -48,9 +48,14 @@
     a: "alpha alfa alpher ay eh apple elsa alsa ilsa alka alba " +
        "elba alva ulta olfa alfalfa adam",
     b: "bravo brava bravos bravado be bee beta",
+    // "chili" and "chilly" joined at w114 from the owner's
+    // 9 Aug practice log, where a rival transcript wrote
+    // "charlie" as "chili" ("Light chili three"). Both meet
+    // the criterion above: Safari's own output for the
+    // spoken word. Exact-only, everyday words.
     c: "charlie charley charly charlee shirley sharlie sea see " +
        "chan chang ching chong chung chin chino chinese " +
-       "charlotte shortly channel",
+       "charlotte shortly channel chili chilly",
     d: "delta deltas dealt delt de dee",
     e: "echo ecko eco eggo echoes aiko",
     f: "foxtrot foxtrots foxtrott foxdrop fox ef eff " +
@@ -93,18 +98,21 @@
     r: "rook rooks rock rocks brook ruck roof rooke brooke ruts rug",
     b: "bishop bishops bishoff bishup fish fisher fishop ship bish " +
        "vision visions bitch",
-    // "light" joined at w113 from the owner's 9 Aug practice
-    // log: "knight charlie three" came back as "Light
-    // Charlie three" (rival: "Light chili three"), the
-    // unknown word dropped, and with the pawn guard OFF the
-    // bare c3 played the PAWN. The fuzzy matcher can never
-    // rescue this one: "light" sits one edit from "night"
-    // AND one edit from "eight", and an ambiguous near-miss
-    // is refused rather than guessed - correctly, but the
-    // refusal reads as silence. Exact-only below, because
-    // it is an everyday word with an everyday -ight family
-    // around it.
-    n: "knight knights night nights nite note notes light",
+    // WHAT EARNS A WORD A PLACE IN THESE TABLES, stated
+    // after w113 got it wrong for a day: a spelling joins
+    // because Safari RETURNED it when a vocabulary word was
+    // SPOKEN - "note" is here because saying "knight"
+    // produced it, "clean" because saying "queen" did -
+    // never because a word merely rhymes with or resembles
+    // a piece name. "light" was added on that misreading
+    // and REVERTED at w114: the owner had said "light" ON
+    // PURPOSE, as a test, and mapping it here would have
+    // made the program mishear him by design. Every rhyme
+    // (sight, bite, kite) is the same reductio. A deliberate
+    // non-vocabulary word is DROPPED, and since w114 an
+    // ambiguous near-miss drop is at least logged - see
+    // fuzzyToken.
+    n: "knight knights night nights nite note notes",
     // "plant" and its family joined at w48 from game w47-1,
     // where the owner spent four minutes failing to say the
     // word: Safari returned pawn as Plants, Plant, Plantains,
@@ -390,14 +398,11 @@
     // would turn all six into queens; named as a spelling it
     // matches when spoken and seeds nothing.
     "clean " +
-    // w113. "light" is the first KNIGHT spelling that is an
-    // everyday word. Its -ight family - right, might, sight,
-    // fight, tight, flight - all sit within an edit or two,
-    // and while most are shielded by "eight" making the
-    // near-miss ambiguous, a shield that thin is not a
-    // policy. Named as a spelling it matches when spoken
-    // and seeds nothing.
-    "light");
+    // w114. "chili" and "chilly" are everyday words with an
+    // everyday neighbourhood - chill, chills, child, hilly,
+    // dilly - and none of that family is the c-file. Named
+    // as spellings they match when spoken and seed nothing.
+    "chili chilly");
 
   // Ordinary words sit one edit from vocabulary words and
   // were being converted silently: "good" became "gold", a

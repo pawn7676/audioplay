@@ -3271,3 +3271,35 @@ one place the log claims to quote the voice, so what was
 not spoken now looks like annotation: "[white] alpha 3".
 The information stays; the log stops lying a little on
 every move.
+
+### w114
+
+w113 WAS WRONG ABOUT "LIGHT", AND THE MISTAKE EARNED A RULE.
+The owner had said "light" ON PURPOSE, as a test of what the
+parser does with a word that rhymes with a piece - and w113
+read the log as a mishearing of "knight" and added the word
+to the knight table. The owner caught it within the hour:
+map "light" and every rhyme follows - sight, bite, kite -
+and the program starts mishearing on purpose. Reverted, and
+the criterion the tables always implicitly used is now
+written at the top of PIECES where the next addition will
+be made: A SPELLING JOINS BECAUSE SAFARI RETURNED IT WHEN A
+VOCABULARY WORD WAS SPOKEN - "note" for a spoken knight,
+"clean" for a spoken queen - NEVER BECAUSE A WORD RESEMBLES
+ONE. Evidence of transcription, not phonetic neighbourhood.
+
+Two things from the same log DO meet that criterion and the
+owner's real points, and both ship here. "chili" and
+"chilly" join the c-file: a rival transcript wrote the
+owner's spoken "charlie" as "chili", which is exactly the
+evidence the rule asks for. And the drop that surprised him
+is no longer silent in the log: "light" was refused by the
+fuzzy matcher for a correct reason - it sits one edit from
+"night" AND "eight", and an ambiguous near-miss is never
+guessed - but the refusal left no trace, so the word seemed
+simply unseen. fuzzyToken now logs the tie it refused to
+break ('near-miss "light" dropped: could be "night" or
+"eight"'), once per utterance like the used-near-miss line.
+Whether such a drop should ever ASK instead of playing the
+bare square is left open on purpose; the log line is how
+future pasted games will show whether it matters.

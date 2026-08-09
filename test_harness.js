@@ -3089,26 +3089,46 @@ const sleep = ms =>
                 /queen charlie 2/i,
                 '"clean charlie two" plays the queen move');
 
-  // ---- w113: "light" is a knight (9 Aug practice log) ----
-  // "knight charlie three" came back as "Light Charlie
-  // three"; the fuzzy matcher can NEVER save this one -
-  // "light" sits one edit from "night" AND "eight", and an
-  // ambiguous near-miss is refused - so with the pawn guard
-  // off the bare c3 played the PAWN. A named spelling, and
-  // exact-only, so its -ight family cannot bend to knights.
-  check('"light" parses as the knight',
-        vm.runInContext('PIECES["light"]', sandbox) === "n");
-  check("and it is never a fuzzy target (right/might stay themselves)",
-        vm.runInContext('FUZZY_EXACT_ONLY["light"]', sandbox) === 1 &&
+  // ---- w114: RHYMES ARE NOT SPELLINGS (the light lesson) ----
+  // w113 added "light" as a knight from a misread log; the
+  // owner had said "light" ON PURPOSE, as a test. The table
+  // criterion is what Safari RETURNED for a spoken word,
+  // never what rhymes - so "light" is out, the deliberate
+  // word is dropped as before, and the drop now leaves a
+  // trace: an ambiguous near-miss names its tie in the log.
+  check('"light" is NOT a piece word (rhymes are not spellings)',
+        vm.runInContext('PIECES["light"]', sandbox) === undefined);
+  check("ambiguous -ight words still refuse to guess",
         vm.runInContext('fuzzyToken("right")', sandbox) === null &&
         vm.runInContext('fuzzyToken("might")', sandbox) === null);
   await setBoard(
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+  vm.runInContext("CFG.guardPawnPushes = false;", sandbox);
   say("light charlie three");
   await sleep(120);
-  check('"light charlie three" plays the KNIGHT, not the c-pawn',
-        /knight charlie 3/i.test(heard().join(" | ")) &&
-        vm.runInContext("api.lastSan", sandbox) === "Nc3");
+  check('"light" is dropped and the bare square plays the pawn',
+        /charlie 3/i.test(heard().join(" | ")) &&
+        vm.runInContext("api.lastSan", sandbox) === "c3");
+  check("and the drop leaves a trace in the log",
+        vm.runInContext(`
+          LOG.some(function (l) {
+            return l.indexOf('near-miss "light" dropped: could be') >= 0;
+          })
+        `, sandbox));
+  vm.runInContext("CFG.guardPawnPushes = true;", sandbox);
+
+  // ---- w114: "chili"/"chilly" are the c-file ----
+  // A rival transcript in the same log wrote "charlie" as
+  // "chili" - Safari's own output for the spoken word,
+  // which is exactly what earns a spelling its place.
+  check('"chili" and "chilly" parse as the c-file, exact-only',
+        vm.runInContext('NATO["chili"]', sandbox) === "c" &&
+        vm.runInContext('NATO["chilly"]', sandbox) === "c" &&
+        vm.runInContext('FUZZY_EXACT_ONLY["chili"]', sandbox) === 1 &&
+        vm.runInContext('FUZZY_EXACT_ONLY["chilly"]', sandbox) === 1);
+  await onBoard("4k3/8/8/8/8/8/8/3QK3 w - - 0 1", "queen chili two",
+                /queen charlie 2/i,
+                '"queen chili two" plays the queen to c2');
 
   // ---- w65: "rugby" and "rug" are rooks (game w64-1) ----
   // "Rook b8" fused into "Rugby" and "Rugby eight" - BOTH
