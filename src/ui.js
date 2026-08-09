@@ -59,7 +59,7 @@
   var BUTTON_TEXT_ON = "#f2f2ef";   /* = --bright  */
   var BLUE = "#91bddf";             /* = --blue, w102's rename */
   var BORDER = "#3a3530";           /* = --border */
-  var AMBER = "#d0a24c";            /* = --warn   */
+  var AMBER = "#d0a24c";            /* = --amber (w104) */
   /* UI-ONLY, with no twin in :root and so nothing to pin: the
    * settings panel's own surface and its two text weights, and
    * the log body's green-grey. They exist only inside the

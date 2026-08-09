@@ -2945,3 +2945,27 @@ rule, and with the rule gone the wrapper had nothing left to
 carry. The harness asks the question the tint used to answer -
 your name at the bottom, theirs at the top, and the pair
 swapping when your colour does.
+
+### w104
+
+THE TITLE IS A DIFFERENT KIND OF FACT, NOT A LESSER ONE. It
+was faded to .65 since w68, on the reasoning that a title
+only qualifies the name and the name is what a glance wants.
+The owner, holding a screenshot of the real site beside ours,
+put the better reading: IM, GM, BOT is a standing rank, not
+a weaker part of a username, and a fade says "less important
+than the text around it" when what is wanted is "a different
+kind of thing". Lichess colours titles and leaves them at
+full strength; ours are amber and bold now, and the amber was
+already on the page - the owner spotted it doing this exact
+job on the Practice button and asked for it by that
+description rather than by a hex.
+
+Which made the colour's NAME indefensible, so it changed with
+it: --warn becomes --amber. It does warn on the armed "Sign
+out?" and the log's clear link, but it also marks practice
+mode and now every title, and two of four is not a meaning -
+the same call the owner made on --blue at w102, applied
+without being asked twice. ui.js has held the value as AMBER
+since w102, so the harness's pin now compares two halves that
+agree on a name.
