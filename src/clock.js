@@ -1,22 +1,32 @@
   /*========================== CLOCK MODE ==========================*/
 
-  // A full-screen, pure black overlay showing only the two
-  // clocks, SIDE BY SIDE (v97): yours on the side set by
-  // PLAYER_ON_LEFT_OF_CLOCK, theirs on the other, the side
-  // to move drawn HEAVIER (weight, not brightness, since
-  // v81/v82; red still means under a minute). On an OLED
-  // panel black pixels are OFF, so in a dark room the
-  // display reduces to two faint numbers — four if
-  // CFG.clockShowMoves is on. Everything else — the mic, speech,
-  // the game — runs on underneath: this whole section is
-  // only a second renderer over state the script already
-  // keeps (remainingMs, lastSanW/B, api.pos.turn), and it
-  // touches nothing outside itself.
+  // A full-screen, pure black overlay showing the two
+  // clocks, SIDE BY SIDE (v97), AND NOTHING ELSE (w110):
+  // yours on the side set by PLAYER_ON_LEFT_OF_CLOCK,
+  // theirs on the other, the side to move drawn HEAVIER
+  // (weight, not brightness, since v81/v82; red still
+  // means under a minute). On an OLED panel black pixels
+  // are OFF, so in a dark room the display reduces to two
+  // faint numbers. Everything else — the mic, speech, the
+  // game — runs on underneath: this whole section is only
+  // a second renderer over state the script already keeps
+  // (remainingMs, api.pos.turn), and it touches nothing
+  // outside itself.
   //
-  // Each side's last move sat under its clock from v73 to
-  // v92 and is now off by default: the moves are spoken
-  // here, so the rows were repeating the ear. See
-  // CFG.clockShowMoves in settings.js, which restores them.
+  // TEXT ON THIS SCREEN IS A CLOSED CASE NOW (w110,
+  // owner's decision). The move row (v73, off at v92, a
+  // switch from v124) and the v129 message strip - with
+  // its question stickiness, sentence-casing and two-way
+  // channel routing in speak() - were built so the screen
+  // could carry what the voice then need not say. Real
+  // games settled it the other way: the owner caught
+  // himself reading the overlay, eyes off the physical
+  // board, which is the exact motion this program exists
+  // to remove. All of it was deleted at w110, switches and
+  // all; the voice is the one channel, and this screen is
+  // numbers. The machinery is in git at w109 if text is
+  // ever argued back - argue with the sentence above
+  // first.
   //
   // In: the "clock" button, and ONLY the button (v98).
   // Out: tap anywhere on it.
@@ -56,12 +66,6 @@
   // operating state.
 
   var clockOverlay = null, clockTimer = null, clockLock = null;
-  // the message strip (v129): the element, and what it
-  // holds - { text, until }. Whether the text outlives
-  // `until` is decided at tick time by questionOpen(), not
-  // stored, so the strip clears itself the moment a
-  // question resolves, whatever path resolved it.
-  var clockMsgEl = null, clockMsg = null;
   var clockHalves = null;
 
   function clockModeOn() {
@@ -104,42 +108,12 @@
       time.style.cssText =
         "font-family:system-ui,sans-serif;font-weight:" +
         IDLE_WEIGHT + ";white-space:nowrap;" +
-        "line-height:1;font-size:" +
-        (CFG.clockShowMoves ? CLOCK_TIME_SIZE : bareDigitSizeCss()) +
+        "line-height:1;font-size:" + bareDigitSizeCss() +
         ";font-variant-numeric:tabular-nums;";
       half.appendChild(time);
-      // with CFG.clockShowMoves off there is no move row at
-      // all: not hidden, never built, so nothing downstream
-      // can paint or size it. paintClockHalf tests h.move.
-      var move = null;
-      if (CFG.clockShowMoves) {
-        move = document.createElement("div");
-        move.style.cssText =
-          "font-family:system-ui,sans-serif;font-weight:" +
-          MOVE_WEIGHT + ";white-space:nowrap;" +
-          "font-size:" + moveSizeCss("", CLOCK_MOVE_MAX_VW,
-            CLOCK_MOVE_MAX_VH, CLOCK_MOVE_BUDGET_VW) +
-          ";margin-top:2.5vh;" +
-          "letter-spacing:.04em;";
-        half.appendChild(move);
-      }
       clockOverlay.appendChild(half);
-      clockHalves[k] = { time: time, move: move, col: null, wt: null };
+      clockHalves[k] = { time: time, col: null, wt: null };
     });
-    // THE MESSAGE STRIP (v129). Built ALWAYS, even with
-    // clockShowMessages off: an empty div costs nothing,
-    // and the toggle then gates only the WRITING, in
-    // speak(), so it needs none of the teardown-for-
-    // rebuild that clockShowMoves pays. Absolute at the
-    // foot, so the centred halves never move when it
-    // fills.
-    clockMsgEl = document.createElement("div");
-    clockMsgEl.style.cssText =
-      "position:absolute;left:4vw;right:4vw;bottom:2vh;" +
-      "text-align:center;font-family:system-ui,sans-serif;" +
-      "font-weight:" + MOVE_WEIGHT + ";color:" + TEXT_COLOR + ";" +
-      "font-size:" + CLOCK_MSG_SIZE + ";line-height:1.3;";
-    clockOverlay.appendChild(clockMsgEl);
     clockOverlay.addEventListener("click", function () {
       exitClockMode(true);
     });
@@ -168,17 +142,6 @@
     return true;
   }
 
-  // The size a move of this length can have: as large as
-  // the ceiling allows, shrunk only enough that its own
-  // characters fit the budget (v84). Returns a CSS value;
-  // the vh cap stays inside the min() so a tall-and-narrow
-  // window cannot push the text past its row.
-  function moveSizeCss(text, maxVw, maxVh, budgetVw) {
-    var n = Math.max(1, String(text || "").length);
-    var vw = Math.min(maxVw, budgetVw / (n * MOVE_CHAR_EM));
-    return "min(" + vw.toFixed(2) + "vw," + maxVh + "vh)";
-  }
-
   function paintClockHalf(h, color) {
     var ms = remainingMs(color);
     var digits = clockDigits(ms);
@@ -192,24 +155,15 @@
     var wt = active ? ACTIVE_WEIGHT : IDLE_WEIGHT;
     if (h.time.textContent !== digits) {
       h.time.textContent = digits;
-      if (!CFG.clockShowMoves && noteClockDigits(digits)) {
+      if (noteClockDigits(digits)) {
         var css = bareDigitSizeCss();
         clockHalves.left.time.style.fontSize = css;
         clockHalves.right.time.style.fontSize = css;
       }
     }
-    if (h.move) {
-      var mv = (color === "w" ? api.lastSanW : api.lastSanB) || "\u2014";
-      if (h.move.textContent !== mv) {
-        h.move.textContent = mv;
-        h.move.style.fontSize = moveSizeCss(mv, CLOCK_MOVE_MAX_VW,
-          CLOCK_MOVE_MAX_VH, CLOCK_MOVE_BUDGET_VW);
-      }
-    }
     if (h.col !== col) {
       h.col = col;
       h.time.style.color = col;
-      if (h.move) h.move.style.color = col;
     }
     if (h.wt !== wt) {
       h.wt = wt;
@@ -217,77 +171,8 @@
     }
   }
 
-  // Is anything waiting on an answer? The FOUR dialogue
-  // states, read live. This is the whole of the sticky
-  // rule: no message is classified, the board state is.
-  //
-  // partialAsk was added to dialogue.js at v117 and never
-  // added here, so "say the rank" and "say the target" - the
-  // two questions that ask for the least and are easiest to
-  // lose track of - were the two whose message expired off the
-  // strip while they were still waiting to be answered. A list
-  // of states is only right until the next state is added;
-  // this one is now the same list dialogue.js keeps.
-  // ...and the two ply-guarded states count only while their
-  // ply is CURRENT (w60). pieceAsk and partialAsk are
-  // deliberately left set when overtaken - dialogue.js makes
-  // them inert with a ply check instead of nulling them - so
-  // testing the raw variables here meant one ignored repair
-  // question turned every later passing message sticky for the
-  // rest of the game. Same ply test dialogue.js applies, so the
-  // strip and the dialogue agree about what "open" means.
-  function questionOpen() {
-    return !!(pending || confirmAction ||
-              (pieceAsk && pieceAsk.ply === api.moves.length) ||
-              (partialAsk && partialAsk.ply === api.moves.length));
-  }
-
-  // SPOKEN TEXT IS WRITTEN FOR THE EAR (v134): lower case
-  // throughout, colors and pieces included, because that is
-  // what reads naturally out of a speech synthesizer and because
-  // every string was written when speech was the only
-  // output. On the strip it looks unfinished - "checkmate.
-  // white wins." - so the first letter of each sentence is
-  // raised HERE, at the one point where text becomes
-  // pixels. Nothing upstream changes: the voice, the log
-  // and the source strings all stay as they are, and the
-  // strip cannot drift from them because it has no strings
-  // of its own.
-  //
-  // Sentence = start of text, or a . ? ! followed by space.
-  // Nothing spoken contains a decimal or an abbreviation
-  // (times are "3 minutes 20 seconds"), so there is no
-  // false boundary to guard against.
-  function sentenceCase(text) {
-    return String(text).replace(/(^\s*|[.?!]\s+)([a-z])/g,
-      function (all, lead, ch) { return lead + ch.toUpperCase(); });
-  }
-
-  function showClockMessage(text) {
-    var shown = sentenceCase(text);
-    clockMsg = { text: shown, until: Date.now() + CLOCK_MSG_EXPIRE_MS };
-    if (clockMsgEl) clockMsgEl.textContent = shown;
-  }
-
-  function clearClockMessage() {
-    clockMsg = null;
-    if (clockMsgEl) clockMsgEl.textContent = "";
-  }
-
-  // Called every overlay tick. A question holds the strip
-  // for as long as it is open (v81-v88: passing messages
-  // expire while questions stay); everything else fades
-  // once CLOCK_MSG_EXPIRE_MS is up.
-  function tickClockMessage() {
-    if (!clockMsg) return;
-    if (questionOpen()) return;
-    if (Date.now() < clockMsg.until) return;
-    clearClockMessage();
-  }
-
   function renderClockMode() {
     if (!clockHalves) return;
-    tickClockMessage();
     var mine = api.myColor || "w";
     var theirs = mine === "w" ? "b" : "w";
     var myHalf = PLAYER_ON_LEFT_OF_CLOCK ? "left" : "right";
@@ -372,8 +257,6 @@
   // cheaper trade. Tapping the overlay exits.
   function enterClockMode() {
     if (!clockOverlay) buildClockOverlay();
-    // whatever the strip held last time is stale now
-    clearClockMessage();
     clockOverlay.style.display = "flex";
     renderClockMode();
     clearInterval(clockTimer);

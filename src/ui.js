@@ -243,19 +243,10 @@
     // makes the guard on the button in the document listener
     // below load-bearing rather than belt-and-braces.
 
-    function settingHeader(text) {
-      var h = document.createElement("div");
-      h.textContent = text;
-      h.style.cssText =
-        "color:" + PANEL_HEAD + ";font-size:11px;letter-spacing:.08em;" +
-        "text-transform:uppercase;margin:8px 0 4px;";
-      setPanel.appendChild(h);
-    }
-
-    // each row's pill painter, keyed by setting, so one
-    // row's onFlip can repaint another - the message pair
-    // flips its partner back on (v129)
-    var settingPaints = {};
+    // (settingHeader and the settingPaints map stood here
+    // until w110: the first titled mode groups that no
+    // longer exist, the second let v129's message pair
+    // repaint each other, and the pair is gone too.)
 
     function settingRow(key, label, onFlip, headerStyle) {
       var row = document.createElement("div");
@@ -288,16 +279,22 @@
         if (onFlip) onFlip();
       });
       paint();
-      settingPaints[key] = paint;
       row.appendChild(lab);
       row.appendChild(pill);
       setPanel.appendChild(row);
     }
 
-    // the headphones row led the panel from v125 to v131;
+    // THREE ROWS, NO HEADERS (w110). The panel held ten
+    // rows in three mode groups the morning the owner
+    // called it confusing; the confirm-every-move switch
+    // he had never used and the five clock-mode text
+    // switches went the same day (their tombstones are in
+    // settings.js), and with one group left the headers
+    // said nothing. Every switch here acts in every mode.
+    //
+    // The headphones row led the panel from v125 to v131;
     // deleted at v132 with the setting.
-    settingHeader("all modes");
-    settingRow("confirmMyMove", "confirm my move");
+    settingRow("confirmMine", "confirm my move");
     settingRow("guardPawnPushes", "guard pawn pushes");
     // w68. Repaints on the spot rather than waiting for the
     // next game event: this is the one setting whose whole
@@ -309,41 +306,6 @@
     // them has nothing left to couple to. One free switch.
     settingRow("showRatings", "show ratings", function () {
       renderPlayers();
-    });
-    settingHeader("voice mode");
-    settingRow("readBackMine", "speak my move");
-    settingHeader("clock mode");
-    // rows grouped by content, speak before show in each
-    // group (v130): moves then messages, two stanzas of
-    // the same shape.
-    settingRow("clockReadBackMine", "speak my move");
-    settingRow("clockSpeakOpponent", "speak opponent's move");
-    settingRow("clockShowMoves", "show moves", function () {
-      // the overlay is built once; tear it down so the next
-      // clock entry rebuilds with or without the move row
-      if (clockOverlay) {
-        try { clockOverlay.remove(); } catch (e) {}
-        clockOverlay = null;
-        clockHalves = null; clockMsgEl = null;  /* w63: all three */
-      }
-    });
-    // the message pair (v129). Any three of the four
-    // states, never off/off: switching the second one off
-    // switches the other back on, so a question always has
-    // a channel. The invariant lives HERE and in
-    // loadSettings, not in speak(), which just obeys.
-    function keepOneMessageChannel(other) {
-      if (CFG.clockSpeakMessages || CFG.clockShowMessages) return;
-      CFG[other] = true;
-      saveSettings();
-      log("SET", other + " forced on: messages need one channel");
-      settingPaints[other]();
-    }
-    settingRow("clockSpeakMessages", "speak messages", function () {
-      keepOneMessageChannel("clockShowMessages");
-    });
-    settingRow("clockShowMessages", "show messages", function () {
-      keepOneMessageChannel("clockSpeakMessages");
     });
     document.body.appendChild(setPanel);
 

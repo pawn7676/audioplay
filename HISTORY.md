@@ -3130,3 +3130,45 @@ Every ask is now the five words "did you mean foxtrot
 four?", and answering with a piece name works exactly as it
 did; the capability keeps game20's lesson, the sentence no
 longer carries it.
+
+### w110
+
+THE SETTINGS PANEL CONFUSED ITS OWNER, and the morning's
+reading of it cut deep. Ten rows in three mode groups, and
+two of them called "confirm" and "speak my move" while the
+thing the second one now governs - the w108 chime as much as
+the read-back - answered to neither name. The owner's
+verdict came in two parts, and both removed rather than
+rearranged.
+
+CONFIRM-EVERY-MOVE IS GONE. It survived rename (v131) and
+rehoming (v128) and the owner never once turned it on: a
+guard against mishearing that the guards that fire on actual
+evidence - ambiguity, the bare-square shadows - had made
+redundant in practice. Its one lasting effect was squatting
+on the right name. The read-back switch takes the label
+"confirm my move" with it; the KEY is confirmMine, not the
+freed confirmMyMove, because an old panel save could hold
+false under the dead name and would silently switch off the
+confirmation it never meant - the one rename v131's
+key-follows-label rule cannot survive. A stored readBackMine
+carries across once, v131's own pattern.
+
+AND CLOCK MODE IS NUMBERS AGAIN. The move row (v73), the
+v129 message strip, the channel pair with its never-both-off
+invariant, the per-mode read-back and opponent switches of
+v124 - all of it existed so the overlay could carry text the
+voice then need not say, and the owner kept the switches on
+for a year on exactly that theory. Real games disproved it:
+he caught himself looking at the screen to read what it
+held, eyes off the physical board, the one motion this
+program exists to remove. So the theory is closed, not
+tuned: five switches deleted, the strip and row deleted, the
+speak() gate deleted, the voice the only channel in every
+mode. The overlay draws two numbers at the bare-digit size,
+always. Five dead names ignored in storage; the machinery is
+in git at w109.
+
+What the panel says now, whole: confirm my move, guard pawn
+pushes, show ratings. No headers - with one group left they
+titled nothing.

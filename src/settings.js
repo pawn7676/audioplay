@@ -37,22 +37,17 @@
    * defaults. Every read in the code goes through CFG.x,
    * never these names, so the panel is always live.
    *
-   * The mode tree these express:
-   *   all modes: the two guards on the act this file
-   *     cannot take back, sending a move. They act in
-   *     voice mode and clock mode alike, hence the group.
-   *   voice mode (clock off): the opponent's move is ALWAYS
-   *     spoken - that is the product - and readBackMine
-   *     decides whether your own move is spoken back too.
-   *   clock mode: clockShowMoves puts the move row on the
-   *     overlay; clockReadBackMine and clockSpeakOpponent
-   *     choose what is SPOKEN there, independently of voice
-   *     mode, because at the board with the clock up you
-   *     may want the screen doing the telling.
-   *     clockSpeakMessages and clockShowMessages route
-   *     everything ELSE - questions, errors, command
-   *     answers - to the voice, the message strip, or
-   *     both; never neither, see v129.
+   * There is no mode tree any more (w110). v124 grew one -
+   * per-mode read-back, per-mode opponent speech, a message
+   * strip with channel routing - on the theory that with
+   * the clock up the SCREEN could do the telling. The owner
+   * played with it for a year and found the opposite:
+   * reading the overlay pulled his eyes off the physical
+   * board, which is the one thing this program exists to
+   * spare. So every switch below acts in voice mode and
+   * clock mode alike, the voice is the one channel for
+   * everything, and the clock overlay shows numbers and
+   * nothing else (see clock.js).
    *--------------------------------------------------------*/
   var SETTING_DEFAULTS = {
     // HEADPHONES DELETED (v132). The system-wide echo
@@ -60,11 +55,16 @@
     // route - see the platform finding and the v132 entry.
     // A stored value under this name is simply ignored.
 
-    // On asks "Confirm:" before EVERY move, not only
-    // ambiguous ones. Slower, but nothing is ever sent to
-    // Lichess without being read back first. Named
-    // confirmAllMoves until v131.
-    confirmMyMove: false,
+    // confirmMyMove DELETED AT w110 (named confirmAllMoves
+    // until v131): ask before EVERY move, not only
+    // ambiguous ones. The owner never once turned it on,
+    // and its label was squatting on the name the
+    // read-back switch below actually deserved. A stored
+    // value under this name is ignored - and MUST stay
+    // ignored: reusing the key for the renamed read-back
+    // would load some old panel save's false into a
+    // setting that means something else entirely, which is
+    // why that key is confirmMine and not this.
 
     // A bare square is interpreted as a pawn push, which is
     // correct unless Safari has dropped the piece name
@@ -102,21 +102,28 @@
     // value under this name is simply ignored, as with
     // every deleted setting.
 
-    // Your own move read back in full once Lichess accepts
-    // it ("knight foxtrot 3."). ON since v70 as the chosen
-    // move confirmation, OFF by default since v113 for
-    // silent success with the opponent's reply as implicit
-    // confirmation; "repeat" always works either way.
-    readBackMine: true,
+    // Your own move confirmed once Lichess accepts it: the
+    // full read-back ("knight foxtrot 3.") for a move that
+    // played unasked, the chime for one you approved
+    // through a question (w108). ON since v70; "repeat"
+    // always works either way. The key was readBackMine
+    // until w110, when the label became "confirm my move" -
+    // the name says what the switch governs now that the
+    // chime is part of it - and the key followed the label
+    // (v131's rule) as far as it safely could: the obvious
+    // key is barred, see the confirmMyMove tombstone above.
+    // A stored readBackMine is carried across once in
+    // loadSettings. One switch for BOTH modes since w110:
+    // clockReadBackMine existed so the overlay's move row
+    // could do the confirming, and the row is gone.
+    confirmMine: true,
 
-    // The same choice inside clock mode. Separate because
-    // the overlay's move row can do the confirming there.
-    clockReadBackMine: true,
-
-    // Speak the opponent's move while clock mode is up.
-    // Voice mode always speaks it; here the move row can
-    // carry it instead, so it is a choice.
-    clockSpeakOpponent: true,
+    // clockSpeakOpponent DELETED AT w110 with the rest of
+    // the clock-mode group: the opponent's move is always
+    // spoken, in every mode - it is the one event the user
+    // cannot know any other way with their eyes on the
+    // physical board. The choice existed for the move row,
+    // and the row is gone.
 
     // SHOWPLAYERS WAS DELETED AT w75, and the reasoning it
     // was added on (w68) is the reasoning that killed it:
@@ -142,32 +149,25 @@
     // position, and no rating ever suggested a move. The move
     // list is the thing that would start to look like analysis
     // surface, and it is deliberately still absent.
-    showRatings: true,
+    showRatings: true
 
-    // The move row on the clock overlay. The cost is digit
-    // size: with the row present the clocks take
-    // CLOCK_TIME_SIZE instead of the larger
-    // bareDigitSizeCss(). Toggling it tears the overlay
-    // down for rebuild on next entry - the overlay is
-    // otherwise built once and reused.
-    clockShowMoves: true,
-
-    // Everything spoken that is NOT a move, while clock
-    // mode is up: the yes/no questions, "say again",
-    // command answers, game over. This pair CANNOT BOTH BE
-    // OFF - the panel flips the other back on, and
-    // loadSettings repairs a stored off/off - because a
-    // question with no channel left would hang the game in
-    // silence. speak() routes by these (v129).
-    clockSpeakMessages: true,
-
-    // The same messages painted on a strip along the foot
-    // of the clock overlay. A question stays up until
-    // answered; anything else fades after
-    // CLOCK_MSG_EXPIRE_MS. The strip is built ALWAYS and
-    // this only gates writing to it, so unlike
-    // clockShowMoves the toggle needs no overlay rebuild.
-    clockShowMessages: true
+    // THE CLOCK-MODE TEXT IS GONE, AND ITS SWITCHES WITH IT
+    // (w110, owner's decision, 9 Aug 2026). clockShowMoves
+    // (the move row), clockSpeakMessages and
+    // clockShowMessages (the v129 message strip and its
+    // never-both-off channel invariant) were all built on
+    // the idea that the overlay could carry text the voice
+    // then need not say. In real games the owner found
+    // himself looking at the screen to read it - away from
+    // the physical board, the exact motion this program
+    // exists to remove - so the overlay is numbers and
+    // nothing else now, the voice speaks everything, and
+    // the panel lost five rows in one day. Stored values
+    // under all five dead names are ignored. If text on
+    // the overlay is ever wanted again, start from the
+    // w110 HISTORY entry: the strip's machinery (question
+    // stickiness, sentence-casing, channel repair) is all
+    // in git at w109.
   };
 
   var SETTINGS_KEY = "audioplay.settings";
@@ -187,23 +187,20 @@
       Object.keys(SETTING_DEFAULTS).forEach(function (k) {
         if (typeof saved[k] === "boolean") out[k] = saved[k];
       });
-      // confirmAllMoves became confirmMyMove at v131; carry a
-      // stored value across once. Deletable once the panel has
-      // been saved on the device - still here because there is
-      // no way to know from here whether it has been.
-      if (typeof saved.confirmAllMoves === "boolean" &&
-          typeof saved.confirmMyMove !== "boolean") {
-        out.confirmMyMove = saved.confirmAllMoves;
+      // readBackMine became confirmMine at w110; carry a
+      // stored value across once, the v131 pattern.
+      // Deletable once the panel has been saved on the
+      // device - no way to know from here whether it has.
+      // (The v131 confirmAllMoves carry that stood here
+      // died with confirmMyMove itself at w110.)
+      if (typeof saved.readBackMine === "boolean" &&
+          typeof saved.confirmMine !== "boolean") {
+        out.confirmMine = saved.readBackMine;
       }
     } catch (e) { /* defaults stand */ }
-    // messages must keep one channel (v129): a stored
-    // off/off - an old save, a hand-edit - would let a
-    // question hang silently. Voice is the channel that
-    // works with the eyes closed, so it is the one
-    // restored.
-    if (!out.clockSpeakMessages && !out.clockShowMessages) {
-      out.clockSpeakMessages = true;
-    }
+    // (the v129 keep-one-message-channel repair stood here
+    // until w110; it guarded a pair of switches that no
+    // longer exists - the voice is the one channel now)
     return out;
   }
 
@@ -215,9 +212,9 @@
   var CFG = loadSettings();
 
   // GUARD_PAWN_PUSHES and CONFIRM_ALL_MOVES moved to
-  // SETTING_DEFAULTS (v128): panel toggles now, read as
-  // CFG.guardPawnPushes and CFG.confirmMyMove (named
-  // confirmAllMoves until v131) everywhere.
+  // SETTING_DEFAULTS (v128): panel toggles from then on.
+  // The second one was renamed at v131 and deleted whole
+  // at w110 - see its tombstone in SETTING_DEFAULTS.
 
   // LEAVE VOICE_NAME = "" TO USE SYSTEM DEFAULT.
   // To pick system default voice on iOS or iPadOS device:
@@ -293,36 +290,15 @@
   // CLOCK NUMBER FONT WEIGHT IS THE SIGNAL FOR WHOSE TURN
   var ACTIVE_WEIGHT = "750";   // clock: side to move
   var IDLE_WEIGHT = "200";     // clock: waiting side
-  var MOVE_WEIGHT = "300";     // the move row, always
   var OVERLAY_TICK_MS = 100;   // overlay redraw period
 
-  // ---- clock mode, message strip (v129) ----
-  // Sized to be read at arm's length across the board, not
-  // across the room: a sentence, unlike the clocks, is a
-  // glance target. Wraps as it must; the strip sits below
-  // the centred halves, so a two-line question overlaps
-  // nothing.
-  var CLOCK_MSG_SIZE = "min(4.2vw,4.5vh)";
-  // How long a message that is NOT a question stays on the
-  // strip. Questions ignore this and stay until answered.
-  var CLOCK_MSG_EXPIRE_MS = 5000;
+  // (The message strip's CLOCK_MSG_* pair, the move row's
+  // CLOCK_TIME_SIZE / CLOCK_MOVE_* / MOVE_CHAR_EM, and
+  // MOVE_WEIGHT above all left with the clock-mode text at
+  // w110 - see the tombstone in SETTING_DEFAULTS. The
+  // digits below are all the overlay draws now.)
 
-  // ---- clock mode, move row ON/OFF selection ----
-  // CLOCK_SHOW_MOVES moved to SETTING_DEFAULTS (v124), read
-  // as CFG.clockShowMoves. The overlay is BUILT ONCE and
-  // reused, so the panel toggle tears it down for rebuild
-  // on the next clock entry. CLOCK_MOVE_* and MOVE_CHAR_EM
-  // below exist only for the row being ON, the three
-  // CLOCK_BARE/DIGIT ones only for OFF.
-
-  // ---- clock digits, move row ON ----
-  // Sized for the WORST case: three digits past 100
-  // minutes, seven characters of SAN ("bxa8=Q+"). Both rows
-  // are nowrap, so nothing can wrap or break mid-token.
-  // Raise it until the longest real move stops fitting.
-  var CLOCK_TIME_SIZE = "min(28vw,32vh)";
-
-  // ---- clock digits, move row OFF ----
+  // ---- clock digits ----
   // Sized for the digits ACTUALLY ON SCREEN: whole
   // minutes above a minute, seconds below, so two digits
   // covers every game to 99 minutes and every low-time
@@ -359,27 +335,4 @@
   // is why "flip clock" flips it live instead of this being
   // a constant you must reload to change.
   var PLAYER_ON_LEFT_OF_CLOCK = true;
-
-  // ---- the move row text ----
-  // SIZED PER MOVE. Almost every SAN is 2-4 characters, so
-  // sizing all of them for "Qh4xe1#" made the common case
-  // needlessly small. Each move gets the max — equal to the
-  // clock digits beside it — and shrinks only as far as its
-  // own length demands: "h4" is as big as "10".
-  //   size = BUDGET / (chars * MOVE_CHAR_EM), capped by
-  //   MAX_VW and MAX_VH
-  // MOVE_CHAR_EM is the average glyph advance in system-ui
-  // plus the .04em letter-spacing these rows carry; raise
-  // it if a long move ever touches the edge.
-  //
-  // The move stacks UNDER the clock in a half only 50vh
-  // tall, so its ceiling is vertical, not a matter of
-  // taste: time (32vh) + move + margin must fit. The vw
-  // budget halved at v97 with the side-by-side layout — the
-  // move sits in its own clock's 50vw column, not across
-  // the screen.
-  var MOVE_CHAR_EM = 0.62;
-  var CLOCK_MOVE_MAX_VW = 28;
-  var CLOCK_MOVE_MAX_VH = 14;
-  var CLOCK_MOVE_BUDGET_VW = 46; // of the 50vw half
 

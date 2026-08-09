@@ -138,26 +138,19 @@
   // than to whoever is speaking it.
   function speak(text, who) {
     if (!text) return;
-    // EVERY output funnels through here. Silent mode
-    // (v80-v108) intercepted at exactly this point to
-    // render speech as on-screen text; the second channel
-    // RETURNED at v129, clock mode only, plugged in below
-    // as foretold - one interception point catches every
-    // message. See the v109 entry for why the first one
-    // went.
+    // EVERY output funnels through here, and since w110 it
+    // all goes ONE way: to the voice. This point has twice
+    // hosted a second, on-screen channel - silent mode
+    // (v80-v108, see the v109 entry for why it went) and
+    // the v129 clock-mode message strip with its channel
+    // routing - and both died the same death: text on a
+    // screen pulls the eyes off the physical board. The
+    // strip and its switches were deleted at w110 (see the
+    // clock.js header). If a third channel is ever
+    // proposed, this comment is its history. `who` is the
+    // color word, passed for move announcements alone and
+    // written to the LOG only - see its note below.
     log("SAY", (who ? who + " " : "") + text);
-    // THE MESSAGE GATE (v129). `who` is the color word and
-    // is passed for move announcements alone, so its
-    // absence marks a MESSAGE: questions, errors, command
-    // answers, game over. In clock mode a message obeys
-    // the channel pair - painted on the strip, spoken, or
-    // both. Never neither: the panel and loadSettings
-    // keep one of the two on. Moves are decided upstream
-    // by readBackMineNow/speakOpponentNow, as always.
-    if (clockModeOn() && !who) {
-      if (CFG.clockShowMessages) showClockMessage(text);
-      if (!CFG.clockSpeakMessages) return;
-    }
     splitForSpeech(text).forEach(function (p) { speakQueue.push(p); });
     pumpSpeech();
   }

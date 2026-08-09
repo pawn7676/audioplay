@@ -377,36 +377,45 @@ const sleep = ms =>
   check("tap leaves clock mode",
         vm.runInContext("clockModeOn()", sandbox) === false);
 
-  // per-mode read-back (v124 settings): each mode follows its
-  // OWN switch. The defaults are not asserted - they are the
-  // owner's to change, and he has (w2 shipped clock read-back
-  // off; v133's default is on). What must hold is the routing.
-  check("voice mode follows readBackMine",
-        vm.runInContext("readBackMineNow() === CFG.readBackMine",
-                        sandbox) === true);
+  // w110: the clock overlay is NUMBERS AND NOTHING ELSE.
+  // Asked of the built DOM: two halves, each holding one
+  // element (the time), no move row, no message strip.
   vm.runInContext("enterClockMode();", sandbox);
-  check("clock mode follows clockReadBackMine",
-        vm.runInContext("readBackMineNow() === CFG.clockReadBackMine",
-                        sandbox) === true);
-  vm.runInContext(`
-    CFG.clockReadBackMine = !CFG.clockReadBackMine;
-    __flip = readBackMineNow();
-    CFG.clockReadBackMine = !CFG.clockReadBackMine;
+  const overlayShape = vm.runInContext(`
+    [clockOverlay.children.length,
+     clockOverlay.children.map(function (h) {
+       return h.children.length; }).join(",")]
   `, sandbox);
-  check("flipping the clock switch flips the answer",
-        vm.runInContext("__flip !== readBackMineNow()", sandbox) === true);
+  check("the clock overlay is two halves of one number each (" +
+        overlayShape + ")",
+        overlayShape[0] === 2 && overlayShape[1] === "1,1");
   vm.runInContext("exitClockMode(true);", sandbox);
 
-  // the message-channel invariant (v129): loadSettings must
-  // never come back with both channels off
-  const chans = vm.runInContext(`
+  // w110: the read-back key was renamed confirmMine, and the
+  // OBVIOUS key - the freed confirmMyMove - is deliberately
+  // barred: an old panel save can hold false under the dead
+  // name (ask-every-move was default-off), and reusing it
+  // would silently switch off a confirmation that was never
+  // touched. The migration carries readBackMine across, the
+  // dead name moves nothing.
+  const renamed = vm.runInContext(`
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(
-      { clockSpeakMessages: false, clockShowMessages: false }));
+      { confirmMyMove: false, readBackMine: false }));
     var c = loadSettings();
-    [c.clockSpeakMessages, c.clockShowMessages];
+    localStorage.removeItem(SETTINGS_KEY);
+    [c.confirmMine, ("confirmMyMove" in c)];
   `, sandbox);
-  check("messages always keep one channel (" + chans + ")",
-        chans[0] === true || chans[1] === true);
+  check("stored readBackMine carries into confirmMine (" + renamed + ")",
+        renamed[0] === false && renamed[1] === false);
+  const deadName = vm.runInContext(`
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(
+      { confirmMyMove: false }));
+    var c3 = loadSettings();
+    localStorage.removeItem(SETTINGS_KEY);
+    c3.confirmMine;
+  `, sandbox);
+  check("the dead confirmMyMove name cannot switch confirmation off",
+        deadName === true);
 
   // w75: a settings key that no longer exists must be IGNORED,
   // not carried. showPlayers was deleted with the switch, and
@@ -636,7 +645,7 @@ const sleep = ms =>
   // speaks; the loser finds the arm gone and says nothing
   vm.runInContext(`
     api.myColor = "w"; api.over = false;
-    CFG.readBackMine = true;
+    CFG.confirmMine = true;
     armedUci = "e2e4";
   `, sandbox);
   heard();
@@ -719,8 +728,8 @@ const sleep = ms =>
   check("boot logs every switch (" +
         bootLine.slice(bootLine.indexOf("loaded:")).slice(0, 40) + "...)",
         /loaded:/.test(bootLine) &&
-        /confirmMyMove=(on|off)/.test(bootLine) &&
-        /clockShowMessages=(on|off)/.test(bootLine) &&
+        /confirmMine=(on|off)/.test(bootLine) &&
+        /guardPawnPushes=(on|off)/.test(bootLine) &&
         /voice=(system|\S+)/.test(bootLine));
 
   // ---- w70/w71: the rail follows the board; the CLOCK BOX
@@ -3139,21 +3148,9 @@ const sleep = ms =>
         flipRepaint.join + " -> " + flipRepaint.colour + ")",
         flipRepaint.colour === flipRepaint.join + 1);
 
-  // 126: a stale ply-guarded ask no longer holds the strip
-  const stale = vm.runInContext(`
-    (function () {
-      clearDialogue();
-      api.moves = [];
-      pieceAsk = { ply: 0, moves: [] };
-      var live = questionOpen();
-      api.moves = ["e2e4"];               // the game moved on
-      var dead = questionOpen();
-      clearDialogue(); api.moves = [];
-      return { live: live, dead: dead };
-    })()
-  `, sandbox);
-  check("a current repair question holds the strip", stale.live === true);
-  check("an overtaken one lets messages expire again", stale.dead === false);
+  // (the "stale ply-guarded ask no longer holds the strip"
+  // test stood here from v126: questionOpen and the strip it
+  // held both left at w110 with the clock-mode text)
 
   // ---- w59: "clean" is a queen (game w58-1) ----
   // Safari returned "Clean check" for "queen check" twice
@@ -4077,19 +4074,23 @@ const sleep = ms =>
         vm.runInContext('semanticKey("e2e4")', sandbox) ===
         vm.runInContext('semanticKey("echo two echo four")', sandbox));
 
-  // A RE-SAID MOVE OBEYS confirmMyMove LIKE ANY OTHER.
+  // A RE-SAID MOVE REPLACES THE QUESTION (w51's surviving
+  // half - its confirmMyMove half died with that setting at
+  // w110): a unique re-said move over an open question
+  // plays by the same rules as if no question were open.
   await setBoard("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1");
   vm.runInContext(`
-    CFG.confirmMyMove = true;
     pending = { cands: [{ m: api.pos.legalMoves()[0], san: "Kd1" }], idx: 0 };
   `, sandbox);
   heard();
   say("echo four");
   await sleep(120);
   const resaid = heard().join(" | ");
-  check("a move re-said over a question still asks when told to (" +
-        resaid + ")", /did you mean/i.test(resaid));
-  vm.runInContext("CFG.confirmMyMove = false; pending = null;", sandbox);
+  check("a unique re-said move replaces the question and plays (" +
+        resaid + ")",
+        /echo 4/i.test(resaid) &&
+        vm.runInContext("api.lastSan", sandbox) === "e4" &&
+        vm.runInContext("pending", sandbox) === null);
 
   // ================== w50: THE LIFECYCLE ==================
   // Every check below is a state that used to outlive the game
@@ -4105,22 +4106,8 @@ const sleep = ms =>
   check("plain castling is unchanged",
         vm.runInContext('sanToSpeech("O-O")', sandbox) === "castles kingside");
 
-  // ---- the clock strip knows every question, not three ----
-  const qStates = vm.runInContext(`
-    (function () {
-      var out = {};
-      clearDialogue(); out.none = questionOpen();
-      clearDialogue(); pending = { cands: [], idx: 0 };  out.pending = questionOpen();
-      clearDialogue(); confirmAction = "resign";         out.confirm = questionOpen();
-      clearDialogue(); pieceAsk = { ply: 0, moves: [] }; out.piece = questionOpen();
-      clearDialogue(); partialAsk = { ply: 0 };          out.partial = questionOpen();
-      clearDialogue();
-      return out;
-    })()
-  `, sandbox);
-  check("nothing open reads as no question", qStates.none === false);
-  check("the strip sees all FOUR dialogue states",
-        qStates.pending && qStates.confirm && qStates.piece && qStates.partial);
+  // (the "strip knows every question" test stood here from
+  // v117: questionOpen left at w110 with the strip)
 
   // ---- a question does not survive into the next game ----
   const survived = vm.runInContext(`
