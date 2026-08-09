@@ -185,8 +185,25 @@
     var distinct = {};
     hits.forEach(function (h) { distinct[h.t + h.v] = h; });
     var keys = Object.keys(distinct);
-    // ambiguous, refuse to guess
-    if (keys.length !== 1) return null;
+    if (keys.length !== 1) {
+      // AMBIGUOUS, REFUSE TO GUESS - but say so in the log
+      // (w114). The owner said "light" on purpose and
+      // watched it vanish without a trace: it sits one edit
+      // from "night" AND "eight", the refusal was right,
+      // and the silence still read as the word never being
+      // seen. A pasted log now names the tie. Same dedup as
+      // the used-near-miss line above this in the file:
+      // once per distinct token per utterance.
+      var words = keys.map(function (k) {
+        return "\"" + distinct[k].w + "\"";
+      }).join(" or ");
+      var rmsg = "near-miss \"" + tk + "\" dropped: could be " + words;
+      if (!nearMissLogged[rmsg]) {
+        nearMissLogged[rmsg] = 1;
+        log("PRS", rmsg);
+      }
+      return null;
+    }
     return distinct[keys[0]];
   }
 
