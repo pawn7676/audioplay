@@ -874,6 +874,11 @@ const sleep = ms =>
         /\.sideName \.title \{[^}]*color:\s*var\(--amber\)/.test(tmplBoard) &&
         /\.sideName \.title \{[^}]*font-weight:\s*700/.test(tmplBoard) &&
         !/\.sideName \.title \{[^}]*opacity/.test(tmplBoard));
+  // w105: except BOT, which lichess.org marks in fuchsia - a
+  // bot is not a rank, it is a different sort of opponent.
+  check("and BOT has a colour of its own",
+        /\.sideName \.title\.bot \{[^}]*color:\s*var\(--fuchsia\)/
+          .test(tmplBoard));
   // w82: the centred row must centre what the eye sees. The
   // rail grew once (flex 1 1) and its empty growth counted in
   // the centring, shoving the visible board-and-clocks cluster
@@ -2662,6 +2667,26 @@ const sleep = ms =>
   check("with their ratings", /1500/.test(shown) && /1900/.test(shown));
   check("and the title, since a BOT is worth knowing about",
         /BOT/.test(shown));
+  // w105: the renderer says WHICH kind of title it is; the
+  // stylesheet (checked above) owns what each looks like.
+  // Asked of the built markup - maia1 arrives titled BOT.
+  check("a BOT title is marked as one", /class="title bot">BOT</.test(shown));
+  // and a HUMAN rank is not - the other half of the same
+  // feature, driven with a real IM rather than asserted about
+  // markup that never contained one
+  const humanTitle = vm.runInContext(`
+    (function () {
+      var was = api.players.b;
+      api.players.b = { name: "someIM", title: "IM", rating: 2400 };
+      renderPlayers();
+      var html = document.getElementById("nameTop").innerHTML;
+      api.players.b = was; renderPlayers();
+      return html;
+    })()
+  `, sandbox);
+  check("a human rank is not (" + humanTitle.replace(/<[^>]+>/g, "") + ")",
+        /class="title">IM</.test(humanTitle) &&
+        !/bot/.test(humanTitle));
   // w103: NO name is tinted to mark it as yours. What answers
   // "which of these two is me" is the rail's ORDER - it
   // follows the board, so your name sits at the bottom beside
