@@ -3023,3 +3023,35 @@ it - a result must not outlive its game. One note left where
 the sentences are built: they are READ now as well as heard,
 so w39's ear-spelling ("lee chess") must never reach one.
 Today none does.
+
+### w107
+
+PROSE IN SANS, MACHINE OUTPUT IN MONO. The owner asked why
+Menlo was on the usernames and the status line and nowhere
+else except the log, and whether there was a reason. There
+was, and it had evaporated in two steps without anyone
+re-reading the survivors.
+
+The status line wore it through a class called .stats,
+inherited whole from reference/'s w19 page - where that class
+styled THREE elements, two of them NUMBERS: a clock readout
+and a turn readout. Monospace earned its place on those and
+this line came along for the ride. Both numeric members are
+gone (w71 deleted the turn line, w70 moved the clock into the
+rail), which left a class named for statistics styling one
+English sentence - and since w106 that sentence is
+"Checkmate. White wins." With one member left the class is
+folded into the element rather than renamed.
+
+The names took Menlo at w70 to match the clock beside them,
+which was monospace then. w72 moved the CLOCK to plain sans
+with tabular-nums to sit like Lichess's - so the one element
+where monospace genuinely earns its keep, digits that must
+not wobble as they count, left, and the names that were only
+keeping it company stayed. The fonts had ended up backwards
+from where the reasoning would put them.
+
+Both are body sans now. The log keeps monospace, where column
+alignment in a pasted dump is the whole point, and so do the
+board's coordinate labels, whose sizing was hand-tuned
+against that face on a canvas.
