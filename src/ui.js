@@ -115,7 +115,7 @@
         // WEB (delta 3): dryStart took over the api state;
         // hand it back and pick up a live game if one exists
         api.gameId = null; api.pos = null;
-        api.moves = []; api.over = false;
+        api.moves = []; api.over = false; api.overText = "";
         uiGameChanged();
         rejoinCurrent();
       } else {
@@ -768,13 +768,35 @@
   // GUESS: iOS will not open a microphone without a real tap,
   // so the voice button must be pressed once per session - a
   // rule of the platform, not a choice here (see mic.js).
+  /* Spoken sentences are written in lower case for the ear;
+   * on screen every sentence in one wants its capital (w106).
+   * Two of them are two sentences long - "checkmate. white
+   * wins." - so this capitalises after each stop, not just at
+   * the front. */
+  function sentenceCase(s) {
+    return String(s).replace(/(^|[.!?]\s+)([a-z])/g,
+      function (_, lead, ch) { return lead + ch.toUpperCase(); });
+  }
+
   function renderStatus() {
     if (!api.gameId || api.gameId === "PRACTICE") {
       if (dryRun) uiStatus("Practice mode.");
       return;                     // no game: leave the
                                   // seek/challenge message
     }
-    if (api.over) { uiStatus("Game over."); return; }
+    // THE RESULT IS SHOWN, NOT ONLY SPOKEN (w106). This said
+    // "Game over." - true of every ending and descriptive of
+    // none, so the one thing a finished game is FOR was
+    // available solely to whoever heard the announcement. The
+    // sentence api.overText holds is the same one that was
+    // spoken; sentenceCase is the only thing done to it,
+    // because it was written for the ear in lower case. Voice
+    // stays off when it is off: the screen picks up the slack,
+    // the speaker does not override the button.
+    if (api.over) {
+      uiStatus(api.overText ? sentenceCase(api.overText) : "Game over.");
+      return;
+    }
     if (!running) {
       uiStatus("Playing. Tap the Voice Mode button to turn on voice.");
       return;

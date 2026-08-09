@@ -2991,3 +2991,35 @@ is the one taken, and if it still reads dull on the device
 the true colour is brighter still - never darker. That is a
 general lesson about sampling this project's own screenshots,
 and the first time it has been written down.
+
+### w106
+
+THE RESULT IS SHOWN AS WELL AS SPOKEN. The owner played a
+whole game by touch with voice off, delivered checkmate, and
+got two grey clocks and the words "Game over." - true of
+every ending and descriptive of none. The sentence that names
+what happened already existed and was already correct;
+resultSpoken has built "checkmate. white wins." since the
+v-series, and it was spoken once and dropped. So this adds no
+element and no state on screen: the status line already
+printed something at that exact moment, and now prints the
+sentence the code had all along, sentence-cased because it
+was written in lower case for the ear.
+
+The owner's own framing was that they would never really play
+with voice off, and that is true - but the case this actually
+serves is the ordinary one. The result is announced ONCE,
+into a room that may have a car going past, or from an iPad
+across the room while somebody is talking to you. "Repeat"
+exists, and requires both remembering it and having voice on.
+A glance should be able to answer "did I just win", and now
+it can.
+
+Voice stays off when it is off: the screen picks up the
+slack, the speaker does not override the button. All six
+paths that end a game go through sayResult now, which speaks
+and keeps in one place, and every path that starts one clears
+it - a result must not outlive its game. One note left where
+the sentences are built: they are READ now as well as heard,
+so w39's ear-spelling ("lee chess") must never reach one.
+Today none does.
