@@ -57,7 +57,7 @@
     api.myColor = "w";
     api.pos = new RULES.Position();
     api.moves = [];
-    api.over = false;
+    api.over = false; api.overText = "";
     api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
     api.wtime = 600000;
     api.btime = 600000;
@@ -92,7 +92,7 @@
     var legal = api.pos.legalMoves();
     if (!legal.length) {
       api.over = true;
-      speak("Practice game over.");
+      sayResult("Practice game over.");
       return;
     }
     var m = legal[Math.floor(Math.random() * legal.length)];
@@ -106,7 +106,7 @@
       speak(sanToSpeech(san) + ".", colorWord(api.myColor === "b" ? "w" : "b"));
     if (!api.pos.legalMoves().length) {
       api.over = true;
-      speak("Practice game over.");
+      sayResult("Practice game over.");
     }
   }
 

@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w105";
+  VERSION = "w106";
 
   var RULES = makeRules();
 
@@ -54,6 +54,18 @@
      * rather than a branch. Each is {name, rating, title} or
      * null. */
     players: { w: null, b: null },
+    /* THE RESULT, IN WORDS, FOR THE SCREEN (w106). The
+     * sentence spoken when the game ended - "checkmate. white
+     * wins.", "black ran out of time. white wins." - kept so
+     * the status line can say WHAT happened instead of the
+     * bare "Game over." it said before. It was computed,
+     * spoken once and dropped, which left the result
+     * available only to whoever heard it: with voice off
+     * nothing said it at all, and with voice ON it is said
+     * once, into a room that may have a car going past.
+     * Written by sayResult, presented by renderStatus, and
+     * only ever read while api.over is true. */
+    overText: "",
     pos: null,
     moves: [],            // uci list already applied
     movesBefore: 0,       // plies played before this list began -
@@ -229,7 +241,7 @@
     api.pos = null;
     api.moves = [];
     api.movesBefore = 0;
-    api.over = false;
+    api.over = false; api.overText = "";
     api.wtime = null; api.btime = null; api.clockAt = null;  /* w60 */
     api.players = { w: null, b: null };   /* w68, and see w60 */
     uiStatus("Signed out.");
@@ -549,6 +561,17 @@
     return winner + " wins by " + how + ".";
   }
 
+  /* Speak the result AND keep it (w106). Every path that ends
+   * a game says something; this is the one that also leaves it
+   * on screen. NOTE for anyone adding a path: these sentences
+   * are now READ as well as heard, so w39's ear-spelling ("lee
+   * chess") must not reach one - today none does, and the two
+   * that name the site spell it properly. */
+  function sayResult(sentence) {
+    api.overText = sentence;
+    speak(sentence);
+  }
+
   // "connected" the first time, "reconnected" after that,
   // so a mid-game network drop that healed itself (game3,
   // 15:29:12) is announced as what it was: a resume, not a
@@ -568,7 +591,7 @@
     if (vkey !== "standard" && vkey !== "fromPosition") {
       api.over = true;
       log("API", "variant game (" + vkey + ") - not playable here");
-      speak("this is a " + ((g.variant && g.variant.name) || vkey) +
+      sayResult("this is a " + ((g.variant && g.variant.name) || vkey) +
             " game. this app plays standard chess only. play it on lichess.");
       try { if (streamAbort) streamAbort.abort(); } catch (e) {}
       return;
@@ -592,7 +615,7 @@
     if (st && st !== "started" && st !== "created") {
       api.over = true;
       log("API", "joined a finished game: " + st);
-      speak("This game is already finished. " + resultSpoken(g.state));
+      sayResult("This game is already finished. " + resultSpoken(g.state));
       return;
     }
     handleGameState(g.state, false);
@@ -644,7 +667,7 @@
         // good to do: post to a game Lichess has closed and
         // hear "draw accepted." for a draw that was not.
         clearDialogue();
-        speak(resultSpoken(s));
+        sayResult(resultSpoken(s));
       }
       return;
     }
@@ -932,7 +955,7 @@
           api.over = true;
           clearDialogue();
           log("API", "game gone from nowPlaying - treating it as over");
-          speak("game over. check lichess for the result.");
+          sayResult("game over. check lichess for the result.");
           uiGameChanged();
         }
         return;
@@ -1223,7 +1246,7 @@
     api.pos = null;
     api.moves = [];
     api.movesBefore = 0;
-    api.over = false;
+    api.over = false; api.overText = "";
     offerState = { draw: false, takeback: false };
     oppGone = false; claimAsked = false;   /* w61 */
     pollSeen = false; pollMisses = 0;      /* w62: per-game, so a

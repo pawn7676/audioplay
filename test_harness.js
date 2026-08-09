@@ -2416,6 +2416,54 @@ const sleep = ms =>
         vm.runInContext('challengeBtn.textContent', sandbox) === "Challenge");
   vm.runInContext("fetch = __realFetch4;", sandbox);
 
+  // ---- w106: the result is SHOWN as well as spoken ----
+  // The status line said "Game over." - true of every ending
+  // and descriptive of none - while the sentence naming what
+  // happened was spoken once and dropped. With voice off (the
+  // owner's whole touch-mode game) nothing said it at all.
+  // Driven through the real stream handler, and asked of the
+  // built DOM: the same sentence, sentence-cased.
+  const statusNow = () => vm.runInContext(
+    'document.getElementById("lichessLine").textContent', sandbox);
+  const endWith = (state) => {
+    vm.runInContext(`
+      dryRun = false; running = true; api.gameId = "OVR";
+      api.over = false; api.overText = ""; api.myColor = "w";
+      api.pos = new RULES.Position(); api.moves = []; api.movesBefore = 0;
+      handleGameState(${JSON.stringify(state)}, false);
+      renderStatus();
+    `, sandbox);
+    return { said: heard().join(" | "), shown: statusNow() };
+  };
+  const mated = endWith({ moves: "", status: "mate", winner: "white",
+                          wtime: 60000, btime: 60000 });
+  check("checkmate reaches the screen, not only the ear (" +
+        mated.shown + ")",
+        mated.shown === "Checkmate. White wins." &&
+        /checkmate\. white wins\./.test(mated.said));
+  const flagged = endWith({ moves: "", status: "outoftime", winner: "black",
+                            wtime: 0, btime: 60000 });
+  check("and a flag says whose, in its own words (" + flagged.shown + ")",
+        flagged.shown === "White ran out of time. Black wins.");
+  const drawn = endWith({ moves: "", status: "stalemate",
+                          wtime: 60000, btime: 60000 });
+  check("and a draw does not claim a winner (" + drawn.shown + ")",
+        drawn.shown === "Stalemate. Drawn." &&
+        !/wins/i.test(drawn.shown));
+  // the result must not outlive its game: the next one starts
+  // with the line clear, or the board would say "Checkmate"
+  // over a game in progress
+  vm.runInContext(`
+    api.gameId = "NEW"; api.over = false; api.overText = "";
+    api.pos = new RULES.Position(); api.moves = [];
+    renderStatus();
+  `, sandbox);
+  check("and it does not outlive its game",
+        !/checkmate|wins/i.test(statusNow()));
+  vm.runInContext('api.gameId = null; api.over = false; api.overText = "";',
+                  sandbox);
+  heard();
+
   // 93: a refused seek says why, and blitz gets the way out
   const seekLine = () => vm.runInContext(
     'document.getElementById("lichessLine").textContent', sandbox);
