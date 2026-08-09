@@ -94,18 +94,13 @@
     // Off plays every bare pawn move at once, unasked.
     guardPawnPushes: true,
 
-    // After "did you mean ...?" - "yes", the accepted move
-    // is confirmed with a short chime instead of the full
-    // read-back: the question already read the move aloud
-    // and the yes proves it was heard, so the read-back was
-    // repeating what the user just approved. The one square
-    // inch of the w108 trial - sound is otherwise still
-    // settled OUT (see chimes.js). Off restores the full
-    // read-back after yes; moves that play WITHOUT a
-    // question keep it either way. Applies wherever the
-    // read-back itself is on, voice mode and clock mode
-    // alike, which is why it sits in the all-modes group.
-    chimeConfirmed: true,
+    // chimeConfirmed LIVED HERE FOR ONE VERSION (w108) and
+    // was removed at w109, on the owner's order: the
+    // confirmed-move chime is behaviour, not a choice, and
+    // a switch nobody asked for was clutter in the panel.
+    // The chime itself stays - see chimes.js - and a stored
+    // value under this name is simply ignored, as with
+    // every deleted setting.
 
     // Your own move read back in full once Lichess accepts
     // it ("knight foxtrot 3."). ON since v70 as the chosen
