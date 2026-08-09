@@ -112,20 +112,19 @@
     // value under this name is simply ignored, as with
     // every deleted setting.
 
-    // Your own move confirmed once Lichess accepts it: the
-    // full read-back ("knight foxtrot 3.") for a move that
-    // played unasked, the chime for one you approved
-    // through a question (w108). ON since v70; "repeat"
-    // always works either way. The key was readBackMine
-    // until w110, when the label became "confirm my move" -
-    // the name says what the switch governs now that the
-    // chime is part of it - and the key followed the label
+    // Your own move read back in full once Lichess accepts
+    // it ("knight foxtrot 3."), questioned or not. ON since
+    // v70; "repeat" always works either way. The key was
+    // readBackMine until w110, when the label became
+    // "confirm my move" - and the key followed the label
     // (v131's rule) as far as it safely could: the obvious
     // key is barred, see the confirmMyMove tombstone above.
-    // A stored readBackMine is carried across once in
-    // loadSettings. One switch for BOTH modes since w110:
+    // One switch for BOTH modes since w110:
     // clockReadBackMine existed so the overlay's move row
-    // could do the confirming, and the row is gone.
+    // could do the confirming, and the row is gone. (w108
+    // put a chime here for yes-answered questions; w112
+    // removed it - a chime cannot say WHICH move, see
+    // chimes.js.)
     confirmMine: true,
 
     // clockSpeakOpponent DELETED AT w110 with the rest of

@@ -107,7 +107,6 @@
       "border:1px solid " + BORDER + ";";
     practiceBtn.addEventListener("click", function () {
       wakeSpeech();
-      primeChimes();   /* an AudioContext must be born in a gesture (w108) */
       setTimeout(loadVoices, 300);
       if (dryRun) {
         dryRun = false; running = false;
@@ -415,7 +414,6 @@
 
     bigBtn.addEventListener("click", function () {
       wakeSpeech();
-      primeChimes();   /* an AudioContext must be born in a gesture (w108) */
       setTimeout(loadVoices, 300);
       running = !running;
       if (running) {

@@ -1661,103 +1661,12 @@ const sleep = ms =>
         vm.runInContext("!!pending", sandbox) === true);
   say("yes");
   await sleep(120);
-  // w108: a yes-confirmed move is no longer read back in
-  // full - the question already spoke it. With no WebAudio
-  // in this sandbox the confirmation is the spoken fallback,
-  // so the move itself is checked on the board, not by ear.
-  const yesPlayed = heard().join(" | ");
-  check("and yes plays one of them (okay, not a re-read: " +
-        yesPlayed + ")",
-        /okay/i.test(yesPlayed) && !/takes/i.test(yesPlayed) &&
-        /^(exd6|exf6)$/.test(vm.runInContext("api.lastSan", sandbox)));
-
-  // ============ w108: THE CONFIRMED-MOVE CHIME ============
-  // The one square inch where sound returned: a move read
-  // aloud as a question and answered yes. With WebAudio
-  // present and running the confirmation is the chime and
-  // nothing is spoken; with the context suspended or the
-  // API missing the same moment speaks "okay." instead -
-  // rule 5 does not trust a chime that could not even be
-  // scheduled. Moves that play without a question keep the
-  // full read-back, chime or no chime.
-  vm.runInContext(`
-    __chimeStarts = 0;
-    AudioContext = function () {
-      this.state = "running";
-      this.currentTime = 0;
-      this.destination = {};
-      this.resume = function () {};
-      this.createOscillator = function () {
-        return { type: "", frequency: { value: 0 },
-                 connect: function () {},
-                 start: function () { __chimeStarts++; },
-                 stop: function () {} };
-      };
-      this.createGain = function () {
-        return { gain: { setValueAtTime: function () {},
-                         linearRampToValueAtTime: function () {} },
-                 connect: function () {} };
-      };
-    };
-    primeChimes();
-  `, sandbox);
-  check("the gesture prime creates a running chime context",
-        vm.runInContext('!!chimeCtx && chimeCtx.state === "running"',
-                        sandbox));
-  await setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
-  say("echo five takes");
-  await sleep(120);
-  heard();                       /* drop the question */
-  say("yes");
-  await sleep(120);
-  const chimed = heard().join(" | ");
-  check("a confirmed move chimes and speaks NOTHING (" +
-        (chimed || "silence") + ")",
-        chimed === "" &&
-        vm.runInContext("__chimeStarts", sandbox) === 2 &&
-        /^(exd6|exf6)$/.test(vm.runInContext("api.lastSan", sandbox)));
-
-  // a suspended context is detected and the fallback speaks
-  vm.runInContext('chimeCtx.state = "suspended";', sandbox);
-  await setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
-  say("echo five takes");
-  await sleep(120);
-  heard();
-  say("yes");
-  await sleep(120);
-  const suspendedSaid = heard().join(" | ");
-  check("a suspended chime context falls back to spoken okay (" +
-        suspendedSaid + ")",
-        /okay/i.test(suspendedSaid) &&
-        vm.runInContext("__chimeStarts", sandbox) === 2);
-  vm.runInContext('chimeCtx.state = "running";', sandbox);
-
-  // and the chime never leaks past the confirmed gate: a
-  // move that played with no question still reads back in
-  // full with the context running
-  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
-  say("pawn echo four");
-  await sleep(120);
-  const unconfirmed = heard().join(" | ");
-  check("an unquestioned move keeps the full read-back (" +
-        unconfirmed + ")",
-        /echo 4/i.test(unconfirmed) && !/okay/i.test(unconfirmed) &&
-        vm.runInContext("__chimeStarts", sandbox) === 2);
-
-  // the panel carries NO chime row (w109, owner's order):
-  // the chime is behaviour, not a choice, and this asks the
-  // built DOM so a re-added switch fails loudly
-  check("the settings panel has no chime row",
-        vm.runInContext(`
-          setPanel.children.every(function (r) {
-            return !r.children.length ||
-                   !/chime/i.test(r.children[0].textContent || "");
-          })
-        `, sandbox));
-
-  // leave the sandbox as WebAudio-less as it started, so
-  // every later yes-flow exercises the spoken fallback
-  vm.runInContext("AudioContext = undefined; chimeCtx = null;", sandbox);
+  // w112: yes gets the full read-back again. The w108-w111
+  // chime block stood here and its tests went with it -
+  // a chime cannot say WHICH move, so the confirmation is
+  // speech, questioned or not (the chimes.js tombstone).
+  check("and yes plays one of them, read back in full",
+        /echo takes (delta 6|foxtrot 6)/i.test(heard().join(" | ")));
 
   // ===== w109: THE QUESTION LOST ITS TAIL, NOT ITS EARS =====
   // A mixed list's first ask used to append "Yes, no, or
@@ -2290,12 +2199,8 @@ const sleep = ms =>
         /did you mean/i.test(onlyAsks) && !/^white /i.test(onlyAsks));
   say("yes");
   await sleep(90);
-  // w108: yes-confirmed, so the confirmation is okay (no
-  // WebAudio here), and the move is checked on the board
-  const rivalYes = heard().join(" | ");
-  check("and yes then plays it (" + rivalYes + ")",
-        /okay/i.test(rivalYes) &&
-        vm.runInContext("api.lastSan", sandbox) === "Qxd6");
+  check("and yes then plays it",
+        /queen takes delta 6/i.test(heard().join(" | ")));
 
   // "push" is a pawn word everywhere, not only on a push -
   // the owner's point after game w47-1, where "pawn" would
