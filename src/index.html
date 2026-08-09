@@ -195,7 +195,6 @@
   .panel > details > summary::marker,
   .panel > details > summary::-webkit-details-marker { color: var(--dim); font-size: 1.15em; }
   .panel > details:not([open]) > summary { margin-bottom: 0; }
-  .stats { font-family: Menlo, "SF Mono", monospace; font-size: .8rem; line-height: 1.5; white-space: pre-wrap; }
   #mini {
     display: block; width: 100%; aspect-ratio: 1;
     /* THE CAP IS TWO CAPS (w96), AND THE WIDTH CAP IS THE
@@ -218,7 +217,23 @@
     margin: 0 auto; touch-action: manipulation;
   }
   .hint { color: var(--dim); font-size: .82rem; margin-top: 8px; line-height: 1.4; }
-  #lichessLine { margin-top: 6px; }
+  /* THE STATUS LINE IS PROSE, AND READS AS PROSE (w107). It
+     wore Menlo through a class called .stats, inherited whole
+     from reference/'s w19 page - where that class styled
+     THREE things, two of them numbers: a clock readout and a
+     turn readout. Monospace earned its place there and this
+     line came along with it. Both numeric members are gone
+     (w71 deleted the turn line, w70 moved the clock into the
+     rail), leaving a class named for statistics styling one
+     English sentence - and since w106 that sentence is
+     "Checkmate. White wins." The class had one member left,
+     so it is folded into the element rather than renamed.
+     white-space: pre-wrap survives the move: it is what lets
+     a status message hold its own line breaks. */
+  #lichessLine {
+    margin-top: 6px; font-size: .8rem; line-height: 1.5;
+    white-space: pre-wrap;
+  }
   /* BOARD AND RAIL (w70), RESHAPED TO THE LICHESS LOOK (w71).
      w70 stretched the rail to the board's full height and
      pushed the clocks to its ends, which left a vacant middle
@@ -339,7 +354,16 @@
      page doing this exact job elsewhere. The RATING is not
      faded either (w81): at .65 it read as a different face
      beside the name, and it is part of who you are playing. */
-  .sideName { font-family: Menlo, "SF Mono", monospace; font-size: .8rem;
+  /* AND SO ARE THE NAMES (w107). These took Menlo at w70 to
+     match the clock beside them, which was monospace at the
+     time. w72 then moved the CLOCK to plain sans with
+     tabular-nums, to sit like Lichess's - so the one element
+     where monospace genuinely earns its keep, digits that
+     must not wobble as they count, left; and the names that
+     were only keeping it company stayed. The page's rule
+     after this: prose in the body sans, machine output (the
+     log) in monospace, digits in sans with tabular-nums. */
+  .sideName { font-size: .8rem;
               line-height: 1.5; margin: 2px 0; color: var(--bright); }
   .sideName .title { color: var(--amber); font-weight: 700; }
   .sideName .title.bot { color: var(--fuchsia); }
@@ -460,7 +484,7 @@
        saved choice. -->
   <details open>
   <summary>Games</summary>
-  <div class="stats" id="lichessLine">Sign in to play.</div>
+  <div id="lichessLine">Sign in to play.</div>
   <div class="row">
     <!-- Time controls as PRESETS (w33): the pairs anyone
          recognises from Lichess's own quick-pairing grid,

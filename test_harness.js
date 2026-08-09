@@ -879,6 +879,28 @@ const sleep = ms =>
   check("and BOT has a colour of its own",
         /\.sideName \.title\.bot \{[^}]*color:\s*var\(--fuchsia\)/
           .test(tmplBoard));
+  // w107: PROSE IN SANS, MACHINE OUTPUT IN MONO. The names
+  // and the status line wore Menlo by inheritance - the names
+  // to match a clock that has been sans since w72, the status
+  // line through reference/'s .stats class, whose two NUMERIC
+  // members (a clock and a turn readout) are long gone. Both
+  // are body-sans now; the log stays monospace, where column
+  // alignment is the point. Read from the rules' own text,
+  // like the w73/w81 checks beside it.
+  check("the names and the status line are not monospace",
+        !/\.sideName \{[^}]*Menlo/.test(tmplBoard) &&
+        !/#lichessLine \{[^}]*Menlo/.test(tmplBoard) &&
+        // the RULE, not the word: the comment above the folded
+        // rule names .stats to say where it went
+        !/\.stats\s*\{/.test(tmplBoard));
+  check("the log panel keeps its monospace",
+        /font-family:ui-monospace,Menlo,monospace/.test(
+          fs.readFileSync("src/ui.js", "utf8")));
+  // and the status line keeps what the folded class gave it:
+  // pre-wrap is what lets a message hold its own line breaks
+  check("and the status line keeps its pre-wrap",
+        /#lichessLine \{[^}]*white-space:\s*pre-wrap/.test(tmplBoard));
+
   // w82: the centred row must centre what the eye sees. The
   // rail grew once (flex 1 1) and its empty growth counted in
   // the centring, shoving the visible board-and-clocks cluster
