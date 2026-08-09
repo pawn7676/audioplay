@@ -173,17 +173,11 @@
     repairMayPlay = true;
   }
 
-  // WHICH VOICE SETTINGS APPLY DEPENDS ON WHICH RENDERER IS
-  // UP (v124). The panel keeps separate switches for voice
-  // mode and clock mode; these read the right one at the
-  // moment of speaking, so flipping a toggle or entering
-  // clock mode changes behaviour immediately.
-  function readBackMineNow() {
-    return clockModeOn() ? CFG.clockReadBackMine : CFG.readBackMine;
-  }
-  function speakOpponentNow() {
-    return clockModeOn() ? CFG.clockSpeakOpponent : true;
-  }
+  // (readBackMineNow and speakOpponentNow stood here from
+  // v124 to w110, routing per-mode switches. The per-mode
+  // switches are gone - one CFG.confirmMine for your own
+  // move in every mode, the opponent's always spoken - so
+  // the seams they answered no longer exist.)
 
   // THE READ-BACK BELONGS TO WHICHEVER EVENT ARRIVES FIRST
   // (v134). Two things confirm a move we posted - the
@@ -246,7 +240,7 @@
     // line says it better than a read-back can. api.over
     // alone was not enough then and is not now.
     if (api.over || /#$/.test(san)) return;
-    if (!readBackMineNow()) return;
+    if (!CFG.confirmMine) return;
     if (confirmed) { confirmFeedback(); return; }
     speak(sanToSpeech(san), colorWord(api.myColor));
   }
@@ -282,7 +276,7 @@
       api.lastSan = c.san; api.lastSanW = c.san;
       busy = false;
       log("DRY", "you play " + uci + " = " + c.san + " (not sent)");
-      if (!quiet && readBackMineNow()) {
+      if (!quiet && CFG.confirmMine) {
         // same substitution as the live path, so practice is
         // where the chime can be heard without a game at
         // stake - the trial's own test bench (w108)
@@ -634,7 +628,7 @@
   }
 
   function offer(cands, label) {
-    var play = cands.length === 1 && !CFG.confirmMyMove && repairMayPlay;
+    var play = cands.length === 1 && repairMayPlay;
     if (label) {
       log("CND", label + ": " +
           cands.map(function (c) { return c.san; }).join(",") +
@@ -905,25 +899,18 @@
       }
       // SAYING THE MOVE AGAIN REPLACES THE QUESTION, and does
       // it by the same rules the move would get if no question
-      // were open (w51). This branch played a unique re-said
-      // move outright, ignoring confirmMyMove - so the one
-      // setting whose entire job is "ask me even when you are
-      // sure" was silently off for every move said over a
-      // question, which is exactly when the user is already
-      // being misheard. And a re-said AMBIGUOUS move was
-      // thrown away in favour of "Say yes or no.", re-asking
-      // about the OLD list while the new one went in the bin.
-      // Both now go where the main path sends them.
+      // were open (w51). Before that, a re-said AMBIGUOUS
+      // move was thrown away in favour of "Say yes or no.",
+      // re-asking about the OLD list while the new one went
+      // in the bin. Both shapes now go where the main path
+      // sends them. (w51's other finding - this branch
+      // ignoring confirmMyMove - died with that setting at
+      // w110.)
       var re = collectCandidates(api.pos, transcripts);
       if (re.length === 1) {
         var reGuard = bareGuardCands(re[0]);
         if (reGuard) { pending = { cands: reGuard, idx: 0 };
           askCandidate(); return; }
-        if (CFG.confirmMyMove) {
-          pending = { cands: re, idx: 0 };
-          askCandidate();
-          return;
-        }
         acceptMove(re[0]);
         return;
       }
@@ -1011,7 +998,7 @@
     var cands = collectCandidates(api.pos, transcripts);
     log("CND", cands.map(function (c) { return c.san; }).join(",") || "(none)");
 
-    if (cands.length === 1 && !CFG.confirmMyMove) {
+    if (cands.length === 1) {
       var guarded = bareGuardCands(cands[0]);
       if (guarded) {
         pending = { cands: guarded, idx: 0 };
@@ -1019,17 +1006,6 @@
         return;
       }
       acceptMove(cands[0]);
-      return;
-    }
-    if (cands.length === 1) {
-      // confirmMyMove asks even the unambiguous - but the
-      // bare-square guard must still widen the list first
-      // (v133), or "no" to the pawn push dead-ends with the
-      // piece move standing right there. One question
-      // serves both settings: yes plays the pawn, no walks
-      // the pieces, exactly as the guard alone would.
-      pending = { cands: bareGuardCands(cands[0]) || cands, idx: 0 };
-      askCandidate();
       return;
     }
     if (cands.length === 0) {

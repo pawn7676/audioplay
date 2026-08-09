@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w109";
+  VERSION = "w110";
 
   var RULES = makeRules();
 
@@ -387,7 +387,7 @@
       else api.lastSanB = res.san;
       log("MOV", colorWord(res.move.color) + " " + list[i] + " = " + res.san +
           (announce ? "" : " (catch-up)"));
-      if (announce && !moverIsMine && speakOpponentNow()) {
+      if (announce && !moverIsMine) {
         speak(sanToSpeech(res.san) + ".", colorWord(res.move.color));
       }
       // OUR OWN MOVE, CONFIRMED BY THE STREAM (v134). This
@@ -1005,7 +1005,7 @@
           api.lastSan = res.san;
           if (res.move.color === "w") api.lastSanW = res.san;
           else api.lastSanB = res.san;
-          if (res.move.color !== api.myColor && speakOpponentNow()) {
+          if (res.move.color !== api.myColor) {
             speak(sanToSpeech(res.san) + ".", colorWord(res.move.color));
           }
           /* the stream's rule, kept identical here (v134) */
