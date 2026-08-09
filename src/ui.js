@@ -722,8 +722,14 @@
     // The name is unconditional since w75 - the switch that
     // could hide it is gone, so the rating can never be the
     // only thing here and needs no guard of its own.
+    // BOT IS ITS OWN KIND OF TITLE (w105), and Lichess says so
+    // in fuchsia while the human ranks stay gold. The class
+    // carries WHICH, the stylesheet owns what each looks like
+    // (constraint 6). Compared against the literal Lichess
+    // sends, which is upper-case "BOT".
+    var titleCls = pl.title === "BOT" ? "title bot" : "title";
     var parts = [(pl.title
-      ? '<span class="title">' + esc(pl.title) + "</span> " : "") +
+      ? '<span class="' + titleCls + '">' + esc(pl.title) + "</span> " : "") +
       esc(pl.name)];
     if (CFG.showRatings && pl.rating != null) {
       parts.push('<span class="rating">' + esc(pl.rating) + "</span>");

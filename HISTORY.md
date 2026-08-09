@@ -2969,3 +2969,25 @@ the same call the owner made on --blue at w102, applied
 without being asked twice. ui.js has held the value as AMBER
 since w102, so the harness's pin now compares two halves that
 agree on a name.
+
+### w105
+
+BOT GETS ITS OWN COLOUR, because Lichess gives it one. w104
+put every title in amber; the owner played a maia to check it
+and came back with the real site's answer - the human ranks
+are gold, BOT is fuchsia. That is a distinction worth
+carrying rather than decoration: a bot is not a stronger or
+weaker player, it is a different sort of opponent, and it is
+the one title the owner actually meets, since every maia is a
+BOT. The renderer says WHICH kind of title it is by class and
+the stylesheet says what each looks like, which is constraint
+6 doing exactly its job.
+
+The value is the owner's screenshot reading, with a caveat
+recorded beside it: it was sampled off THIN ANTI-ALIASED
+TEXT, where every edge pixel is part background, so such a
+reading always skews dark. The brighter of the two candidates
+is the one taken, and if it still reads dull on the device
+the true colour is brighter still - never darker. That is a
+general lesson about sampling this project's own screenshots,
+and the first time it has been written down.

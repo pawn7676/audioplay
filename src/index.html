@@ -93,6 +93,14 @@
        as AMBER since w102, so the pin's two halves finally
        agree on a name. */
     --amber:   #d0a24c;
+    /* the BOT title's fuchsia (w105), from the owner's
+       screenshot of lichess.org. Sampled off THIN ANTI-ALIASED
+       TEXT, where every edge pixel is part background, so the
+       reading skews dark: the brighter of the owner's two
+       candidates is the one taken, and if it still reads dull
+       on the device the true value is brighter still, not
+       darker. */
+    --fuchsia: #c02acc;
     --dim:     #6b6b6b;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -314,7 +322,13 @@
      name is a thing to READ, not page furniture. (The class
      it was reached through went with it - see nameCell.)
 
-     THE TITLE IS AMBER AND BOLD, NOT DIM (w104). It was faded
+     THE TITLE IS COLOURED AND BOLD, NOT DIM (w104), AND BOT
+     IS ITS OWN COLOUR (w105). Lichess puts the human ranks -
+     GM, IM, FM - in gold and marks BOT in fuchsia, which is a
+     real distinction and not decoration: a bot is not a
+     stronger or weaker player, it is a different sort of
+     opponent, and it is the one title the owner actually
+     meets (every maia is a BOT). It was faded
      to .65 on the reasoning that a title only qualifies the
      name - true, but a fade says "less important than the
      text around it" when what a title actually is, is a
@@ -328,6 +342,7 @@
   .sideName { font-family: Menlo, "SF Mono", monospace; font-size: .8rem;
               line-height: 1.5; margin: 2px 0; color: var(--bright); }
   .sideName .title { color: var(--amber); font-weight: 700; }
+  .sideName .title.bot { color: var(--fuchsia); }
   /* THE NAME BOX IS A CONTROL LIKE THE ONES BESIDE IT (w97).
      It only appears when the Opponent dropdown says "someone
      else" - the second-use path where unstyled things hide -
