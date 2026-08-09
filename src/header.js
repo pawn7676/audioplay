@@ -218,13 +218,15 @@
    *   audible, so any confirmation or alert MUST be spoken.
    *   (v80-v108 could also show it on screen in silent
    *   mode; that screen was deleted at v109.)
-   *   (Amended w108: the finding's two halves aged apart.
-   *   The <audio> half stands in full - re-proven at
-   *   w88-w90, session declared and all. The AudioContext
-   *   half lost its stage when w90 removed screen-off play,
-   *   and one WebAudio chime is ON TRIAL in the narrowest
-   *   spot - see the reopened sound case below and
-   *   chimes.js.)
+   *   (Amended w108, re-amended w112: the finding's two
+   *   halves aged apart. The <audio> half stands in full -
+   *   re-proven at w88-w90, session declared and all. The
+   *   AudioContext half lost its stage when w90 removed
+   *   screen-off play, and the w108 trial then PROVED a
+   *   WebAudio chime audible, screen on, mic open, session
+   *   declared. The trial still ended in removal - on
+   *   information grounds, not platform ones. See the
+   *   sound case below.)
    * - A PLAYING media element keeps the tab alive. The
    *   silent looping WAV in keepalive.js holds the iOS audio
    *   session; without it the page suspends with the screen
@@ -302,33 +304,32 @@
    * information to earn its airtime. chimes.js is the
    * detailed tombstone.
    *
-   * REOPENED AT w108, ON ONE SQUARE INCH (owner's decision,
-   * 9 Aug 2026), with the new evidence the tombstone
-   * demanded. The arc above condemned three mechanisms, and
-   * time treated them differently: the <audio> route is
-   * deader than ever (w88-w90 watched iPadOS evict a media
-   * element with the mic live and the session declared),
-   * but the WebAudio route was condemned for dying with the
-   * screen off - and w90 deleted screen-off play itself, so
-   * that verdict lost its grounds. What returned is ONE
-   * WebAudio chime in the one spot with an audibility
-   * argument: confirming a move the user just heard read
-   * aloud as a question and answered "yes" - the route
-   * carried the question seconds earlier and the yes proves
-   * it was heard, and the read-back there repeated what the
-   * user had just approved, failing this arc's own airtime
-   * rule. Everything else stands: media elements never
-   * again, no chime on unconfirmed moves (that read-back
-   * still carries real information), and a spoken "okay."
-   * whenever the chime cannot be scheduled. (w108 also
-   * shipped a chimeConfirmed panel toggle as a rollback;
-   * w109 removed it on the owner's order - behaviour, not
-   * a choice, and panel rows are not free.) What no
-   * code can prove is audibility itself - that is game4's
-   * permanent lesson - so the trial is judged by ear, and
-   * an inaudible chime here degrades to the user re-saying
-   * the move, which speaks either way: a loud failure, not
-   * the silent kind that killed v67.
+   * REOPENED AT w108, CLOSED AGAIN AT w112, and the second
+   * closing is the stronger verdict. The reopening had the
+   * new evidence the tombstone demanded - screen-off play
+   * (the WebAudio killer's stage) deleted at w90, the
+   * session declared at w91 - and it was NARROW: one
+   * WebAudio chime, only as the confirmation of a move the
+   * user had just heard read aloud as a question and
+   * answered "yes". The trial WORKED. The owner's 9 Aug
+   * practice log shows every chime scheduled and heard;
+   * game4's unanswerable audibility question came back
+   * answered yes. Four versions later the owner removed it
+   * anyway: A CHIME ONLY SAYS A MOVE WAS MADE, AND CANNOT
+   * SAY WHICH - the confirmation owed here is the move
+   * itself, which only speech carries; and the yes-answered
+   * question turned out rare in real games once moves are
+   * spoken cleanly, so the seat was small and what sat in
+   * it said nothing. (En route: w109 removed the trial's
+   * panel toggle - behaviour, not a choice - and the
+   * "okay." fallback died with the chime it backed.)
+   *
+   * So this case is now closed at BOTH ends and should not
+   * be reopened from either: media elements cannot be
+   * trusted to SOUND (v67, reproven w88-w90), and a sound
+   * proven to play reliably still cannot CONFIRM (w112).
+   * Audibility was the tombstone's open question for seven
+   * versions; it was achieved, and it did not matter.
    *
    * FULLSCREEN-EXIT CORRUPTION — SOLVED AT v108 BY NOT
    * GOING FULLSCREEN. After any element fullscreen EXIT the

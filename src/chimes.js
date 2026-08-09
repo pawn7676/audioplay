@@ -18,129 +18,42 @@
   // removed it too, for its own reasons (see the keep-alive
   // tombstone in header.js).
 
-  // THE NEW EVIDENCE ARRIVED, AND ONE CHIME IS BACK ON
-  // TRIAL (w108, owner's decision, 9 Aug 2026). The
-  // tombstone above stays: it is what the reopening was
-  // argued against. What changed since it was written, and
-  // what did not:
+  // REOPENED AT w108, CLOSED AGAIN AT w112, and the second
+  // closing is the one that settles it. The new evidence
+  // the tombstone demanded arrived: screen-off play died at
+  // w90 (taking the WebAudio killer with it), the session
+  // is declared play-and-record (w91), and one WebAudio
+  // chime returned in the narrowest spot - confirming a
+  // move the user had just heard read aloud as a question
+  // and answered "yes". IT WORKED. The owner's 9 Aug
+  // practice log shows the context created, every chime
+  // scheduled, every chime HEARD - the audibility question
+  // that killed v67 came back answered yes.
   //
-  //  - the WebAudio generation (pre-v65) died with the
-  //    SCREEN OFF - AudioContext suspends there. w90
-  //    deleted screen-off play itself, so that killer no
-  //    longer has a stage. No log ever showed a WebAudio
-  //    chime lost with the screen ON.
-  //  - the <audio> generation is deader than the tombstone
-  //    knew: w88-w90 watched iPadOS evict a media element
-  //    while the mic and the synthesizer were live, WITH
-  //    the audio session declared. Nothing here may ever
-  //    be a media element again.
-  //  - the session is now declared play-and-record (mic.js,
-  //    w91), which did not exist in the chime era.
-  //  - what did NOT change: no API reports AUDIBILITY.
-  //    game4's "SFX ok" on four silent chimes is permanent.
-  //    Only ears at the board can judge this trial.
+  // And the owner removed it anyway, four versions later,
+  // for a reason no platform fix can ever reach: A CHIME
+  // ONLY SAYS A MOVE WAS MADE. IT CANNOT SAY WHICH. The
+  // confirmation this program owes an eyes-free user is
+  // WHAT Lichess now believes the move to be, and one bit
+  // of tone cannot carry that; only speech can. The same
+  // verdict had already ended the "ok." era (v68->v70:
+  // "confirmation must carry information to earn its
+  // airtime") and the chime was "ok." with better
+  // manners. The yes-answered question - the one moment a
+  // chime seemed justified because the move had just been
+  // spoken - turned out to be rare in real games once moves
+  // are spoken cleanly, so the seat the chime held was
+  // small, and what sat in it carried nothing.
   //
-  // Hence the one square inch: the chime plays ONLY as the
-  // confirmation of a move the user just heard read aloud
-  // as a question and answered "yes" - the one moment the
-  // output route is proven live AND heard (the question
-  // played through it seconds ago, and the yes is the
-  // proof), and the one confirmation carrying no
-  // information the user lacks, where the full read-back
-  // was failing the sound arc's own rule that speech must
-  // earn its airtime. Moves that play WITHOUT a question
-  // keep the full read-back; see readBackMine in
-  // dialogue.js. (w108 shipped a chimeConfirmed panel
-  // toggle as the rollback; the owner removed it at w109 -
-  // behaviour, not a choice. If the device disqualifies the
-  // chime, the rollback is a version, like everything else
-  // in this file's history.)
-  //
-  // RULE 5 STILL HOLDS. A chime that cannot even be
-  // SCHEDULED - no WebAudio, context not running - is
-  // answered with a spoken "okay." instead, never with
-  // silence. A chime that was scheduled and went unheard
-  // degrades to the user saying the move again, which
-  // speaks an answer either way - a loud failure, not the
-  // silent kind that killed the v67 generation.
-
-  // Retune these by ear at the board: two short rising sine
-  // notes. GAIN is the first thing to raise if the iPad
-  // across the room is too quiet.
-  var CHIME_FREQS = [988, 1319];    /* B5 then E6 */
-  var CHIME_NOTE_S = 0.09;          /* per note, seconds */
-  var CHIME_GAIN = 0.35;
-
-  var chimeCtx = null, chimeNoApiLogged = false;
-
-  // Called from the voice and practice taps (ui.js): an
-  // AudioContext created outside a user gesture starts
-  // suspended on iOS, so it is created - and woken - where
-  // the gestures are. Safe to call any number of times, and
-  // a browser without the API gets a log line and speech,
-  // never an error: a condition to detect, not the shape of
-  // the world.
-  function primeChimes() {
-    try {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) {
-        if (!chimeNoApiLogged) {
-          chimeNoApiLogged = true;
-          log("CHM", "no WebAudio on this browser - " +
-              "confirmations will be spoken");
-        }
-        return;
-      }
-      if (!chimeCtx) {
-        chimeCtx = new AC();
-        log("CHM", "chime context created (" + chimeCtx.state + ")");
-      }
-      if (chimeCtx.state !== "running") {
-        var p = chimeCtx.resume();
-        if (p && p.catch) p.catch(function () {});
-      }
-    } catch (e) { log("CHM", "chime prime failed: " + e.message); }
-  }
-
-  // True means the chime was handed to the audio stack.
-  // Audibility is the trial's open question and nothing
-  // here can answer it (see the header above); what CAN be
-  // known is logged, because a pasted log has to separate
-  // "spoke okay because the context was suspended" from
-  // "chimed and the user did not hear it".
-  function playConfirmChime() {
-    try {
-      if (!chimeCtx || chimeCtx.state !== "running") {
-        if (chimeCtx) {
-          log("CHM", "chime context " + chimeCtx.state +
-              " - speaking instead");
-          /* may rescue the NEXT chime, never this one */
-          var p = chimeCtx.resume();
-          if (p && p.catch) p.catch(function () {});
-        }
-        return false;
-      }
-      var t = chimeCtx.currentTime;
-      for (var i = 0; i < CHIME_FREQS.length; i++) {
-        var o = chimeCtx.createOscillator();
-        var g = chimeCtx.createGain();
-        var t0 = t + i * CHIME_NOTE_S, t1 = t0 + CHIME_NOTE_S;
-        o.type = "sine";
-        o.frequency.value = CHIME_FREQS[i];
-        /* ramps, not steps: a bare start/stop clicks */
-        g.gain.setValueAtTime(0, t0);
-        g.gain.linearRampToValueAtTime(CHIME_GAIN, t0 + 0.012);
-        g.gain.setValueAtTime(CHIME_GAIN, t1 - 0.025);
-        g.gain.linearRampToValueAtTime(0, t1);
-        o.connect(g);
-        g.connect(chimeCtx.destination);
-        o.start(t0);
-        o.stop(t1);
-      }
-      log("CHM", "confirm chime");
-      return true;
-    } catch (e) {
-      log("CHM", "chime failed: " + e.message);
-      return false;
-    }
-  }
+  // So the closed case now holds at BOTH ends: media
+  // elements cannot be trusted to sound (v67, reproven
+  // w88-w90), and a sound that plays reliably still cannot
+  // do this program's confirming (w112). Every accepted
+  // move is read back in full, questioned or not, while
+  // confirmMine is on. Do not propose chimes again on
+  // audibility grounds - audibility was achieved and it
+  // did not matter. The w108-w111 implementation (context
+  // priming in the gesture handlers, the state check, the
+  // spoken fallback) is in git if a future signal is ever
+  // found that genuinely carries no information - and the
+  // lesson of this file is that no confirmation qualifies.

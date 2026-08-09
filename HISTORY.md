@@ -3208,3 +3208,32 @@ live credentials both, whose deletion is rule 4 working -
 and logs what it removed. A device that stayed away for a
 year still gets the clean-up; the list shrinks only if a
 name is ever reused.
+
+### w112
+
+THE CHIME IS OUT, AND THE SOUND CASE CLOSES FROM THE OTHER
+END. w108's trial did what it promised: the practice log of
+9 Aug shows the context created at the tap, every chime
+scheduled, every chime heard - the audibility question that
+v67 could not answer and the tombstone held open for seven
+versions came back answered yes. The owner then had second
+thoughts and named the flaw no platform work could ever
+reach: a chime only says a move was made, and cannot say
+WHICH. The confirmation owed an eyes-free user is what
+Lichess now believes the move to be, and one bit of tone
+cannot carry a move; only speech can. The yes-answered
+question - the single spot where the chime seemed earned,
+because the move had just been read aloud - proved rare in
+real play once moves are spoken cleanly, so the seat was
+small and its occupant said nothing.
+
+Everything of w108 is reverted: the confirmed flag beside
+the arm, the chime-or-okay feedback, the gesture priming,
+the WebAudio renderer. Every accepted move is read back in
+full again, questioned or not, while confirmMine is on.
+chimes.js returns to comments only, now carrying both
+verdicts, and the header's closed case says why the second
+is the stronger: sound here has now failed while BROKEN
+(v67: played but unhearable) and failed while WORKING
+(w112: heard and empty). A case closed at both ends does
+not get reopened on either argument.
