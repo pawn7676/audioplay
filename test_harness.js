@@ -1031,7 +1031,7 @@ const sleep = ms =>
   check("neither state paints a colour inline",
         !offBtn.bg && !onBtn.bg);
   check("and the stylesheet is what gives those two states colour",
-        /\.panel button\.primary[^}]*var\(--accent\)/.test(tmpl) &&
+        /\.panel button\.primary[^}]*var\(--blue\)/.test(tmpl) &&
         /\.panel button\.on\b[^}]*var\(--button-on\)/.test(tmpl));
   vm.runInContext("listening = false; renderButton();", sandbox);
   check("running but mic paused reads as on, not off",
@@ -4346,27 +4346,33 @@ const sleep = ms =>
   vm.runInContext("fetch = __realFetchW90;", sandbox);
   heard();
 
-  // ---- w93: the shared-UI paint pot matches the stylesheet ----
-  // paintButton colours the settings pills and mode buttons
-  // from JS constants that duplicate --button-on/--btn-bg,
-  // and at w92 they drifted exactly as the stylesheet's w54
-  // note warned: the variable moved to the clock green, the
-  // constant kept the old one, and the pills wore last week's
-  // colour. A source-text comparison ON PURPOSE, this once:
-  // the stub DOM computes no styles, and the invariant IS
-  // that the two constants are one value.
-  const cssBtnOn = (fs.readFileSync("src/index.html", "utf8")
-    .match(/--button-on:\s*(#[0-9a-fA-F]{6})/) || [])[1];
-  check("the JS BUTTON_ON matches the stylesheet's --button-on (" +
-        cssBtnOn + ")",
-        !!cssBtnOn &&
-        vm.runInContext("BUTTON_ON", sandbox) === cssBtnOn);
-  // w94/w95: same law for the text ON the green - the
-  // stylesheet's rules point at --bright (the clock box's
-  // white, softened at w95), and the JS painter must paint
-  // that value. Asked of a painted element.
-  const cssOnText = (fs.readFileSync("src/index.html", "utf8")
-    .match(/--bright:\s*(#[0-9a-fA-F]{3,6})/) || [])[1];
+  // ---- w93/w102: the shared UI's paint pots match :root ----
+  // buildUI() styles its buttons inline - it was written to
+  // float over lichess.org, where no CSS of ours could reach
+  // them - so every colour it uses is a second copy of a value
+  // the stylesheet already holds. At w92 they drifted exactly
+  // as the w54 note warned: --button-on moved to the clock
+  // green, ui.js's copy did not, and the settings pills wore
+  // last week's colour until a screenshot caught it. w102
+  // named the remaining literals (six blues, six borders,
+  // three ambers), so the whole block can be compared at once.
+  // A source-text comparison ON PURPOSE: the stub DOM computes
+  // no styles, and the invariant IS that two files hold one
+  // value each.
+  const cssSrc = fs.readFileSync("src/index.html", "utf8");
+  [["BUTTON_OFF", "btn-bg"], ["BUTTON_ON", "button-on"],
+   ["BUTTON_TEXT_ON", "bright"], ["BLUE", "blue"],
+   ["BORDER", "border"], ["AMBER", "warn"]].forEach(pair => {
+    const want = (cssSrc.match(
+      new RegExp("--" + pair[1] + ":\\s*(#[0-9a-fA-F]{3,6})")) || [])[1];
+    check("JS " + pair[0] + " matches the stylesheet's --" +
+          pair[1] + " (" + want + ")",
+          !!want && vm.runInContext(pair[0], sandbox) === want);
+  });
+  // and the one that reaches an element rather than a string:
+  // the text painted ON the green, asked of a painted button.
+  const cssOnText = (cssSrc.match(
+    /--bright:\s*(#[0-9a-fA-F]{3,6})/) || [])[1];
   const paintedText = vm.runInContext(`
     (function () {
       var el = document.createElement("button");
@@ -4377,6 +4383,12 @@ const sleep = ms =>
   check("and the painted ON text matches the stylesheet's (" +
         cssOnText + ")",
         !!cssOnText && paintedText === cssOnText);
+  // w102: the chevron drawn into the select's data: URI cannot
+  // read a variable, so it carries the blue percent-encoded.
+  // Nothing else can catch that one drifting.
+  check("the select chevron's stroke is the same blue",
+        cssSrc.indexOf("stroke='%23" +
+          vm.runInContext("BLUE", sandbox).slice(1) + "'") >= 0);
 
   // ---- HARD CONSTRAINT 4: NEVER EXPOSE OR LOG A TOKEN ----
   // header.js lists four constraints. This is the only one
