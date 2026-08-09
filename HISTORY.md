@@ -2920,3 +2920,28 @@ the same block and deliberately NOT pinned: the settings
 panel's surface and text weights and the log body's
 green-grey exist only inside the built panels and have no
 twin to drift from.
+
+### w103
+
+BOTH NAMES WEAR ONE COLOUR, as they do on lichess.org, which
+is where the owner noticed it. w68 tinted YOUR name so that
+"which of these two is me" would answer itself at a glance -
+a fair aim, except w71 had already answered it and better:
+the rail is ordered BY the board, and the board flips with
+your colour, so your name sits beside your own pieces and
+your own clock wherever you are sitting. The tint was a
+second signal for a question that was not in doubt, and it
+cost the pair the symmetry Lichess gives them. The same
+reasoning w71 used to delete the White/Black captions - the
+board is right there, and the rail is ordered by it - applies
+one row down; it just took a screenshot of the real site to
+see it.
+
+Both names are --bright now rather than the body's grey,
+because a name is a thing to READ, not page furniture. The
+class the tint was reached through goes with it: nameCell
+wrapped its parts in a span carrying "mine" for that one CSS
+rule, and with the rule gone the wrapper had nothing left to
+carry. The harness asks the question the tint used to answer -
+your name at the bottom, theirs at the top, and the pair
+swapping when your colour does.

@@ -859,6 +859,13 @@ const sleep = ms =>
         !/\.sideName [^{]*\.idle/.test(tmplBoard));
   check("and the rating has no fade of its own",
         !/\.sideName \.rating/.test(tmplBoard));
+  // w103: and neither name is tinted to mark it as yours -
+  // the rail's ORDER says that, since it follows the board.
+  // Both halves again: no rule for it in the template, and no
+  // class for it on the built markup either.
+  check("the stylesheet gives both names one colour",
+        /\.sideName \{[^}]*color:\s*var\(--bright\)/.test(tmplBoard) &&
+        !/\.sideName \.mine/.test(tmplBoard));
   // w82: the centred row must centre what the eye sees. The
   // rail grew once (flex 1 1) and its empty growth counted in
   // the centring, shoving the visible board-and-clocks cluster
@@ -2647,8 +2654,29 @@ const sleep = ms =>
   check("with their ratings", /1500/.test(shown) && /1900/.test(shown));
   check("and the title, since a BOT is worth knowing about",
         /BOT/.test(shown));
-  check("your own side is marked, as the clocks mark it",
-        /class="mine"/.test(shown));
+  // w103: NO name is tinted to mark it as yours. What answers
+  // "which of these two is me" is the rail's ORDER - it
+  // follows the board, so your name sits at the bottom beside
+  // your own clock, and moves when your colour does. Both
+  // orientations, because a rail frozen white-at-the-bottom
+  // would pass the first and fail the second.
+  const names = () => vm.runInContext(
+    '(function () { renderPlayers(); return {' +
+    ' top: document.getElementById("nameTop").innerHTML,' +
+    ' bottom: document.getElementById("nameBottom").innerHTML }; })()',
+    sandbox);
+  check("neither name is tinted to mark it as yours",
+        !/class="mine"/.test(shown));
+  const namesAsWhite = names();
+  check("the rail's ORDER says it instead: yours at the bottom (" +
+        namesAsWhite.bottom.replace(/<[^>]+>/g, "") + ")",
+        /pawn76/.test(namesAsWhite.bottom) &&
+        /maia1/.test(namesAsWhite.top));
+  vm.runInContext('api.myColor = "b";', sandbox);
+  const asBlackNames = names();
+  check("and it follows the board when your colour flips",
+        /maia1/.test(asBlackNames.bottom) && /pawn76/.test(asBlackNames.top));
+  vm.runInContext('api.myColor = "w";', sandbox);
   // w81: the name row never dims. w72's idle class was mirrored
   // onto the names beside the clocks, and on the device the
   // waiting side's name and rating sank below readable (.55 on

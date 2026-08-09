@@ -294,22 +294,25 @@
   /* the same --bright, at 62%: keep the rgb triplet in step
      with the variable above if it ever moves */
   .sideClock .cbox.idle { color: rgba(242,242,239,.62); }
+  /* BOTH NAMES WEAR ONE COLOUR (w103), as they do on
+     lichess.org. w68 tinted YOUR name so that "which of these
+     two is me" would answer itself - but w71 had already
+     answered it, and better: the rail is ordered by the board
+     and the board flips with your colour, so your name sits
+     beside your pieces and your clock, wherever you are
+     sitting. The tint was a second signal for a question that
+     was not in doubt, and it cost the pair their symmetry.
+     Named in --bright rather than the body's grey because a
+     name is a thing to READ, not page furniture. (The class
+     it was reached through went with it - see nameCell.)
+
+     The title stays dimmer than the name because it qualifies
+     it - BOT, GM - and at a glance the name is what is wanted.
+     The RATING is not faded (w81): at .65 it read as a
+     different face beside the name, and it is part of who you
+     are playing. */
   .sideName { font-family: Menlo, "SF Mono", monospace; font-size: .8rem;
-              line-height: 1.5; margin: 2px 0; }
-  /* the blue still marks YOUR name (w68) - it is not a
-     control, it borrows the control colour because it is the
-     one bright foreground this page has and "which of these
-     two is me" wants to answer itself at a glance. It was
-     reached through an alias called --brass until w102, one
-     of three aliases (--ok, --bad, --brass) inherited from
-     reference/'s palette; the other two were dead and went at
-     w101, and the name meant nothing here anyway. The title
-     is dimmer
-     than the name because it qualifies it - BOT, GM - and at a
-     glance the name is what is wanted. The RATING is not
-     faded (w81): at .65 it read as a different face beside
-     the name, and it is part of who you are playing. */
-  .sideName .mine { color: var(--blue); }
+              line-height: 1.5; margin: 2px 0; color: var(--bright); }
   .sideName .title { opacity: .65; }
   /* THE NAME BOX IS A CONTROL LIKE THE ONES BESIDE IT (w97).
      It only appears when the Opponent dropdown says "someone
