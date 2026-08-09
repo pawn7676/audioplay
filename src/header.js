@@ -319,9 +319,11 @@
    * user had just approved, failing this arc's own airtime
    * rule. Everything else stands: media elements never
    * again, no chime on unconfirmed moves (that read-back
-   * still carries real information), a spoken "okay."
-   * whenever the chime cannot be scheduled, and the
-   * chimeConfirmed toggle as the in-game rollback. What no
+   * still carries real information), and a spoken "okay."
+   * whenever the chime cannot be scheduled. (w108 also
+   * shipped a chimeConfirmed panel toggle as a rollback;
+   * w109 removed it on the owner's order - behaviour, not
+   * a choice, and panel rows are not free.) What no
    * code can prove is audibility itself - that is game4's
    * permanent lesson - so the trial is judged by ear, and
    * an inaudible chime here degrades to the user re-saying

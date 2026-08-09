@@ -247,7 +247,7 @@
     // alone was not enough then and is not now.
     if (api.over || /#$/.test(san)) return;
     if (!readBackMineNow()) return;
-    if (confirmed && CFG.chimeConfirmed) { confirmFeedback(); return; }
+    if (confirmed) { confirmFeedback(); return; }
     speak(sanToSpeech(san), colorWord(api.myColor));
   }
 
@@ -286,7 +286,7 @@
         // same substitution as the live path, so practice is
         // where the chime can be heard without a game at
         // stake - the trial's own test bench (w108)
-        if (confirmed && CFG.chimeConfirmed) confirmFeedback();
+        if (confirmed) confirmFeedback();
         else speak(sanToSpeech(c.san), colorWord(api.myColor || "w"));
       }
       // CALLED BY NAME, NOT BY REFERENCE (w54). Passing the
@@ -426,20 +426,18 @@
       return;
     }
     var c = pending.cands[pending.idx];
-    // When the list mixes piece types - the bare-square
-    // guard's pawn-plus-shadows shape - the question says
-    // the shortcut exists, ONCE, on the first ask. Game20
-    // walked pawn-no, queen-no, knight-yes at 17:38; one
-    // "knight" now does it (v116, see the piece-answer
-    // branch in handleTranscripts).
-    var kinds = {};
-    pending.cands.forEach(function (x) { kinds[x.m.piece] = 1; });
-    if (pending.idx === 0 && Object.keys(kinds).length > 1) {
-      speak("Did you mean " + sanToSpeech(c.san) +
-            "? Yes, no, or name the piece.");
-    } else {
-      speak("Did you mean " + sanToSpeech(c.san) + "?");
-    }
+    // The piece-answer shortcut (v116) still works on every
+    // question - "knight" jumps the walk, see the
+    // piece-answer branch in handleTranscripts - but the
+    // question no longer SAYS so. v116 advertised it once
+    // per mixed list ("? Yes, no, or name the piece"), and
+    // the owner cut the advertisement at w109 as too much
+    // talk: the shortcut is his own habit now, and a
+    // standing offer restated every mixed ask was airtime
+    // spent on nothing new. Game20's lesson (pawn-no,
+    // queen-no, knight-yes) lives in the CAPABILITY, which
+    // stays.
+    speak("Did you mean " + sanToSpeech(c.san) + "?");
   }
 
 

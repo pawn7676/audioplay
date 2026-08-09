@@ -1707,22 +1707,6 @@ const sleep = ms =>
         vm.runInContext("__chimeStarts", sandbox) === 2);
   vm.runInContext('chimeCtx.state = "running";', sandbox);
 
-  // the toggle is the rollback: off restores the full
-  // read-back after yes, chime context running or not
-  vm.runInContext("CFG.chimeConfirmed = false;", sandbox);
-  await setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
-  say("echo five takes");
-  await sleep(120);
-  heard();
-  say("yes");
-  await sleep(120);
-  const toggledOff = heard().join(" | ");
-  check("chimeConfirmed off restores the full read-back (" +
-        toggledOff + ")",
-        /echo takes (delta 6|foxtrot 6)/i.test(toggledOff) &&
-        vm.runInContext("__chimeStarts", sandbox) === 2);
-  vm.runInContext("CFG.chimeConfirmed = true;", sandbox);
-
   // and the chime never leaks past the confirmed gate: a
   // move that played with no question still reads back in
   // full with the context running
@@ -1735,28 +1719,40 @@ const sleep = ms =>
         /echo 4/i.test(unconfirmed) && !/okay/i.test(unconfirmed) &&
         vm.runInContext("__chimeStarts", sandbox) === 2);
 
-  // the built panel carries the trial's rollback switch
-  check("the settings panel has the chime row, wired to CFG",
+  // the panel carries NO chime row (w109, owner's order):
+  // the chime is behaviour, not a choice, and this asks the
+  // built DOM so a re-added switch fails loudly
+  check("the settings panel has no chime row",
         vm.runInContext(`
-          (function () {
-            var row = setPanel.children.filter(function (r) {
-              return r.children.length === 2 &&
-                     r.children[0].textContent === "chime after yes";
-            })[0];
-            if (!row) return false;
-            var pill = row.children[1];
-            if (pill.textContent !== "ON") return false;
-            pill.on_click();
-            var flipped = CFG.chimeConfirmed === false &&
-                          pill.textContent === "OFF";
-            pill.on_click();
-            return flipped && CFG.chimeConfirmed === true;
-          })()
+          setPanel.children.every(function (r) {
+            return !r.children.length ||
+                   !/chime/i.test(r.children[0].textContent || "");
+          })
         `, sandbox));
 
   // leave the sandbox as WebAudio-less as it started, so
   // every later yes-flow exercises the spoken fallback
   vm.runInContext("AudioContext = undefined; chimeCtx = null;", sandbox);
+
+  // ===== w109: THE QUESTION LOST ITS TAIL, NOT ITS EARS =====
+  // A mixed list's first ask used to append "Yes, no, or
+  // name the piece" (v116's advertisement). The owner cut
+  // the advertisement as too much talk; the shortcut it
+  // advertised must keep working unannounced.
+  await setBoard("k7/8/8/8/8/8/4NP2/K7 w - - 0 1");
+  say("foxtrot four");
+  await sleep(120);
+  const mixedAsk = heard().join(" | ");
+  check("a mixed-list ask is the bare question (" + mixedAsk + ")",
+        /did you mean/i.test(mixedAsk) &&
+        !/name the piece/i.test(mixedAsk));
+  say("knight");
+  await sleep(120);
+  const unadvertised = heard().join(" | ");
+  check("and the unadvertised piece answer still jumps the walk (" +
+        unadvertised + ")",
+        /knight foxtrot 4/i.test(unadvertised) &&
+        vm.runInContext("api.lastSan", sandbox) === "Nf4");
 
   // THE DESTINATION FORM SURVIVES UNTOUCHED: white pawn d4,
   // black pawn e5, and "takes echo five" is still dxe5.

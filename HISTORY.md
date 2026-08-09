@@ -3101,3 +3101,32 @@ the mid-game rollback (off restores the full read-back after
 yes), and an inaudible chime here degrades to the user
 re-saying the move - which speaks an answer either way, a
 loud failure instead of the silent kind that killed v67.
+
+### w109
+
+TWO CUTS THE OWNER MADE ON READING w108, both the same
+lesson from different directions: nothing earns its place by
+being defensible, it earns it by being asked for.
+
+The chimeConfirmed toggle is gone from the panel. It was
+added as the trial's mid-game rollback, reasonable on paper
+and unrequested in fact - and the owner's words settle the
+principle: a switch he did not ask for is clutter, however
+sound its excuse. The chime is behaviour now, not a choice;
+if the device disqualifies it, the rollback is a version,
+the way everything else in the sound arc rose and fell. A
+stored value under the dead name is ignored, as with every
+deleted setting.
+
+And the question lost its tail. Since v116 the first ask
+over a mixed list said "did you mean foxtrot four? Yes, no,
+or name the piece" - advertising the piece-answer shortcut
+that game20 had walked past three questions to need. The
+advertisement was the part that aged out: the shortcut is
+the owner's own habit now, and a standing offer restated on
+every mixed ask is airtime spent saying nothing new - the
+exact coin the read-back was just made to stop spending.
+Every ask is now the five words "did you mean foxtrot
+four?", and answering with a piece name works exactly as it
+did; the capability keeps game20's lesson, the sentence no
+longer carries it.

@@ -50,8 +50,11 @@
   // was failing the sound arc's own rule that speech must
   // earn its airtime. Moves that play WITHOUT a question
   // keep the full read-back; see readBackMine in
-  // dialogue.js, and the chimeConfirmed toggle is the
-  // rollback if the device disagrees.
+  // dialogue.js. (w108 shipped a chimeConfirmed panel
+  // toggle as the rollback; the owner removed it at w109 -
+  // behaviour, not a choice. If the device disqualifies the
+  // chime, the rollback is a version, like everything else
+  // in this file's history.)
   //
   // RULE 5 STILL HOLDS. A chime that cannot even be
   // SCHEDULED - no WebAudio, context not running - is
