@@ -866,6 +866,14 @@ const sleep = ms =>
   check("the stylesheet gives both names one colour",
         /\.sideName \{[^}]*color:\s*var\(--bright\)/.test(tmplBoard) &&
         !/\.sideName \.mine/.test(tmplBoard));
+  // w104: and the title is a different KIND of fact, not a
+  // lesser one - coloured and bold at full strength, the way
+  // lichess.org shows IM/GM/BOT, rather than the .65 fade it
+  // wore since w68.
+  check("the title is amber and bold, with no fade left on it",
+        /\.sideName \.title \{[^}]*color:\s*var\(--amber\)/.test(tmplBoard) &&
+        /\.sideName \.title \{[^}]*font-weight:\s*700/.test(tmplBoard) &&
+        !/\.sideName \.title \{[^}]*opacity/.test(tmplBoard));
   // w82: the centred row must centre what the eye sees. The
   // rail grew once (flex 1 1) and its empty growth counted in
   // the centring, shoving the visible board-and-clocks cluster
@@ -4390,7 +4398,7 @@ const sleep = ms =>
   const cssSrc = fs.readFileSync("src/index.html", "utf8");
   [["BUTTON_OFF", "btn-bg"], ["BUTTON_ON", "button-on"],
    ["BUTTON_TEXT_ON", "bright"], ["BLUE", "blue"],
-   ["BORDER", "border"], ["AMBER", "warn"]].forEach(pair => {
+   ["BORDER", "border"], ["AMBER", "amber"]].forEach(pair => {
     const want = (cssSrc.match(
       new RegExp("--" + pair[1] + ":\\s*(#[0-9a-fA-F]{3,6})")) || [])[1];
     check("JS " + pair[0] + " matches the stylesheet's --" +

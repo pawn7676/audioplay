@@ -84,7 +84,15 @@
        difference. ui.js paints the same value from
        BUTTON_TEXT_ON; the harness pins the pair together. */
     --bright:  #f2f2ef;
-    --warn:    #d0a24c;
+    /* NAMED FOR THE COLOUR, NOT ONE OF ITS JOBS (w104) - the
+       same call the owner made on --blue at w102. It was
+       --warn, and it does warn on the armed "Sign out?" and
+       the log's clear link; it also marks the Practice button
+       while practice is OFF and, since w104, every player
+       TITLE - and those are not warnings. ui.js has held it
+       as AMBER since w102, so the pin's two halves finally
+       agree on a name. */
+    --amber:   #d0a24c;
     --dim:     #6b6b6b;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -130,11 +138,11 @@
   }
   /* THE ARMED QUESTION (w77): the account button while
      "Sign out?" stands. Filled like .primary because it
-     means the same thing - this tap ACTS - and in the warn
-     colour because the act is a leaving. */
+     means the same thing - this tap ACTS - and in the amber
+     (--warn until w104) because the act is a leaving. */
   .panel button.confirm {
-    background: var(--warn); color: var(--bg);
-    border-color: var(--warn);
+    background: var(--amber); color: var(--bg);
+    border-color: var(--amber);
   }
   /* THE VOICE ROW MATCHES THE PAGE (w32). The shared UI
      builds these buttons with its own inline sizing, which
@@ -306,14 +314,20 @@
      name is a thing to READ, not page furniture. (The class
      it was reached through went with it - see nameCell.)
 
-     The title stays dimmer than the name because it qualifies
-     it - BOT, GM - and at a glance the name is what is wanted.
-     The RATING is not faded (w81): at .65 it read as a
-     different face beside the name, and it is part of who you
-     are playing. */
+     THE TITLE IS AMBER AND BOLD, NOT DIM (w104). It was faded
+     to .65 on the reasoning that a title only qualifies the
+     name - true, but a fade says "less important than the
+     text around it" when what a title actually is, is a
+     DIFFERENT KIND of fact: IM, GM, BOT is a standing rank,
+     not part of a username. Lichess colours it and leaves it
+     at full strength, and the owner's screenshot of the real
+     site is what settled it. The amber was already on the
+     page doing this exact job elsewhere. The RATING is not
+     faded either (w81): at .65 it read as a different face
+     beside the name, and it is part of who you are playing. */
   .sideName { font-family: Menlo, "SF Mono", monospace; font-size: .8rem;
               line-height: 1.5; margin: 2px 0; color: var(--bright); }
-  .sideName .title { opacity: .65; }
+  .sideName .title { color: var(--amber); font-weight: 700; }
   /* THE NAME BOX IS A CONTROL LIKE THE ONES BESIDE IT (w97).
      It only appears when the Opponent dropdown says "someone
      else" - the second-use path where unstyled things hide -
