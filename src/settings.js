@@ -22,7 +22,17 @@
   // button this page deliberately does not have. Sign out is
   // how you clear it here.)
   var TOKEN = "";
-  var TOKEN_KEY = "audioplay_lichess_token";
+  // "audioplay_lichess_token", underscores and all, until
+  // w111: the userscript's key name, carried into the w20
+  // port by the cut-and-wrap and never earning its keep -
+  // the userscript ran on lichess.org, a different origin,
+  // so the name never shared storage with anything. The
+  // w111 storage audit renamed every key to one flat
+  // current scheme (see scrubDeadStorage below), WITHOUT
+  // migrations - a shim that reads a dead name is the
+  // clutter the audit exists to remove. The one-time cost
+  // was a single re-sign-in.
+  var TOKEN_KEY = "audioplay.token";
 
   // Maximum number of lines in the log
   var LOG_MAX = 3000;
@@ -187,16 +197,16 @@
       Object.keys(SETTING_DEFAULTS).forEach(function (k) {
         if (typeof saved[k] === "boolean") out[k] = saved[k];
       });
-      // readBackMine became confirmMine at w110; carry a
-      // stored value across once, the v131 pattern.
-      // Deletable once the panel has been saved on the
-      // device - no way to know from here whether it has.
-      // (The v131 confirmAllMoves carry that stood here
-      // died with confirmMyMove itself at w110.)
-      if (typeof saved.readBackMine === "boolean" &&
-          typeof saved.confirmMine !== "boolean") {
-        out.confirmMine = saved.readBackMine;
-      }
+      // NO MIGRATIONS LIVE HERE ANY MORE (w111). The w110
+      // readBackMine->confirmMine carry was deletable "once
+      // the panel has been saved on the device", and the
+      // owner's 9 Aug practice log showed exactly that -
+      // "SET confirmMine = true" - so it is gone, one
+      // version after it shipped. Unknown keys in a stored
+      // blob are simply ignored (the w75 rule, asserted in
+      // the harness); a rename that must keep its stored
+      // value writes a carry HERE and dies the next time
+      // a pasted log proves the save happened.
     } catch (e) { /* defaults stand */ }
     // (the v129 keep-one-message-channel repair stood here
     // until w110; it guarded a pair of switches that no
@@ -210,6 +220,53 @@
   }
 
   var CFG = loadSettings();
+
+  /* THE STORAGE AUDIT (w111, owner's request): every key
+   * this program keeps is named audioplay.<what it is> -
+   * token, verifier, settings, panels, opponent, rated,
+   * timecontrol - and storage holds NOTHING else of ours.
+   * This list is every name a previous era wrote on this
+   * origin, removed on boot so no dead key sits behind the
+   * program to puzzle over in twenty versions:
+   *
+   *   audioplay_lichess_token   the userscript's token key,
+   *                             carried into the w20 port -
+   *                             its stranded token is a live
+   *                             credential and deleting it
+   *                             is the point (rule 4)
+   *   audioplay.lichess.token   the w19 site's token key,
+   *                             possibly still holding a
+   *                             token from before the
+   *                             rebuild
+   *   audioplay.lichess.verifier  the PKCE verifier's old
+   *                             name; transient anyway
+   *   audioplay.web.*           the seek prefs, when "web"
+   *                             distinguished this site
+   *                             from a userscript that is
+   *                             frozen now
+   *
+   * A name leaves this list only if it is reused - never
+   * because the scrub "must have run by now": storage is
+   * per browser, and a device away from the site for a year
+   * still deserves the clean-up. */
+  function scrubDeadStorage() {
+    var dead = ["audioplay_lichess_token",
+                "audioplay.lichess.token",
+                "audioplay.lichess.verifier",
+                "audioplay.web.opponent",
+                "audioplay.web.rated",
+                "audioplay.web.timecontrol"];
+    var gone = [];
+    try {
+      dead.forEach(function (k) {
+        if (localStorage.getItem(k) !== null) {
+          localStorage.removeItem(k);
+          gone.push(k);
+        }
+      });
+    } catch (e) { /* private mode; nothing to scrub anyway */ }
+    if (gone.length) log("SET", "storage: removed dead keys " + gone.join(" "));
+  }
 
   // GUARD_PAWN_PUSHES and CONFIRM_ALL_MOVES moved to
   // SETTING_DEFAULTS (v128): panel toggles from then on.

@@ -863,8 +863,16 @@
   // The opponent dropdown remembers its choice (the one
   // per-page setting; everything behavioural is CFG in the
   // shared settings panel).
-  var OPPONENT_KEY = "audioplay.web.opponent";
-  var RATED_KEY = "audioplay.web.rated";
+  //
+  // These three carried a ".web." infix until the w111
+  // storage audit - minted when "web" distinguished this
+  // site from the userscript, which is frozen now, so the
+  // infix distinguished nothing. Renamed without
+  // migration; the cost was re-picking three dropdowns
+  // once, and the old names are scrubbed on boot
+  // (scrubDeadStorage, settings.js).
+  var OPPONENT_KEY = "audioplay.opponent";
+  var RATED_KEY = "audioplay.rated";
 
   // TIME CONTROL IS A PICKED PRESET (w33), remembered like
   // the opponent. The truth lives in one place - the picked
@@ -887,7 +895,7 @@
   // Null means "not chosen yet" and nothing else, which is
   // why clearing the Custom box un-picks rather than
   // falling back to anything.
-  var TIME_KEY = "audioplay.web.timecontrol";
+  var TIME_KEY = "audioplay.timecontrol";
   var pickedTime = null;
 
   function parseTimeControl(text) {

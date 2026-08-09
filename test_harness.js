@@ -391,31 +391,47 @@ const sleep = ms =>
         overlayShape[0] === 2 && overlayShape[1] === "1,1");
   vm.runInContext("exitClockMode(true);", sandbox);
 
-  // w110: the read-back key was renamed confirmMine, and the
-  // OBVIOUS key - the freed confirmMyMove - is deliberately
-  // barred: an old panel save can hold false under the dead
-  // name (ask-every-move was default-off), and reusing it
-  // would silently switch off a confirmation that was never
-  // touched. The migration carries readBackMine across, the
-  // dead name moves nothing.
-  const renamed = vm.runInContext(`
+  // w111: NO migrations live in loadSettings. Dead blob
+  // keys - confirmMyMove (whose reuse as a key is barred:
+  // an old save can hold false under it), readBackMine
+  // (whose w110 carry was deleted once the owner's log
+  // proved the panel saved) - move NOTHING. If either of
+  // these ever moves a value again, a shim crept back in.
+  const deadBlob = vm.runInContext(`
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(
       { confirmMyMove: false, readBackMine: false }));
     var c = loadSettings();
     localStorage.removeItem(SETTINGS_KEY);
-    [c.confirmMine, ("confirmMyMove" in c)];
+    [c.confirmMine, ("confirmMyMove" in c), ("readBackMine" in c)];
   `, sandbox);
-  check("stored readBackMine carries into confirmMine (" + renamed + ")",
-        renamed[0] === false && renamed[1] === false);
-  const deadName = vm.runInContext(`
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(
-      { confirmMyMove: false }));
-    var c3 = loadSettings();
-    localStorage.removeItem(SETTINGS_KEY);
-    c3.confirmMine;
+  check("dead blob keys move nothing (" + deadBlob + ")",
+        deadBlob[0] === true && deadBlob[1] === false &&
+        deadBlob[2] === false);
+
+  // w111: the storage scrub. Every name a previous era
+  // wrote on this origin is removed on boot - including
+  // the two old token keys, whose stranded credentials are
+  // the point - and current keys are untouched.
+  const scrubbed = vm.runInContext(`
+    localStorage.setItem("audioplay.token", "CURRENT");
+    localStorage.setItem("audioplay_lichess_token", "OLD");
+    localStorage.setItem("audioplay.lichess.token", "OLDER");
+    localStorage.setItem("audioplay.lichess.verifier", "x");
+    localStorage.setItem("audioplay.web.opponent", "x");
+    localStorage.setItem("audioplay.web.rated", "x");
+    localStorage.setItem("audioplay.web.timecontrol", "x");
+    scrubDeadStorage();
+    var left = ["audioplay_lichess_token", "audioplay.lichess.token",
+                "audioplay.lichess.verifier", "audioplay.web.opponent",
+                "audioplay.web.rated", "audioplay.web.timecontrol"]
+      .filter(function (k) { return localStorage.getItem(k) !== null; });
+    var kept = localStorage.getItem("audioplay.token");
+    localStorage.removeItem("audioplay.token");
+    [left.length, kept];
   `, sandbox);
-  check("the dead confirmMyMove name cannot switch confirmation off",
-        deadName === true);
+  check("the scrub removes every dead key and keeps the live one (" +
+        scrubbed + ")",
+        scrubbed[0] === 0 && scrubbed[1] === "CURRENT");
 
   // w75: a settings key that no longer exists must be IGNORED,
   // not carried. showPlayers was deleted with the switch, and
@@ -942,7 +958,7 @@ const sleep = ms =>
   // than grepping the source for the string
   vm.runInContext(`
     running = false; dryRun = false;
-    localStorage.removeItem("audioplay_lichess_token");
+    localStorage.removeItem("audioplay.token");
     TOKEN = "";
     // the voice button has no id - it is the first control
     // in the voice row, which is exactly how a finger finds
@@ -1361,7 +1377,7 @@ const sleep = ms =>
   // pass on in-memory state alone.
   vm.runInContext('pickTime("30+20");', sandbox);
   check("picking writes it to storage",
-        vm.runInContext('localStorage.getItem("audioplay.web.timecontrol")',
+        vm.runInContext('localStorage.getItem("audioplay.timecontrol")',
                         sandbox) === "30+20");
   const reload = () => vm.runInContext(`
     (function () {
@@ -1388,7 +1404,7 @@ const sleep = ms =>
         backCustom.tc === JSON.stringify({ minutes: 25, increment: 15 }));
   // junk in storage leaves a CLEAN row, not a broken one
   vm.runInContext(`
-    localStorage.setItem("audioplay.web.timecontrol", "banana");
+    localStorage.setItem("audioplay.timecontrol", "banana");
   `, sandbox);
   check("unreadable storage reads as never chosen",
         reload().picked === null);
@@ -1399,12 +1415,12 @@ const sleep = ms =>
   // nothing lit, selectedTimeControl() quietly 5+3, and the
   // seek refusing for a reason nothing on screen shows.
   vm.runInContext(`
-    localStorage.setItem("audioplay.web.timecontrol", "5+3");
+    localStorage.setItem("audioplay.timecontrol", "5+3");
   `, sandbox);
   const retired = reload();
   check("a retired preset restores as never chosen",
         retired.picked === null && retired.tc === "null");
-  vm.runInContext('localStorage.removeItem("audioplay.web.timecontrol");',
+  vm.runInContext('localStorage.removeItem("audioplay.timecontrol");',
                   sandbox);
 
   // ---- w99: rated is a dropdown, in Lichess's own words,
@@ -1419,7 +1435,7 @@ const sleep = ms =>
     })()
   `, sandbox);
   vm.runInContext(
-    'localStorage.removeItem("audioplay.web.rated");', sandbox);
+    'localStorage.removeItem("audioplay.rated");', sandbox);
   check("a fresh browser seeks Casual", ratedBack() === "casual");
   vm.runInContext(`
     document.getElementById("seekRated").value = "rated";
@@ -1427,10 +1443,10 @@ const sleep = ms =>
   `, sandbox);
   check("choosing Rated survives a reload", ratedBack() === "rated");
   vm.runInContext(
-    'localStorage.setItem("audioplay.web.rated", "banana");', sandbox);
+    'localStorage.setItem("audioplay.rated", "banana");', sandbox);
   check("junk in storage reads as Casual", ratedBack() === "casual");
   vm.runInContext(
-    'localStorage.removeItem("audioplay.web.rated");', sandbox);
+    'localStorage.removeItem("audioplay.rated");', sandbox);
   // and the dropdown's word reaches the real seek handler
   vm.runInContext(`
     __seekGot = null; __realSeekW99 = startSeek;
@@ -1445,7 +1461,7 @@ const sleep = ms =>
   vm.runInContext(`
     startSeek = __realSeekW99;
     document.getElementById("seekRated").value = "casual";
-    localStorage.removeItem("audioplay.web.timecontrol");
+    localStorage.removeItem("audioplay.timecontrol");
     pickedTime = null; wireTimeRow();
   `, sandbox);
 
