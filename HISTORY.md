@@ -3172,3 +3172,39 @@ in git at w109.
 What the panel says now, whole: confirm my move, guard pawn
 pushes, show ratings. No headers - with one group left they
 titled nothing.
+
+### w111
+
+THE STORAGE AUDIT, on the owner's one-line request after
+w110 checked out clean: no dead names and no legacy stuff
+floating around back there to confuse anyone twenty versions
+on. The audit found three kinds of debt, each from a
+different era, and the fix for all three is the same shape -
+delete, don't shim.
+
+The token key was "audioplay_lichess_token", underscores and
+all: the USERSCRIPT'S name, carried into the w20 port by the
+cut-and-wrap. It never bought continuity - the userscript
+ran on lichess.org, a different origin - so it was a fossil
+guarding nothing. The seek prefs carried a ".web." infix
+minted when "web" distinguished this site from that
+userscript, which is frozen; the infix distinguished
+nothing. And loadSettings still carried the w110
+readBackMine shim, whose own comment said it was deletable
+once the panel had been saved on the device - which the
+owner's 9 Aug practice log proved ("SET confirmMine =
+true"), so it went one version after it shipped.
+
+Every key is now audioplay.<what it is>: token, verifier,
+settings, panels, opponent, rated, timecontrol. NO
+MIGRATIONS - a shim that reads a dead name is the clutter
+the audit exists to remove. The one-time cost, stated before
+it landed: one re-sign-in, and three dropdowns re-picked.
+And because a rename orphans values, boot now runs
+scrubDeadStorage() over the six names previous eras wrote on
+this origin - including the stranded token under the old key
+and whatever the w19 site left under "audioplay.lichess.token",
+live credentials both, whose deletion is rule 4 working -
+and logs what it removed. A device that stayed away for a
+year still gets the clean-up; the list shrinks only if a
+name is ever reused.

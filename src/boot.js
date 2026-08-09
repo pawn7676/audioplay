@@ -54,6 +54,7 @@
   }
 
   function boot() {
+    scrubDeadStorage();   /* the w111 audit: dead keys leave on boot */
     buildWebUI();
     initBoard();
     initTouch();

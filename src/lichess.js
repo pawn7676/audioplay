@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w110";
+  VERSION = "w111";
 
   var RULES = makeRules();
 
@@ -98,7 +98,13 @@
   // name on lichess.org until re-granted.
   var LICHESS_CLIENT_ID = "audioplay";
   var LICHESS_SCOPES = "board:play challenge:write challenge:read";
-  var VERIFIER_KEY = "audioplay.lichess.verifier";
+  // "audioplay.lichess.verifier" until the w111 storage
+  // audit flattened every key to audioplay.<what it is>.
+  // Renaming THIS one is free: the verifier lives only for
+  // the seconds between leaving for Lichess and coming
+  // back, so no stored value outlives a version bump worth
+  // caring about.
+  var VERIFIER_KEY = "audioplay.verifier";
   var VERIFIER_ALPHABET =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" +
     "0123456789-._~";
