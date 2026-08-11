@@ -37,180 +37,53 @@
   // Maximum number of lines in the log
   var LOG_MAX = 3000;
 
-  /*--------------- PERSISTED SETTINGS (v124) ----------------
-   * Everything below in SETTING_DEFAULTS is a TOGGLE ON THE
-   * SCREEN: the "settings" button in ui.js opens a panel
-   * of switches, changes persist in localStorage, and these
-   * values are only the FIRST-RUN defaults. Flipping a value
-   * here does nothing once the panel has saved - clear the
-   * "audioplay.settings" localStorage key to return to
-   * defaults. Every read in the code goes through CFG.x,
-   * never these names, so the panel is always live.
+  /*------------- THE SETTINGS PANEL IS GONE (w117) -----------
+   * v124 built it: a "settings" button, a panel of switches,
+   * values persisted under "audioplay.settings", and this
+   * file holding only first-run defaults. It shrank for two
+   * years as choices became rules - ten rows to three at
+   * w110, three to one at w116, when confirming every move
+   * stopped being optional and took "confirm my move" and
+   * "guard pawn pushes" with it (a system that can post a
+   * silently wrong move once does not get to decide which
+   * moves deserve a question, and after the yes nothing is
+   * repeated - the chime answers it). With one row left the
+   * owner called the whole apparatus not needed, and he was
+   * right: a panel, a persistence layer and a stored blob,
+   * all to flip one cosmetic bit.
    *
-   * There is no mode tree any more (w110). v124 grew one -
-   * per-mode read-back, per-mode opponent speech, a message
-   * strip with channel routing - on the theory that with
-   * the clock up the SCREEN could do the telling. The owner
-   * played with it for a year and found the opposite:
-   * reading the overlay pulled his eyes off the physical
-   * board, which is the one thing this program exists to
-   * spare. So every switch below acts in voice mode and
-   * clock mode alike, the voice is the one channel for
-   * everything, and the clock overlay shows numbers and
-   * nothing else (see clock.js).
-   *--------------------------------------------------------*/
-  var SETTING_DEFAULTS = {
-    // HEADPHONES DELETED (v132). The system-wide echo
-    // cancellation was found doing the job on every audio
-    // route - see the platform finding and the v132 entry.
-    // A stored value under this name is simply ignored.
+   * So settings are CODE again, like VOICE_NAME below always
+   * was: constants in this file, edited here, no storage.
+   * The stored blob is a dead key now and scrubDeadStorage
+   * removes it. The dead switch names stay barred - if any
+   * of confirmMyMove, readBackMine, confirmMine or
+   * guardPawnPushes ever reads from anywhere again, some
+   * old save's false is steering behaviour that stopped
+   * being a choice.
+   *
+   * What the panel-era tombstones guarded is now one line
+   * each, and the reasoning lives where it acts:
+   *   confirm-every-move  dialogue.js (confirmMove, w116)
+   *   the chime           chimes.js (three acts)
+   *   clock-mode text     w110 HISTORY entry; strip in git
+   *                       at w109
+   *------------------------------------------------------*/
 
-    // confirmMyMove DELETED AT w110 (named confirmAllMoves
-    // until v131): ask before EVERY move, not only
-    // ambiguous ones. The owner never once turned it on,
-    // and its label was squatting on a name the read-back
-    // switch deserved. THEN THE GAME OF 11 AUG HAPPENED,
-    // and at w116 the owner ordered exactly this behaviour
-    // - as BEHAVIOUR, not as a switch: every voice move is
-    // read back as a question and posts only on "yes"
-    // (dialogue.js, confirmMove). The tombstone stays
-    // because the key stays barred: a stored false under
-    // this old name must never load into anything, least of
-    // all a rule that now cannot be turned off.
-
-    // guardPawnPushes DELETED AT w116, subsumed rather than
-    // repealed. From v65 to w115 it confirmed a bare-square
-    // pawn move when a piece could also have reached the
-    // square (v71 added bare captures after game6; w115
-    // made a reading with an unaccounted word ask even with
-    // this off, after the game of 11 Aug). With every move
-    // confirmed, "should this one be asked about" is no
-    // longer a question anyone needs to answer per pawn.
-    // The guard FUNCTION survives in matching.js: it decides
-    // what answering "no" walks to. A stored value under
-    // this name is simply ignored, as with every deleted
-    // setting.
-
-    // chimeConfirmed LIVED HERE FOR ONE VERSION (w108) and
-    // was removed at w109, on the owner's order: the
-    // confirmed-move chime is behaviour, not a choice, and
-    // a switch nobody asked for was clutter in the panel.
-    // The chime went at w112 and RETURNED at w116 as the
-    // whole of the post-yes feedback - see chimes.js for
-    // the three-act story. Still not a choice, still no
-    // switch, and a stored value under this name is still
-    // ignored.
-
-    // confirmMine DELETED AT w116 (readBackMine until w110).
-    // It switched the full read-back of your own move after
-    // Lichess accepted it - and the read-back itself is what
-    // died: the question now speaks the move BEFORE it
-    // posts, the owner ruled it is not repeated after his
-    // yes, and what follows the yes is the chime (or its
-    // spoken "okay." fallback), unswitched. "repeat" still
-    // works whenever the last move needs saying again. A
-    // stored value under this name is simply ignored.
-
-    // clockSpeakOpponent DELETED AT w110 with the rest of
-    // the clock-mode group: the opponent's move is always
-    // spoken, in every mode - it is the one event the user
-    // cannot know any other way with their eyes on the
-    // physical board. The choice existed for the move row,
-    // and the row is gone.
-
-    // SHOWPLAYERS WAS DELETED AT w75, and the reasoning it
-    // was added on (w68) is the reasoning that killed it:
-    // "anything permanent on screen has to earn the room". A
-    // name earns it every time. The owner played with the
-    // switch for a week and found no occasion to turn it off -
-    // Lichess hides names behind Zen mode because it hides the
-    // whole interface, which is not a thing this page has. A
-    // stored value under this name is simply ignored, as the
-    // deleted headphones setting above is.
-    //
-    // The rating is a real choice and survives as one, now
-    // INDEPENDENT of anything else. It took four versions to
-    // find that shape: w69 split it off nested, w71 made it
-    // free and let a bare number float beside a clock, w72
-    // chained it back to showPlayers, and w75 removes the
-    // thing it was chained to. Names always; the number beside
-    // them optional.
-    //
-    // NOT A FAIR-PLAY QUESTION, and worth saying where the
-    // next reader will look: constraint 1 is about MOVE
-    // CHOICE. A rating is a fact about a person, not about the
-    // position, and no rating ever suggested a move. The move
-    // list is the thing that would start to look like analysis
-    // surface, and it is deliberately still absent.
-    showRatings: true
-
-    // THE CLOCK-MODE TEXT IS GONE, AND ITS SWITCHES WITH IT
-    // (w110, owner's decision, 9 Aug 2026). clockShowMoves
-    // (the move row), clockSpeakMessages and
-    // clockShowMessages (the v129 message strip and its
-    // never-both-off channel invariant) were all built on
-    // the idea that the overlay could carry text the voice
-    // then need not say. In real games the owner found
-    // himself looking at the screen to read it - away from
-    // the physical board, the exact motion this program
-    // exists to remove - so the overlay is numbers and
-    // nothing else now, the voice speaks everything, and
-    // the panel lost five rows in one day. Stored values
-    // under all five dead names are ignored. If text on
-    // the overlay is ever wanted again, start from the
-    // w110 HISTORY entry: the strip's machinery (question
-    // stickiness, sentence-casing, channel repair) is all
-    // in git at w109.
-  };
-
-  var SETTINGS_KEY = "audioplay.settings";
-
-  function loadSettings() {
-    var out = {};
-    Object.keys(SETTING_DEFAULTS).forEach(function (k) {
-      out[k] = SETTING_DEFAULTS[k];
-    });
-    // ONE READ, ONE PARSE (w54). This read the key and parsed
-    // it, then read and parsed the SAME key again a few lines
-    // down for the v131 rename - two trips for one string,
-    // with two catch blocks disagreeing about what to say when
-    // it failed.
-    try {
-      var saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
-      Object.keys(SETTING_DEFAULTS).forEach(function (k) {
-        if (typeof saved[k] === "boolean") out[k] = saved[k];
-      });
-      // NO MIGRATIONS LIVE HERE ANY MORE (w111). The w110
-      // readBackMine->confirmMine carry was deletable "once
-      // the panel has been saved on the device", and the
-      // owner's 9 Aug practice log showed exactly that -
-      // "SET confirmMine = true" - so it is gone, one
-      // version after it shipped. Unknown keys in a stored
-      // blob are simply ignored (the w75 rule, asserted in
-      // the harness); a rename that must keep its stored
-      // value writes a carry HERE and dies the next time
-      // a pasted log proves the save happened.
-    } catch (e) { /* defaults stand */ }
-    // (the v129 keep-one-message-channel repair stood here
-    // until w110; it guarded a pair of switches that no
-    // longer exists - the voice is the one channel now)
-    return out;
-  }
-
-  function saveSettings() {
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(CFG)); }
-    catch (e) { /* private mode etc; the session still works */ }
-  }
-
-  var CFG = loadSettings();
+  // The opponent's rating, shown beside their name. OFF is
+  // the owner's default (w117): a rating is a fact about a
+  // person, not the position - never a fair-play question
+  // (constraint 1 is about MOVE CHOICE) - but it is also a
+  // number he stopped wanting to see. Flip in code, like
+  // the voice.
+  var SHOW_RATINGS = false;
 
   /* THE STORAGE AUDIT (w111, owner's request): every key
    * this program keeps is named audioplay.<what it is> -
-   * token, verifier, settings, panels, opponent, rated,
-   * timecontrol - and storage holds NOTHING else of ours.
-   * This list is every name a previous era wrote on this
-   * origin, removed on boot so no dead key sits behind the
-   * program to puzzle over in twenty versions:
+   * token, verifier, panels, opponent, rated, timecontrol -
+   * and storage holds NOTHING else of ours. This list is
+   * every name a previous era wrote on this origin, removed
+   * on boot so no dead key sits behind the program to
+   * puzzle over in twenty versions:
    *
    *   audioplay_lichess_token   the userscript's token key,
    *                             carried into the w20 port -
@@ -227,6 +100,10 @@
    *                             distinguished this site
    *                             from a userscript that is
    *                             frozen now
+   *   audioplay.settings        the panel's blob, v124-w116;
+   *                             the panel died at w117 and
+   *                             settings are code constants
+   *                             again
    *
    * A name leaves this list only if it is reused - never
    * because the scrub "must have run by now": storage is
@@ -238,7 +115,8 @@
                 "audioplay.lichess.verifier",
                 "audioplay.web.opponent",
                 "audioplay.web.rated",
-                "audioplay.web.timecontrol"];
+                "audioplay.web.timecontrol",
+                "audioplay.settings"];
     var gone = [];
     try {
       dead.forEach(function (k) {
@@ -251,10 +129,9 @@
     if (gone.length) log("SET", "storage: removed dead keys " + gone.join(" "));
   }
 
-  // GUARD_PAWN_PUSHES and CONFIRM_ALL_MOVES moved to
-  // SETTING_DEFAULTS (v128): panel toggles from then on.
-  // The second one was renamed at v131 and deleted whole
-  // at w110 - see its tombstone in SETTING_DEFAULTS.
+  // (GUARD_PAWN_PUSHES and CONFIRM_ALL_MOVES lived here as
+  // constants until v128, as panel toggles until w110/w116,
+  // and are gone - see the panel tombstone above.)
 
   // LEAVE VOICE_NAME = "" TO USE SYSTEM DEFAULT.
   // To pick system default voice on iOS or iPadOS device:
@@ -335,8 +212,8 @@
   // (The message strip's CLOCK_MSG_* pair, the move row's
   // CLOCK_TIME_SIZE / CLOCK_MOVE_* / MOVE_CHAR_EM, and
   // MOVE_WEIGHT above all left with the clock-mode text at
-  // w110 - see the tombstone in SETTING_DEFAULTS. The
-  // digits below are all the overlay draws now.)
+  // w110 - see the w110 HISTORY entry. The digits below
+  // are all the overlay draws now.)
 
   // ---- clock digits ----
   // Sized for the digits ACTUALLY ON SCREEN: whole

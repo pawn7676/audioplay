@@ -3416,3 +3416,39 @@ without a question and a yes above it, CHM lines saying whether
 the yes was answered by the chime or the spoken fallback, and -
 the point of all of it - no game ever again resigned over a
 move the owner did not say.
+
+### w117
+
+THE SETTINGS MENU IS GONE, on the owner's order and in his
+words: "dump the settings menu. not needed. default to ratings
+= OFF." The panel had been dying by degrees for two years -
+v124 built it with ten rows so nothing behavioural was buried
+in the source; w110 cut it to three the morning the owner
+called it confusing; w116 cut it to one when confirming every
+move stopped being optional. What was left was a button, a
+fixed-position panel, an outside-tap closer, a persistence
+layer and a localStorage blob, all in service of one cosmetic
+bit. The apparatus outweighed its cargo.
+
+So settings are CODE again, which is where this project keeps
+every other constant that changes twice a year: SHOW_RATINGS
+sits in settings.js beside VOICE_NAME, default OFF as ordered,
+flipped by editing the file. loadSettings, saveSettings, CFG
+and the "audioplay.settings" blob are deleted whole - the blob
+joins scrubDeadStorage's list, so devices that carry one lose
+it on next boot - and the dead switch names stay barred, which
+matters MORE now: with no panel, a stored false that crept back
+into a read would have no visible switch to contradict it.
+
+The v124 premise ("nothing behavioural buried in the source")
+was not wrong; it just stopped describing this program. Every
+behavioural choice the panel ever held has since become a rule
+- the mode tree died at w110, the confirms at w116 - and a
+panel holding no behaviour is furniture. The w69 lesson learned
+on it (A PANEL MUST CARRY ITS OWN EXIT) transfers to the log
+panel, which is the one overlay left.
+
+The boot line keeps its job with fewer words: "loaded:
+ratings=off voice=system". A pasted log still names its
+configuration; the configuration is just smaller than the
+apparatus that used to carry it.

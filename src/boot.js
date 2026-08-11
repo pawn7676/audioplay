@@ -16,10 +16,14 @@
    *  regardless - they are the only thing on the page that
    *  moves between server events. */
 
+  // The boot line still says what this build has switched on,
+  // so a pasted log names its configuration - but since w117
+  // these are code constants, not a stored panel (the panel's
+  // tombstone is in settings.js). If a constant joins that a
+  // pasted log would need, it joins HERE too.
   function settingsSummary() {
-    return Object.keys(CFG).map(function (k) {
-      return k + "=" + (CFG[k] ? "on" : "off");
-    }).join(" ") + (VOICE_NAME ? " voice=" + VOICE_NAME : " voice=system");
+    return "ratings=" + (SHOW_RATINGS ? "on" : "off") +
+           (VOICE_NAME ? " voice=" + VOICE_NAME : " voice=system");
   }
 
   var paintedState = "";
