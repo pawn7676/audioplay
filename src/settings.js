@@ -68,71 +68,48 @@
     // confirmMyMove DELETED AT w110 (named confirmAllMoves
     // until v131): ask before EVERY move, not only
     // ambiguous ones. The owner never once turned it on,
-    // and its label was squatting on the name the
-    // read-back switch below actually deserved. A stored
-    // value under this name is ignored - and MUST stay
-    // ignored: reusing the key for the renamed read-back
-    // would load some old panel save's false into a
-    // setting that means something else entirely, which is
-    // why that key is confirmMine and not this.
+    // and its label was squatting on a name the read-back
+    // switch deserved. THEN THE GAME OF 11 AUG HAPPENED,
+    // and at w116 the owner ordered exactly this behaviour
+    // - as BEHAVIOUR, not as a switch: every voice move is
+    // read back as a question and posts only on "yes"
+    // (dialogue.js, confirmMove). The tombstone stays
+    // because the key stays barred: a stored false under
+    // this old name must never load into anything, least of
+    // all a rule that now cannot be turned off.
 
-    // A bare square is interpreted as a pawn push, which is
-    // correct unless Safari has dropped the piece name
-    // from the reading: "rook echo four" arriving as plain
-    // "echo four" would push the e-pawn. However, if a piece
-    // could also legally reach the same square, then the pawn
-    // push is confirmed first: "did you mean echo four? yes
-    // or no". Answering "no" then walks through the piece
-    // moves to that square. A pawn push to a square that no
-    // piece could move to still plays instantly, so most
-    // pawn moves cost nothing extra. Saying "pawn echo four"
-    // skips the question, since the piece was named - and
-    // since v120 "push echo four" does the same, because
-    // Safari mishears "pawn" constantly and "push" almost
-    // never. Naming a promotion ("golf one equals knight")
-    // also skips it: only a pawn can promote, so the pawn
-    // was named too. In game3 the guard still asked about
-    // Bg1 after "g1 equals knight" had ruled every bishop
-    // move out; fixed in v65.
-    //
-    // Since v71 the same guard covers bare pawn CAPTURES:
-    // "takes f3" with neither a piece nor the from-file
-    // named, when a piece could also capture f3, is confirmed
-    // first ("queen takes f3" heard as "takes f3" cost
-    // game6). "golf takes f3" names the file and plays at
-    // once, exactly as "pawn e4" does for pushes.
-    // Off plays every bare pawn move at once, unasked - with
-    // one exception since w115. If the utterance contained a
-    // word the parser could not account for, the piece name is
-    // the likeliest thing it was, so the question is asked
-    // whatever this says: "Patient Charlie four" pushed the
-    // c-pawn to the square a bishop was being sent to. A
-    // reading with nothing missing from it is unaffected, which
-    // is nearly every bare push. See bareGuardCands.
-    guardPawnPushes: true,
+    // guardPawnPushes DELETED AT w116, subsumed rather than
+    // repealed. From v65 to w115 it confirmed a bare-square
+    // pawn move when a piece could also have reached the
+    // square (v71 added bare captures after game6; w115
+    // made a reading with an unaccounted word ask even with
+    // this off, after the game of 11 Aug). With every move
+    // confirmed, "should this one be asked about" is no
+    // longer a question anyone needs to answer per pawn.
+    // The guard FUNCTION survives in matching.js: it decides
+    // what answering "no" walks to. A stored value under
+    // this name is simply ignored, as with every deleted
+    // setting.
 
     // chimeConfirmed LIVED HERE FOR ONE VERSION (w108) and
     // was removed at w109, on the owner's order: the
     // confirmed-move chime is behaviour, not a choice, and
     // a switch nobody asked for was clutter in the panel.
-    // The chime itself stays - see chimes.js - and a stored
-    // value under this name is simply ignored, as with
-    // every deleted setting.
+    // The chime went at w112 and RETURNED at w116 as the
+    // whole of the post-yes feedback - see chimes.js for
+    // the three-act story. Still not a choice, still no
+    // switch, and a stored value under this name is still
+    // ignored.
 
-    // Your own move read back in full once Lichess accepts
-    // it ("knight foxtrot 3."), questioned or not. ON since
-    // v70; "repeat" always works either way. The key was
-    // readBackMine until w110, when the label became
-    // "confirm my move" - and the key followed the label
-    // (v131's rule) as far as it safely could: the obvious
-    // key is barred, see the confirmMyMove tombstone above.
-    // One switch for BOTH modes since w110:
-    // clockReadBackMine existed so the overlay's move row
-    // could do the confirming, and the row is gone. (w108
-    // put a chime here for yes-answered questions; w112
-    // removed it - a chime cannot say WHICH move, see
-    // chimes.js.)
-    confirmMine: true,
+    // confirmMine DELETED AT w116 (readBackMine until w110).
+    // It switched the full read-back of your own move after
+    // Lichess accepted it - and the read-back itself is what
+    // died: the question now speaks the move BEFORE it
+    // posts, the owner ruled it is not repeated after his
+    // yes, and what follows the yes is the chime (or its
+    // spoken "okay." fallback), unswitched. "repeat" still
+    // works whenever the last move needs saying again. A
+    // stored value under this name is simply ignored.
 
     // clockSpeakOpponent DELETED AT w110 with the rest of
     // the clock-mode group: the opponent's move is always

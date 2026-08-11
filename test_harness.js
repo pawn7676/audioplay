@@ -326,7 +326,9 @@ const sleep = ms =>
     cond ? pass++ : fail++;
   }
 
-  await expect("knight foxtrot three", /knight foxtrot 3/i);
+  // w116: the move comes back as a QUESTION and posts on yes
+  await expect("knight foxtrot three", /knight foxtrot 3\?/i);
+  await expect("yes", /okay/i);  // no WebAudio here: spoken fallback
   await sleep(150); heard();     // the practice random reply
   await expect("whose turn", /(white|black) to move/i);
   await expect("what is on foxtrot three", /white knight/i);
@@ -351,6 +353,7 @@ const sleep = ms =>
   } else {
     console.log("PASS bare square stayed a pawn:", d4); pass++;
   }
+  say("yes");                  // w116: close the question
   await sleep(200); heard();   // let the random reply land
 
   // ---- clock mode, as v133 ships it (clock.js) ----
@@ -395,18 +398,20 @@ const sleep = ms =>
   // keys - confirmMyMove (whose reuse as a key is barred:
   // an old save can hold false under it), readBackMine
   // (whose w110 carry was deleted once the owner's log
-  // proved the panel saved) - move NOTHING. If either of
+  // proved the panel saved), and since w116 confirmMine and
+  // guardPawnPushes themselves - move NOTHING. If any of
   // these ever moves a value again, a shim crept back in.
   const deadBlob = vm.runInContext(`
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(
-      { confirmMyMove: false, readBackMine: false }));
+      { confirmMyMove: false, readBackMine: false,
+        confirmMine: false, guardPawnPushes: false }));
     var c = loadSettings();
     localStorage.removeItem(SETTINGS_KEY);
-    [c.confirmMine, ("confirmMyMove" in c), ("readBackMine" in c)];
+    [("confirmMyMove" in c), ("readBackMine" in c),
+     ("confirmMine" in c), ("guardPawnPushes" in c)];
   `, sandbox);
   check("dead blob keys move nothing (" + deadBlob + ")",
-        deadBlob[0] === true && deadBlob[1] === false &&
-        deadBlob[2] === false);
+        deadBlob.every(function (b) { return b === false; }));
 
   // w111: the storage scrub. Every name a previous era
   // wrote on this origin is removed on boot - including
@@ -658,17 +663,21 @@ const sleep = ms =>
 
   // ---- v134: the read-back race (game24) ----
   // whichever of the stream and the 200 arrives first
-  // speaks; the loser finds the arm gone and says nothing
+  // speaks; the loser finds the arm gone and says nothing.
+  // Since w116 what the winner delivers is confirmFeedback -
+  // the chime, or "okay." where WebAudio is absent, as it is
+  // here - never the move again: the question already said it.
   vm.runInContext(`
     api.myColor = "w"; api.over = false;
-    CFG.confirmMine = true;
     armedUci = "e2e4";
   `, sandbox);
   heard();
   vm.runInContext('readBackMine("e4", "e2e4", true);', sandbox);
   await sleep(50);
-  check("armed move read back once (" + "winner speaks" + ")",
-        /echo 4/.test(heard().join(" ")));
+  const raceWon = heard().join(" ");
+  check("armed move confirmed once, one bit, not re-read (" +
+        raceWon + ")",
+        /okay/i.test(raceWon) && !/echo 4/.test(raceWon));
   vm.runInContext('readBackMine("e4", "e2e4", true);', sandbox);
   await sleep(50);
   check("the loser of the race says nothing", heard().length === 0);
@@ -744,8 +753,10 @@ const sleep = ms =>
   check("boot logs every switch (" +
         bootLine.slice(bootLine.indexOf("loaded:")).slice(0, 40) + "...)",
         /loaded:/.test(bootLine) &&
-        /confirmMine=(on|off)/.test(bootLine) &&
-        /guardPawnPushes=(on|off)/.test(bootLine) &&
+        /showRatings=(on|off)/.test(bootLine) &&
+        // the w116 dead switches must NOT be in the boot line:
+        // a name reappearing here means a setting crept back
+        !/confirmMine|guardPawnPushes/.test(bootLine) &&
         /voice=(system|\S+)/.test(bootLine));
 
   // ---- w70/w71: the rail follows the board; the CLOCK BOX
@@ -1271,7 +1282,7 @@ const sleep = ms =>
   // without them every node looks like a root and this reads
   // as "outside".
   vm.runInContext(`
-    document.__fireClick({ target: setPanel.children[2].children[1] });
+    document.__fireClick({ target: setPanel.children[0].children[1] });
   `, sandbox);
   check("nor a tap on a pill nested inside the panel",
         setOpen() === true);
@@ -1657,35 +1668,163 @@ const sleep = ms =>
   await sleep(120);
   const twoWays = heard().join(" | ");
   check("two victims ask instead of guessing (" + twoWays + ")",
-        /did you mean/i.test(twoWays) &&
+        /echo takes (delta 6|foxtrot 6)\?/i.test(twoWays) &&
         vm.runInContext("!!pending", sandbox) === true);
   say("yes");
   await sleep(120);
-  // w112: yes gets the full read-back again. The w108-w111
-  // chime block stood here and its tests went with it -
-  // a chime cannot say WHICH move, so the confirmation is
-  // speech, questioned or not (the chimes.js tombstone).
-  check("and yes plays one of them, read back in full",
-        /echo takes (delta 6|foxtrot 6)/i.test(heard().join(" | ")));
+  // w116: yes is answered with ONE BIT - the question already
+  // spoke the move, and the owner ruled it is not repeated.
+  // No WebAudio in this sandbox, so the bit is the spoken
+  // fallback; the move itself is checked on the board.
+  const yesPlayed = heard().join(" | ");
+  check("and yes plays one of them (okay, not a re-read: " +
+        yesPlayed + ")",
+        /okay/i.test(yesPlayed) && !/takes/i.test(yesPlayed) &&
+        /^(exd6|exf6)$/.test(vm.runInContext("api.lastSan", sandbox)));
+
+  // ========= w116: EVERY VOICE MOVE IS A QUESTION =========
+  // The game of 11 Aug: "bishop charlie four" arrived with
+  // both readings damaged, a bare c4 survived, and the pawn
+  // played silently onto the bishop's square. The owner's
+  // verdict: no voice move posts without being read back as
+  // a question and answered. Not a setting - the panel rows
+  // that used to decide this are dead (see settings.js).
+  //
+  // The headline case is the one that NEVER asked before: a
+  // cleanly named, unambiguous move.
+  await setBoard("k7/8/8/8/8/8/8/K5N1 w - - 0 1");
+  say("knight foxtrot three");
+  await sleep(120);
+  const cleanAsk = heard().join(" | ");
+  check("a clean named move asks before playing (" + cleanAsk + ")",
+        /knight foxtrot 3\?/i.test(cleanAsk) &&
+        vm.runInContext("api.moves.length", sandbox) === 0);
+  say("no");
+  await sleep(120);
+  const saidNo = heard().join(" | ");
+  check("and no does not play it (" + saidNo + ")",
+        vm.runInContext("api.moves.length", sandbox) === 0 &&
+        /only legal move fitting|say the whole move again/i.test(saidNo));
+  // a TAPPED move is the named exemption: eyes on the screen
+  await setBoard("k7/8/8/8/8/8/8/K5N1 w - - 0 1");
+  vm.runInContext(`
+    (function () {
+      var legal = api.pos.legalMoves();
+      var m = legal.filter(function (x) {
+        return RULES.sqName(x.to) === "f3"; })[0];
+      acceptMove({ m: m, san: api.pos.sanOf(m, legal) }, true);
+    })()
+  `, sandbox);
+  await sleep(120);
+  check("a tapped move still plays without a question",
+        vm.runInContext("api.lastSan", sandbox) === "Nf3");
+  heard();
+
+  // ====== w116: THE CHIME IS THE POST-YES ANSWER ======
+  // w108's trial block, back for its third act (chimes.js
+  // has the whole story): with WebAudio present and running
+  // the yes is answered by the chime and NOTHING is spoken -
+  // the owner ruled the move is not repeated after his yes.
+  // With the context suspended or the API missing, the same
+  // moment speaks "okay." instead - rule 5 does not trust a
+  // chime that could not even be scheduled.
+  vm.runInContext(`
+    __chimeStarts = 0;
+    AudioContext = function () {
+      this.state = "running";
+      this.currentTime = 0;
+      this.destination = {};
+      this.resume = function () {};
+      this.createOscillator = function () {
+        return { type: "", frequency: { value: 0 },
+                 connect: function () {},
+                 start: function () { __chimeStarts++; },
+                 stop: function () {} };
+      };
+      this.createGain = function () {
+        return { gain: { setValueAtTime: function () {},
+                         linearRampToValueAtTime: function () {} },
+                 connect: function () {} };
+      };
+    };
+    primeChimes();
+  `, sandbox);
+  check("the gesture prime creates a running chime context",
+        vm.runInContext('!!chimeCtx && chimeCtx.state === "running"',
+                        sandbox));
+  await setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
+  say("echo five takes");
+  await sleep(120);
+  heard();                       /* drop the question */
+  say("yes");
+  await sleep(120);
+  const chimed = heard().join(" | ");
+  check("a yes is answered by the chime and NOTHING spoken (" +
+        (chimed || "silence") + ")",
+        chimed === "" &&
+        vm.runInContext("__chimeStarts", sandbox) === 2 &&
+        /^(exd6|exf6)$/.test(vm.runInContext("api.lastSan", sandbox)));
+
+  // a suspended context is detected and the fallback speaks
+  vm.runInContext('chimeCtx.state = "suspended";', sandbox);
+  await setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
+  say("echo five takes");
+  await sleep(120);
+  heard();
+  say("yes");
+  await sleep(120);
+  const suspendedSaid = heard().join(" | ");
+  check("a suspended chime context falls back to spoken okay (" +
+        suspendedSaid + ")",
+        /okay/i.test(suspendedSaid) &&
+        vm.runInContext("__chimeStarts", sandbox) === 2);
+  vm.runInContext('chimeCtx.state = "running";', sandbox);
+
+  // the panel carries neither a chime row nor the two dead
+  // confirm rows (w116): the built DOM holds ONE switch,
+  // show ratings - a re-added row fails loudly here
+  const panelRows = vm.runInContext(`
+    setPanel.children.map(function (r) {
+      return r.children.length ? (r.children[0].textContent || "") : "";
+    }).filter(Boolean)
+  `, sandbox);
+  check("the settings panel is one row: show ratings (" +
+        panelRows.join(", ") + ")",
+        panelRows.length === 1 && /show ratings/i.test(panelRows[0]));
+
+  // leave the sandbox as WebAudio-less as it started, so
+  // every later yes-flow exercises the spoken fallback
+  vm.runInContext("AudioContext = undefined; chimeCtx = null;", sandbox);
 
   // ===== w109: THE QUESTION LOST ITS TAIL, NOT ITS EARS =====
   // A mixed list's first ask used to append "Yes, no, or
   // name the piece" (v116's advertisement). The owner cut
   // the advertisement as too much talk; the shortcut it
-  // advertised must keep working unannounced.
+  // advertised must keep working unannounced. (w116 cut
+  // "did you mean" too - the question is the bare move.)
   await setBoard("k7/8/8/8/8/8/4NP2/K7 w - - 0 1");
   say("foxtrot four");
   await sleep(120);
   const mixedAsk = heard().join(" | ");
   check("a mixed-list ask is the bare question (" + mixedAsk + ")",
-        /did you mean/i.test(mixedAsk) &&
-        !/name the piece/i.test(mixedAsk));
+        /foxtrot 4\?/i.test(mixedAsk) &&
+        !/name the piece/i.test(mixedAsk) &&
+        !/did you mean/i.test(mixedAsk));
   say("knight");
   await sleep(120);
+  // w116: the piece answer jumps the walk to the right
+  // QUESTION now, not straight to the board - the assembled
+  // move ("foxtrot four" + "knight") was never spoken whole
+  // until this ask.
   const unadvertised = heard().join(" | ");
-  check("and the unadvertised piece answer still jumps the walk (" +
+  check("and the piece answer jumps the walk to its question (" +
         unadvertised + ")",
-        /knight foxtrot 4/i.test(unadvertised) &&
+        /knight foxtrot 4\?/i.test(unadvertised) &&
+        vm.runInContext("api.lastSan", sandbox) !== "Nf4");
+  say("yes");
+  await sleep(120);
+  heard();
+  check("and yes plays the assembled move",
         vm.runInContext("api.lastSan", sandbox) === "Nf4");
 
   // THE DESTINATION FORM SURVIVES UNTOUCHED: white pawn d4,
@@ -1724,7 +1863,7 @@ const sleep = ms =>
   await sleep(120);
   const eFile = heard().join(" | ");
   check("a PIECE on the file counts too, so it asks (" + eFile + ")",
-        /did you mean/i.test(eFile) &&
+        /(echo takes foxtrot 3|rook takes echo 7)\?/i.test(eFile) &&
         vm.runInContext("!!pending", sandbox) === true);
   // and with the rook gone it is the pawn's alone, played
   await onBoard("4k3/4p3/8/8/8/5n2/4P3/K7 w - - 0 1", "echo takes",
@@ -1734,7 +1873,8 @@ const sleep = ms =>
   // FILE TAKES FILE. 1.c4 d5 2.Nc3 a6: "charlie takes delta"
   // is cxd5 OR Nxd5 with the knight's name lost, so it asks.
   await onBoard("rnbqkbnr/1pp1pppp/p7/3p4/2P5/2N5/PP1PPPPP/R1BQKBNR w KQkq - 0 3",
-                "charlie takes delta", /did you mean/i,
+                "charlie takes delta",
+                /(charlie|knight) takes delta 5\?/i,
                 '"charlie takes delta" with cxd5 AND Nxd5 asks');
   // 1.c4 d5: only the pawn can do it, so it plays at once
   await onBoard("rnbqkbnr/ppp1pppp/8/3p4/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 0 2",
@@ -2196,11 +2336,12 @@ const sleep = ms =>
   const onlyAsks = heard().join(" | ");
   check("a unique fit from a RIVAL reading asks, never plays (" +
         onlyAsks + ")",
-        /did you mean/i.test(onlyAsks) && !/^white /i.test(onlyAsks));
+        /queen takes delta 6\?/i.test(onlyAsks) &&
+        !/^white /i.test(onlyAsks));
   say("yes");
   await sleep(90);
   check("and yes then plays it",
-        /queen takes delta 6/i.test(heard().join(" | ")));
+        vm.runInContext("api.lastSan", sandbox) === "Qxd6");
 
   // "push" is a pawn word everywhere, not only on a push -
   // the owner's point after game w47-1, where "pawn" would
@@ -3103,21 +3244,17 @@ const sleep = ms =>
         vm.runInContext('fuzzyToken("might")', sandbox) === null);
   await setBoard(
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-  vm.runInContext("CFG.guardPawnPushes = false;", sandbox);
   say("light charlie three");
   await sleep(120);
-  // w115 ANSWERED THE QUESTION w114 LEFT OPEN. This asserted
-  // that the dropped word plays the bare square - c3, unasked,
-  // with the setting off - and closed with "whether such a drop
-  // should ever ASK instead is left open on purpose". The game
-  // of 11 Aug closed it: a knight also reaches c3 here, exactly
-  // as a bishop also reached the c4 that game lost, so the
-  // question is now asked. The drop's trace in the log, which
-  // is what w114 shipped, is unchanged.
+  // w115 answered the question w114 left open (a dropped word
+  // asks instead of playing the bare square); w116 made the
+  // ask universal. What is still this test's to guard: the
+  // deliberate word is DROPPED, not mapped to a piece, and
+  // the drop leaves its trace in the log.
   const lightAsk = heard().join(" | ");
   check('"light" is dropped and the bare square is ASKED about (' +
         lightAsk + ")",
-        /did you mean charlie 3/i.test(lightAsk) &&
+        /charlie 3\?/i.test(lightAsk) &&
         vm.runInContext("api.lastSan", sandbox) !== "c3");
   check("and the drop leaves a trace in the log",
         vm.runInContext(`
@@ -3129,7 +3266,6 @@ const sleep = ms =>
   await sleep(120);
   check("and yes still plays the pawn push it was asked about",
         vm.runInContext("api.lastSan", sandbox) === "c3");
-  vm.runInContext("CFG.guardPawnPushes = true;", sandbox);
 
   // ---- w114: "chili"/"chilly" are the c-file ----
   // A rival transcript in the same log wrote "charlie" as
@@ -3173,19 +3309,20 @@ const sleep = ms =>
 
   // THE CLASS, not the word. Any word the parser cannot
   // account for beside a bare square may have been the piece
-  // name, so the guard asks - even with the setting off, which
-  // is how the owner had it. "Relationship" is not invented:
-  // game20 (17:49) is Safari returning it for a spoken
-  // "bishop", and it is too far from anything for the fuzzy
+  // name. w115 made that case ask; w116 makes everything ask,
+  // so what is left to this test is what the stray word still
+  // DOES: it is named in the log, and the walk behind the
+  // question carries the piece moves, so "no" - or the piece's
+  // name - reaches what the mic dropped. "Relationship" is not
+  // invented: game20 (17:49) is Safari returning it for a
+  // spoken "bishop", too far from anything for the fuzzy
   // matcher to reach.
-  vm.runInContext("CFG.guardPawnPushes = false;", sandbox);
   await setBoard(BC4);
   say("relationship charlie four");
   await sleep(120);
   const strayAsk = heard().join(" | ");
-  check("a lost word beside a bare square asks, setting off (" +
-        strayAsk + ")",
-        /did you mean charlie 4/i.test(strayAsk) &&
+  check("a lost word beside a bare square asks (" + strayAsk + ")",
+        /charlie 4\?/i.test(strayAsk) &&
         vm.runInContext("api.lastSan", sandbox) !== "c4");
   check("and the log names the word it could not place",
         vm.runInContext(`
@@ -3195,34 +3332,27 @@ const sleep = ms =>
         `, sandbox));
   say("bishop");
   await sleep(120);
-  check("and one word finishes it as the bishop",
+  const bishopJump = heard().join(" | ");
+  check("and one word jumps to the bishop's own question (" +
+        bishopJump + ")",
+        /bishop charlie 4\?/i.test(bishopJump));
+  say("yes");
+  await sleep(120); heard();
+  check("and yes plays the bishop",
         vm.runInContext("api.lastSan", sandbox) === "Bc4");
 
-  // OFF STILL MEANS OFF for a reading with nothing missing
-  // from it, which is nearly every bare push. This is the
-  // whole reason the stray word has to be tracked rather than
-  // the setting simply overridden.
-  await setBoard(BC4);
-  say("charlie four");
-  await sleep(120);
-  check("a clean bare square still plays at once with the setting off",
-        vm.runInContext("api.lastSan", sandbox) === "c4");
-  // A command word is accounted for, so it is not a lost word:
-  // "yeah charlie four" is not a damaged reading.
+  // A command word is accounted for, so it is not a lost
+  // word: "yeah charlie four" asks like any bare square but
+  // leaves no not-understood trace in the log.
   await setBoard(BC4);
   say("yeah charlie four");
-  await sleep(120);
-  check("nor does a stray command word count as one",
-        vm.runInContext("api.lastSan", sandbox) === "c4");
-  // And where no piece could have been meant there is nothing
-  // to ask about, lost word or not: the guard's own condition
-  // is unchanged.
-  await setBoard("k7/8/8/8/8/8/2P5/K7 w - - 0 1");
-  say("relationship charlie four");
-  await sleep(120);
-  check("with no piece able to reach it, a lost word plays anyway",
-        vm.runInContext("api.lastSan", sandbox) === "c4");
-  vm.runInContext("CFG.guardPawnPushes = true;", sandbox);
+  await sleep(120); heard();
+  check("a stray command word is not a lost word",
+        vm.runInContext(`
+          !LOG.some(function (l) {
+            return l.indexOf('"yeah" was not understood') >= 0;
+          })
+        `, sandbox));
 
   // ---- w65: "rugby" and "rug" are rooks (game w64-1) ----
   // "Rook b8" fused into "Rugby" and "Rugby eight" - BOTH
@@ -3449,20 +3579,25 @@ const sleep = ms =>
                 '"kinsey two" splits into king + c-file');
 
   // pawn family: naming the piece is what SKIPS the pawn-first
-  // question a bare square would ask with a queen also
-  // reaching it, so the assertion is that the move PLAYED.
+  // WALK a bare square would earn with a queen also reaching
+  // it. Since w116 the named move still asks - everything
+  // does - so what naming buys is a one-entry list: the
+  // question is the move alone, with no piece alternatives
+  // queued behind a "no".
+  const namedLone = () => vm.runInContext(
+    "pending ? pending.cands.length : -1", sandbox);
   await onBoard("7k/8/8/8/Q7/8/4P3/4K3 w - - 0 1", "pony four",
-                /echo 4/i, '"pony four" is the pawn to e4');
-  check("and it was played, not asked",
-        vm.runInContext("api.moves.length", sandbox) === 1);
+                /echo 4\?/i, '"pony four" is the pawn to e4');
+  check("and the question is the pawn alone, no walk behind it",
+        namedLone() === 1);
   await onBoard("7k/8/8/8/5Q2/8/2P5/4K3 w - - 0 1", "ponzi four",
-                /charlie 4/i, '"ponzi four" is the pawn to c4');
-  check("and it was played, not asked",
-        vm.runInContext("api.moves.length", sandbox) === 1);
+                /charlie 4\?/i, '"ponzi four" is the pawn to c4');
+  check("and the question is the pawn alone, no walk behind it",
+        namedLone() === 1);
   await onBoard("7k/8/8/8/1Q6/8/5P2/4K3 w - - 0 1", "pontiff four",
-                /foxtrot 4/i, '"pontiff four" is the pawn to f4');
-  check("and it was played, not asked",
-        vm.runInContext("api.moves.length", sandbox) === 1);
+                /foxtrot 4\?/i, '"pontiff four" is the pawn to f4');
+  check("and the question is the pawn alone, no walk behind it",
+        namedLone() === 1);
 
   // ============ w58: "QUEEN CHECK", FROM A REAL GAME ==========
   // Game w56-1: "queen check" said twice, refused twice with
@@ -3470,13 +3605,16 @@ const sleep = ms =>
   // whole time - the owner played it seconds later by naming
   // the square. Mate had a repair; check did not.
 
-  // EXACTLY ONE checking move by that piece: it plays, like
-  // the mate and half-square repairs on the same weight of
-  // evidence. Ra8+ is the only check a1 rook has here.
+  // EXACTLY ONE checking move by that piece: it resolves to
+  // that move, like the mate and half-square repairs on the
+  // same weight of evidence. Ra8+ is the only check a1's
+  // rook has here; since w116 the resolution is a question.
   await onBoard("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "rook check",
-                /rook alpha 8, check/i,
-                '"rook check" plays the one checking rook move');
-  check("and it was actually played",
+                /rook alpha 8, check\?/i,
+                '"rook check" finds the one checking rook move');
+  say("yes");
+  await sleep(120); heard();
+  check("and yes plays it",
         vm.runInContext("api.moves.length", sandbox) === 1);
 
   // SEVERAL checking moves: it asks, it does not choose.
@@ -3484,7 +3622,7 @@ const sleep = ms =>
   // so a lost word can only ever turn one candidate into
   // several - which asks - never into a different move.
   await onBoard("4k3/8/8/8/8/8/8/3QK3 w - - 0 1", "queen check",
-                /did you mean queen .*check/i,
+                /queen .*check\?/i,
                 'several checks ask rather than guessing');
   check("and nothing was played while it asks",
         vm.runInContext("api.moves.length", sandbox) === 0);
@@ -4132,8 +4270,10 @@ const sleep = ms =>
 
   // A RE-SAID MOVE REPLACES THE QUESTION (w51's surviving
   // half - its confirmMyMove half died with that setting at
-  // w110): a unique re-said move over an open question
-  // plays by the same rules as if no question were open.
+  // w110): a unique re-said move over an open question goes
+  // by the same rules as if no question were open - which
+  // since w116 means it becomes the NEW question, the old
+  // one gone.
   await setBoard("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1");
   vm.runInContext(`
     pending = { cands: [{ m: api.pos.legalMoves()[0], san: "Kd1" }], idx: 0 };
@@ -4142,9 +4282,13 @@ const sleep = ms =>
   say("echo four");
   await sleep(120);
   const resaid = heard().join(" | ");
-  check("a unique re-said move replaces the question and plays (" +
+  check("a unique re-said move replaces the question (" +
         resaid + ")",
-        /echo 4/i.test(resaid) &&
+        /echo 4\?/i.test(resaid) &&
+        vm.runInContext("pending.cands[0].san", sandbox) === "e4");
+  say("yes");
+  await sleep(120); heard();
+  check("and yes plays the replacement, not the old question",
         vm.runInContext("api.lastSan", sandbox) === "e4" &&
         vm.runInContext("pending", sandbox) === null);
 

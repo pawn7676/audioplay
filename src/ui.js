@@ -107,6 +107,7 @@
       "border:1px solid " + BORDER + ";";
     practiceBtn.addEventListener("click", function () {
       wakeSpeech();
+      primeChimes();   /* an AudioContext must be born in a gesture (w108) */
       setTimeout(loadVoices, 300);
       if (dryRun) {
         dryRun = false; running = false;
@@ -283,18 +284,17 @@
       setPanel.appendChild(row);
     }
 
-    // THREE ROWS, NO HEADERS (w110). The panel held ten
-    // rows in three mode groups the morning the owner
-    // called it confusing; the confirm-every-move switch
-    // he had never used and the five clock-mode text
-    // switches went the same day (their tombstones are in
-    // settings.js), and with one group left the headers
-    // said nothing. Every switch here acts in every mode.
+    // ONE ROW (w116; three from w110, ten before that). The
+    // "confirm my move" and "guard pawn pushes" rows died
+    // when confirming stopped being optional - every voice
+    // move is a question now, so there is nothing for either
+    // switch to decide (their tombstones are in settings.js).
+    // A panel that shrinks every time a choice becomes a
+    // rule is the panel doing its job.
     //
     // The headphones row led the panel from v125 to v131;
     // deleted at v132 with the setting.
-    settingRow("confirmMine", "confirm my move");
-    settingRow("guardPawnPushes", "guard pawn pushes");
+    //
     // w68. Repaints on the spot rather than waiting for the
     // next game event: this is the one setting whose whole
     // effect is something already on screen, so a flip that
@@ -414,6 +414,7 @@
 
     bigBtn.addEventListener("click", function () {
       wakeSpeech();
+      primeChimes();   /* an AudioContext must be born in a gesture (w108) */
       setTimeout(loadVoices, 300);
       running = !running;
       if (running) {

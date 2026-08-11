@@ -116,30 +116,14 @@
     claimvictory:  { yes: "claim-victory", yesSay: "claiming the win.",
                      no: null, noSay: "waiting." }
   };
-  /* A REPAIR MAY BE FIRED BY A RIVAL READING, BUT THEN IT MAY
-   * ONLY ASK (w49).
-   *
-   * Safari returns up to eight rival transcriptions.
-   * collectCandidates has read all of them since the v-series -
-   * scored by which alternative they came from, demoted a tier
-   * if they lost a word. The repair chain never saw past the
-   * first: handleTranscripts parsed transcripts[0] and every
-   * repair worked from that one request.
-   *
-   * Game w47-1, 20:09:06: six readings arrived and the SECOND
-   * was "Pond takes", which parses cleanly and would have
-   * played. The primary was "Plants". The move was lost.
-   *
-   * The rule for what a rival reading may do is v119's, applied
-   * one level out. There the line was that a request whose
-   * PIECE is inferred rather than heard still confirms. Here
-   * the whole REQUEST is inferred - it is not what the mic
-   * ranked first - so it may raise a question and may not
-   * play a move. That keeps this strictly additive: it can
-   * only ever turn "Say again." into something answerable,
-   * which is the same bar w40 set for the origin repair.
-   */
-  var repairMayPlay = true;
+  /* (repairMayPlay stood here from w49 to w115, carrying the
+   * rule that a repair fired by a RIVAL reading may only ask,
+   * never play - game w47-1's "Pond takes" would otherwise
+   * have played off Safari's second guess. w116 subsumed it:
+   * NOTHING plays without asking now, whichever reading it
+   * came from, so the distinction the flag guarded has no
+   * second side left. The w49 rule is not repealed - it is
+   * enforced everywhere, which is why the flag could go.) */
   var busy = false;
 
   /* NO QUESTION OUTLIVES THE GAME IT WAS ASKED IN (w50).
@@ -169,14 +153,14 @@
     pieceAsk = null;
     partialAsk = null;
     armedUci = null;
-    repairMayPlay = true;
   }
 
   // (readBackMineNow and speakOpponentNow stood here from
-  // v124 to w110, routing per-mode switches. The per-mode
-  // switches are gone - one CFG.confirmMine for your own
-  // move in every mode, the opponent's always spoken - so
-  // the seams they answered no longer exist.)
+  // v124 to w110, routing per-mode switches; w110 folded
+  // them into one CFG.confirmMine, and w116 retired that
+  // too - the pre-move question is the read-back now, and
+  // what follows a yes is confirmFeedback, unswitched. The
+  // opponent's move is always spoken, as ever.)
 
   // THE READ-BACK BELONGS TO WHICHEVER EVENT ARRIVES FIRST
   // (v134). Two things confirm a move we posted - the
@@ -203,12 +187,22 @@
   // would talk over the next tap.
   var armedUci = null;
 
-  // (w108 hung a `confirmed` flag beside the arm and
-  // chimed instead of speaking when the user had already
-  // approved the move through a question. Removed at w112:
-  // a chime says a move was made and cannot say WHICH, and
-  // the confirmation owed here is the move. The full story
-  // is the chimes.js tombstone.)
+  // (w108 hung a `confirmed` flag beside the arm and chimed
+  // only for yes-answered moves; w112 removed it. w116 needs
+  // no flag at all: every armed move IS a yes-answered move
+  // now, because no voice move posts without its question,
+  // and a tapped move was never armed.)
+
+  // The post-yes feedback (w108 shape, w116 job): the chime
+  // when it can be scheduled, a spoken "okay." when it
+  // cannot (rule 5 - never silence). The color word rides
+  // along so clock mode's message gate treats the fallback
+  // as the move confirmation it is, not as a message for
+  // the strip.
+  function confirmFeedback() {
+    if (playConfirmChime()) return;
+    speak("okay.", colorWord(api.myColor || "w"));
+  }
 
   // announce=false is a catch-up replay (reconnect,
   // takeback rebuild): it still DISARMS - that move is
@@ -223,13 +217,27 @@
     // line says it better than a read-back can. api.over
     // alone was not enough then and is not now.
     if (api.over || /#$/.test(san)) return;
-    if (!CFG.confirmMine) return;
-    speak(sanToSpeech(san), colorWord(api.myColor));
+    // THE MOVE IS NOT REPEATED AFTER A YES (w116, owner's
+    // order). The question already spoke it; what is owed
+    // here is one bit - your yes landed - and that is the
+    // chime, or its spoken fallback. (CFG.confirmMine died
+    // with this: there is nothing left for it to switch.)
+    confirmFeedback();
   }
 
   /* quiet=true is a tapped move (touch.js): no read-back, no
    * arming - but every ERROR below still speaks, because a
-   * failure must be heard whichever way the move went in. */
+   * failure must be heard whichever way the move went in.
+   *
+   * SINCE w116 THE ONLY OTHER CALLER IS THE YES (and the
+   * phantom-yes stray-talk hazard that entails is bounded by
+   * the same fact: the move a stray yes can play is one that
+   * was read aloud two seconds earlier). Every voice path
+   * that used to call this directly now goes through
+   * confirmMove below and arrives here carrying the user's
+   * answer. If a new path ever wants to call this without a
+   * question standing behind it, that is the game-of-11-Aug
+   * conversation to have again, and the answer is no. */
   function acceptMove(c, quiet) {
     if (busy) {
       // SILENCE IS NOT AN ANSWER, not even for "I am still
@@ -254,8 +262,10 @@
       api.lastSan = c.san; api.lastSanW = c.san;
       busy = false;
       log("DRY", "you play " + uci + " = " + c.san + " (not sent)");
-      if (!quiet && CFG.confirmMine)
-        speak(sanToSpeech(c.san), colorWord(api.myColor || "w"));
+      // same one-bit feedback as the live path, so practice
+      // is where the chime can be heard without a game at
+      // stake (the w108 trial's own test bench)
+      if (!quiet) confirmFeedback();
       // CALLED BY NAME, NOT BY REFERENCE (w54). Passing the
       // function itself captures whatever it is bound to RIGHT
       // NOW, so a reply already in flight could not be called
@@ -376,6 +386,25 @@
     });
   }
 
+  /* EVERY VOICE MOVE GOES THROUGH HERE (w116). One question,
+   * however the move arrived - parsed whole, repaired,
+   * assembled from a piece answer - and nothing posts until
+   * the user answers it. Not a setting, not a guard with
+   * exemptions: the game of 11 Aug played a silent wrong
+   * pawn out of a doubly-damaged hearing, and the owner's
+   * verdict was that a system that can do that once cannot
+   * be trusted to decide when to ask. The cost is one word
+   * per move, priced in and accepted.
+   *
+   * The named exemption is the TAP (touch.js): two taps
+   * prove the eyes are on the screen, and fingers are not
+   * subject to mishearing.
+   */
+  function confirmMove(cands) {
+    pending = { cands: cands, idx: 0 };
+    askCandidate();
+  }
+
   function askCandidate() {
     if (!pending || pending.idx >= pending.cands.length) {
       // "no" to a one-entry list deserves the truth: there
@@ -403,7 +432,12 @@
     // spent on nothing new. Game20's lesson (pawn-no,
     // queen-no, knight-yes) lives in the CAPABILITY, which
     // stays.
-    speak("Did you mean " + sanToSpeech(c.san) + "?");
+    //
+    // "Did you mean" went at w116, when this became every
+    // move's question rather than the doubtful ones': three
+    // words times every move of every game is real airtime,
+    // and the rising "?" carries the asking by itself.
+    speak(sanToSpeech(c.san) + "?");
   }
 
 
@@ -600,19 +634,15 @@
   }
 
   function offer(cands, label) {
-    var play = cands.length === 1 && repairMayPlay;
     if (label) {
       log("CND", label + ": " +
           cands.map(function (c) { return c.san; }).join(",") +
-          (cands.length === 1 ? " fits, " : " fit, ") +
-          (play ? "playing" : "asking"));
+          (cands.length === 1 ? " fits, asking" : " fit, asking"));
     }
-    if (play) {
-      acceptMove(cands[0]);
-      return;
-    }
-    pending = { cands: cands, idx: 0 };
-    askCandidate();
+    // a lone fit used to play here when the primary reading
+    // produced it (repairMayPlay); since w116 a repaired or
+    // assembled move asks like every other
+    confirmMove(cands);
   }
 
   /* A spoken check word narrows the fits to checks, "mate"
@@ -836,10 +866,19 @@
       // same shape of question now takes the same answer.
       // Both halves came from the user - the square from
       // the utterance that raised the question, the piece
-      // from this one - so a UNIQUE fit is accepted, like
-      // the v92 path. Two candidates of the named piece
-      // (two knights to one square) jump the walk to the
-      // first of them and ask as before.
+      // from this one - so a UNIQUE fit used to be accepted,
+      // like the v92 path. Since w116 it is CONFIRMED
+      // instead: both halves came from the user, but neither
+      // half's HEARING has been read back whole, and an
+      // assembled move is built from the least reliably
+      // heard fragments in the system (owner's call, with
+      // last night's Qxf3 as the example - "queen takes" +
+      // "bishop", posted with the full move never spoken).
+      // The jump the shortcut buys is preserved: one word
+      // skips the walk and goes straight to the right
+      // question. Two candidates of the named piece (two
+      // knights to one square) jump the walk to the first
+      // of them and ask as before.
       var pa = answerPieceOf(transcripts);
       if (pa) {
         var fits = [], firstFit = -1;
@@ -850,8 +889,8 @@
           }
         }
         if (fits.length === 1) {
-          log("DLG", "piece answer picked " + fits[0].san);
-          acceptMove(fits[0]);
+          log("DLG", "piece answer picked " + fits[0].san + ", confirming");
+          confirmMove([fits[0]]);
           return;
         }
         if (fits.length > 1) {
@@ -876,20 +915,16 @@
       // w110.)
       var re = collectCandidates(api.pos, transcripts);
       if (re.length === 1) {
-        var reGuard = bareGuardCands(re[0]);
-        if (reGuard) { pending = { cands: reGuard, idx: 0 };
-          askCandidate(); return; }
-        acceptMove(re[0]);
+        confirmMove(bareGuardCands(re[0]) || [re[0]]);
         return;
       }
       if (re.length > 1) {
-        pending = { cands: re, idx: 0 };
-        askCandidate();
+        confirmMove(re);
         return;
       }
       speak("Say yes or no.");
       var c = pending.cands[pending.idx];
-      speak("Did you mean " + sanToSpeech(c.san) + "?");
+      speak(sanToSpeech(c.san) + "?");
       return;
     }
 
@@ -967,13 +1002,13 @@
     log("CND", cands.map(function (c) { return c.san; }).join(",") || "(none)");
 
     if (cands.length === 1) {
-      var guarded = bareGuardCands(cands[0]);
-      if (guarded) {
-        pending = { cands: guarded, idx: 0 };
-        askCandidate();
-        return;
-      }
-      acceptMove(cands[0]);
+      // ONE candidate is still a QUESTION now (w116). The
+      // bare-square guard keeps its job in a smaller office:
+      // it no longer decides WHETHER to ask - everything
+      // asks - it decides what "no" walks to, by putting the
+      // piece moves that could also have been meant behind
+      // the pawn in the list.
+      confirmMove(bareGuardCands(cands[0]) || [cands[0]]);
       return;
     }
     if (cands.length === 0) {
@@ -1062,8 +1097,10 @@
       // - was their position in this function and nothing else.
       // EVERY READING GETS A LOOK, primary first. A later one
       // is only reached when every repair has declined every
-      // earlier one, so nothing that works today changes; and
-      // it may only ask, never play (see repairMayPlay).
+      // earlier one, so nothing that works today changes.
+      // (Which reading fired a repair stopped mattering at
+      // w116: every outcome is a question now - see the
+      // repairMayPlay tombstone at the top of this file.)
       for (var ti = 0; ti < transcripts.length; ti++) {
         var rq = ti === 0 ? req : parseTranscript(transcripts[ti]);
         if (ti > 0) {
@@ -1072,11 +1109,9 @@
               !rq.fromFile && !rq.fromRank) continue;
           log("PRS", "rival reading " + ti + ": " + describeReq(rq));
         }
-        repairMayPlay = (ti === 0);
         for (var ri = 0; ri < REPAIRS.length; ri++) {
-          if (REPAIRS[ri](rq, transcripts)) { repairMayPlay = true; return; }
+          if (REPAIRS[ri](rq, transcripts)) return;
         }
-        repairMayPlay = true;
       }
 
       if (reqIsEmpty(req)) {

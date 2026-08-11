@@ -3354,3 +3354,65 @@ one, and it is the last thing that should vouch for anything.
 
 The parse line carries the word now, so a pasted log says what
 was thrown away: 'PRS - - c4 - -   ("patient" not understood)'.
+
+### w116
+
+EVERY VOICE MOVE IS A QUESTION NOW, AND THAT IS THE OWNER'S
+VERDICT ON THE GAME OF 11 AUG, not a tuning choice. w115 fixed
+the word that lost that game and the class of drop it belonged
+to, and the owner's response was that the fix was aimed too
+low: "I don't think the system can be trusted without it. Can't
+have what just happened EVER happen." A system that can post a
+silently wrong move once cannot be trusted to decide which
+moves deserve a question - so none of them get to skip it. No
+voice move posts until it has been read back whole ("knight
+foxtrot 3?") and answered yes. The cost is one word and about
+two seconds per move, priced in and accepted out loud.
+
+Deliberately NOT a setting. The panel rows died with the
+decision: "confirm my move" (the post-accept read-back - the
+question said the move already, and the owner ruled it is not
+repeated after his yes) and "guard pawn pushes" (subsumed:
+whether to ask is no longer anyone's question). The panel is
+one row now. The irony is recorded where it belongs, in
+settings.js: confirmAllMoves existed once, was never turned on,
+and was deleted at w110 as the switch nobody wanted - the owner
+did not want it as a CHOICE. He wants it as the ground.
+
+What answers the yes is the CHIME, back for its third act - and
+the chimes.js header now carries all three, because each turn
+answered a different question. w108 proved audibility (every
+chime scheduled, every chime heard). w112 removed it because a
+tone cannot say WHICH move while the full read-back was doing
+exactly that. w116 moved the read-back BEFORE the move, where
+it can still refuse it, and the owner barred repeating it
+after - so the post-yes signal must carry exactly one bit, and
+one bit is a chime's whole vocabulary. "The chime is just
+saying: I confirm your yes" - his words. Rule 5 holds at both
+ends: a chime that cannot be scheduled speaks "okay." instead,
+and every failure after the yes (post refused, network gone)
+was already spoken and still is.
+
+The yes itself is the new trust anchor, and its failure
+directions are asymmetric in the right way. A missed yes costs
+one repetition ("Say yes or no"). A phantom yes - stray talk
+landing as "okay" - can only play the move that was read aloud
+two seconds earlier, while the user stands listening for
+exactly that; and if the QUESTION is wrong, "no", "cancel", the
+piece's name, or simply re-saying the move all still work.
+Assembled moves confirm too (a partial answer's move was never
+spoken whole until the ask), the piece-answer shortcut jumps to
+the right question instead of the board, and the tap stays
+instant - two taps prove the eyes are on the screen.
+
+repairMayPlay retired on the way through, subsumed not
+repealed: w49's rule was that a rival reading may only ask,
+never play, and now nothing plays unasked, whichever reading it
+came from. "Did you mean" went too - three words times every
+move of every game, and the rising "?" carries the asking.
+
+What a pasted log should show from here: no PST move line
+without a question and a yes above it, CHM lines saying whether
+the yes was answered by the chime or the spoken fallback, and -
+the point of all of it - no game ever again resigned over a
+move the owner did not say.
