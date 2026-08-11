@@ -506,46 +506,29 @@
     return out;
   }
 
-  // THE ONE SILENT PATH is a lone candidate played with no
-  // question. If that candidate is a pawn move from a bare
-  // utterance and a piece could also legally have been
-  // meant, the piece name may have been lost by the mic,
-  // and playing the pawn would be silent and irreversible.
-  // Two forms of the same hazard:
+  // WHAT ANSWERING "NO" WALKS TO. From v65 to w115 this
+  // decided WHETHER a lone bare-square pawn move was asked
+  // about before playing - the one silent path, and the
+  // game6 and 11-Aug losses both came through it (a piece
+  // name lost by the mic leaves a bare square, and the pawn
+  // plays onto the square the piece was headed for). w116
+  // took the whether away: every voice move is asked about
+  // now, so this only shapes the QUESTION. A bare pawn move
+  // to a square a piece could also legally have reached
+  // returns the pawn first and the piece moves behind it,
+  // so "no" offers what the mic most plausibly dropped
+  // instead of dead-ending. Two forms of the same hazard:
   //   push:    "rook echo four" heard as "echo four"
   //   capture: "queen takes f3" heard as "takes f3"
   //            (game6, 21:20:47: gxf3 played, Qxf3 meant,
   //            game resigned — captures were exempt until
   //            v71)
-  // Returns the list to confirm, pawn first then the piece
-  // moves so answering no reaches them, or null when playing
-  // at once is safe. Naming the piece, the pawn, the
-  // capture's from-file, or a promotion all skip it (the
-  // named flag in collectCandidates). See guardPawnPushes
-  // in SETTING_DEFAULTS.
-  //
-  // AND IT FIRES WITH THE SETTING OFF WHEN A WORD WAS LOST
-  // (w115). Off means "do not ask about my pawn moves", and
-  // that is a fair thing to want: the owner turned it off in
-  // the game of 11 Aug and it is off in the settings the log
-  // prints. What it cannot be allowed to mean is "play
-  // whatever is left when the mic drops a word". That game
-  // said "bishop charlie four" twice over - both of Safari's
-  // readings had it - and both wrote bishop as "Patient", so
-  // what reached here was a bare c4 with a word thrown away
-  // beside it, and the c-pawn went to the square the bishop
-  // was headed for. The move cannot be taken back; the game
-  // was resigned four moves later.
-  //
-  // So the setting decides the ORDINARY bare push, and a
-  // reading with an unaccounted word in it asks either way -
-  // but only where the guard would have asked anyway, which
-  // is when a piece could also have reached that square. A
-  // clean "charlie four" with the setting off still plays at
-  // once, which is what off was turned off for.
+  // Null when the utterance named its mover - piece, pawn,
+  // the capture's from-file, a promotion (the named flag in
+  // collectCandidates) - or nothing else could reach the
+  // square: then the lone candidate is the whole question.
   function bareGuardCands(c) {
     if (c.named || c.m.piece !== "p") return null;
-    if (!CFG.guardPawnPushes && !c.stray) return null;
     var to = RULES.sqName(c.m.to);
     var legal = api.pos.legalMoves();
     var isCap = !!c.m.captured;

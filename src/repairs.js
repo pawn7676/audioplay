@@ -21,7 +21,9 @@
    *    MAY ONLY ASK (w49). Safari returns up to eight rival
    *    transcriptions. A question raised from one of them is
    *    safe because nothing plays until the user answers;
-   *    playing from one is not. repairMayPlay carries that.
+   *    playing from one is not. repairMayPlay carried that
+   *    until w116, when EVERY outcome became a question and
+   *    the rule stopped needing a flag to hold it.
    *
    *    ASK ABOUT WHICHEVER HALF STILL NARROWS (w43, w48).
    *    Asking for a rank that has one possible answer wastes
