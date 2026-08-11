@@ -101,7 +101,14 @@
     // first ("queen takes f3" heard as "takes f3" cost
     // game6). "golf takes f3" names the file and plays at
     // once, exactly as "pawn e4" does for pushes.
-    // Off plays every bare pawn move at once, unasked.
+    // Off plays every bare pawn move at once, unasked - with
+    // one exception since w115. If the utterance contained a
+    // word the parser could not account for, the piece name is
+    // the likeliest thing it was, so the question is asked
+    // whatever this says: "Patient Charlie four" pushed the
+    // c-pawn to the square a bishop was being sent to. A
+    // reading with nothing missing from it is unaffected, which
+    // is nearly every bare push. See bareGuardCands.
     guardPawnPushes: true,
 
     // chimeConfirmed LIVED HERE FOR ONE VERSION (w108) and

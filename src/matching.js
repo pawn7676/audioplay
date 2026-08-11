@@ -285,6 +285,19 @@
           // a later reading that names the piece still counts
           // as naming it, for the bare-push guard below
           if (named) seen[uci].named = true;
+          // AND A READING WITH A WORD MISSING FROM IT TAINTS
+          // THE CANDIDATE, however clean its rivals (w115).
+          // The other direction was tempting - let a clean
+          // rival clear the doubt - and it is wrong for the
+          // reason clippedIndexes already had to work out:
+          // when one reading is another minus its first word,
+          // the SHORT one is the damaged one. "Patient Charlie
+          // four" and a bare "Charlie four" are that pair, and
+          // the bare rival is the last thing that should vouch
+          // for it.
+          if (req.strayWord && !seen[uci].stray) {
+            seen[uci].stray = req.strayWord;
+          }
           return;
         }
         var score = altIdx * SCORE_PER_ALTERNATIVE;
@@ -292,7 +305,7 @@
         if (m.captured) score += SCORE_BONUS_CAPTURE;
         var entry = { m: m, san: pos.sanOf(m, legal), score: score,
                       tier: clipped[altIdx] ? 1 : 0,
-                      named: named };
+                      named: named, stray: req.strayWord || null };
         seen[uci] = entry;
         ranked.push(entry);
       });
@@ -510,9 +523,29 @@
   // capture's from-file, or a promotion all skip it (the
   // named flag in collectCandidates). See guardPawnPushes
   // in SETTING_DEFAULTS.
+  //
+  // AND IT FIRES WITH THE SETTING OFF WHEN A WORD WAS LOST
+  // (w115). Off means "do not ask about my pawn moves", and
+  // that is a fair thing to want: the owner turned it off in
+  // the game of 11 Aug and it is off in the settings the log
+  // prints. What it cannot be allowed to mean is "play
+  // whatever is left when the mic drops a word". That game
+  // said "bishop charlie four" twice over - both of Safari's
+  // readings had it - and both wrote bishop as "Patient", so
+  // what reached here was a bare c4 with a word thrown away
+  // beside it, and the c-pawn went to the square the bishop
+  // was headed for. The move cannot be taken back; the game
+  // was resigned four moves later.
+  //
+  // So the setting decides the ORDINARY bare push, and a
+  // reading with an unaccounted word in it asks either way -
+  // but only where the guard would have asked anyway, which
+  // is when a piece could also have reached that square. A
+  // clean "charlie four" with the setting off still plays at
+  // once, which is what off was turned off for.
   function bareGuardCands(c) {
-    if (!CFG.guardPawnPushes) return null;
     if (c.named || c.m.piece !== "p") return null;
+    if (!CFG.guardPawnPushes && !c.stray) return null;
     var to = RULES.sqName(c.m.to);
     var legal = api.pos.legalMoves();
     var isCap = !!c.m.captured;
@@ -524,7 +557,9 @@
     if (!shadows.length) return null;
     log("CND", "guard: " + shadows.map(function (m) {
       return api.pos.sanOf(m, legal);
-    }).join(",") + " could also reach " + to + ", asking first");
+    }).join(",") + " could also reach " + to +
+        (c.stray ? " and \"" + c.stray + "\" was not understood" : "") +
+        ", asking first");
     return [c].concat(shadows.map(function (m) {
       return { m: m, san: api.pos.sanOf(m, legal) };
     }));

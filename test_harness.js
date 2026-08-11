@@ -3106,15 +3106,29 @@ const sleep = ms =>
   vm.runInContext("CFG.guardPawnPushes = false;", sandbox);
   say("light charlie three");
   await sleep(120);
-  check('"light" is dropped and the bare square plays the pawn',
-        /charlie 3/i.test(heard().join(" | ")) &&
-        vm.runInContext("api.lastSan", sandbox) === "c3");
+  // w115 ANSWERED THE QUESTION w114 LEFT OPEN. This asserted
+  // that the dropped word plays the bare square - c3, unasked,
+  // with the setting off - and closed with "whether such a drop
+  // should ever ASK instead is left open on purpose". The game
+  // of 11 Aug closed it: a knight also reaches c3 here, exactly
+  // as a bishop also reached the c4 that game lost, so the
+  // question is now asked. The drop's trace in the log, which
+  // is what w114 shipped, is unchanged.
+  const lightAsk = heard().join(" | ");
+  check('"light" is dropped and the bare square is ASKED about (' +
+        lightAsk + ")",
+        /did you mean charlie 3/i.test(lightAsk) &&
+        vm.runInContext("api.lastSan", sandbox) !== "c3");
   check("and the drop leaves a trace in the log",
         vm.runInContext(`
           LOG.some(function (l) {
             return l.indexOf('near-miss "light" dropped: could be') >= 0;
           })
         `, sandbox));
+  say("yes");
+  await sleep(120);
+  check("and yes still plays the pawn push it was asked about",
+        vm.runInContext("api.lastSan", sandbox) === "c3");
   vm.runInContext("CFG.guardPawnPushes = true;", sandbox);
 
   // ---- w114: "chili"/"chilly" are the c-file ----
@@ -3129,6 +3143,86 @@ const sleep = ms =>
   await onBoard("4k3/8/8/8/8/8/8/3QK3 w - - 0 1", "queen chili two",
                 /queen charlie 2/i,
                 '"queen chili two" plays the queen to c2');
+
+  // ==== w115: THE LOST WORD NEXT TO A BARE SQUARE ====
+  // Game of 11 Aug, 20:45:51. The owner said "bishop charlie
+  // four"; Safari returned "Patient Charlie four" and "Patient
+  // of Charlie four" - both readings, so no undamaged rival -
+  // and what played was c4, the pawn, onto the square the
+  // bishop was being sent to. Bc4 was gone for good, and the
+  // game was resigned four moves later.
+  //
+  // Two fixes, tested separately: the spelling, and the class.
+  check('"patient" parses as the bishop',
+        vm.runInContext('PIECES["patient"]', sandbox) === "b");
+  check("and it is exact-only (patients/patience/ancient stay themselves)",
+        vm.runInContext('FUZZY_EXACT_ONLY["patient"]', sandbox) === 1 &&
+        vm.runInContext('fuzzyToken("patients")', sandbox) === null &&
+        vm.runInContext('fuzzyToken("patience")', sandbox) === null &&
+        vm.runInContext('fuzzyToken("ancient")', sandbox) === null);
+
+  // The position the game was in, and it is the position that
+  // makes the test: the c-pawn CAN go to c4 and the f1 bishop
+  // CAN reach it, so the utterance decides which, exactly as
+  // it did on the device.
+  const BC4 = "rn1qkbnr/ppp2ppp/8/4p3/4P3/5Q2/PPP2PPP/RNB1KB1R w KQkq - 0 6";
+  await onBoard(BC4, "patient charlie four", /bishop charlie 4/i,
+                '"patient charlie four" is the bishop, not the c-pawn');
+  await onBoard(BC4, "patient of charlie four", /bishop charlie 4/i,
+                'and so is the second reading, "patient of charlie four"');
+
+  // THE CLASS, not the word. Any word the parser cannot
+  // account for beside a bare square may have been the piece
+  // name, so the guard asks - even with the setting off, which
+  // is how the owner had it. "Relationship" is not invented:
+  // game20 (17:49) is Safari returning it for a spoken
+  // "bishop", and it is too far from anything for the fuzzy
+  // matcher to reach.
+  vm.runInContext("CFG.guardPawnPushes = false;", sandbox);
+  await setBoard(BC4);
+  say("relationship charlie four");
+  await sleep(120);
+  const strayAsk = heard().join(" | ");
+  check("a lost word beside a bare square asks, setting off (" +
+        strayAsk + ")",
+        /did you mean charlie 4/i.test(strayAsk) &&
+        vm.runInContext("api.lastSan", sandbox) !== "c4");
+  check("and the log names the word it could not place",
+        vm.runInContext(`
+          LOG.some(function (l) {
+            return l.indexOf('"relationship" was not understood') >= 0;
+          })
+        `, sandbox));
+  say("bishop");
+  await sleep(120);
+  check("and one word finishes it as the bishop",
+        vm.runInContext("api.lastSan", sandbox) === "Bc4");
+
+  // OFF STILL MEANS OFF for a reading with nothing missing
+  // from it, which is nearly every bare push. This is the
+  // whole reason the stray word has to be tracked rather than
+  // the setting simply overridden.
+  await setBoard(BC4);
+  say("charlie four");
+  await sleep(120);
+  check("a clean bare square still plays at once with the setting off",
+        vm.runInContext("api.lastSan", sandbox) === "c4");
+  // A command word is accounted for, so it is not a lost word:
+  // "yeah charlie four" is not a damaged reading.
+  await setBoard(BC4);
+  say("yeah charlie four");
+  await sleep(120);
+  check("nor does a stray command word count as one",
+        vm.runInContext("api.lastSan", sandbox) === "c4");
+  // And where no piece could have been meant there is nothing
+  // to ask about, lost word or not: the guard's own condition
+  // is unchanged.
+  await setBoard("k7/8/8/8/8/8/2P5/K7 w - - 0 1");
+  say("relationship charlie four");
+  await sleep(120);
+  check("with no piece able to reach it, a lost word plays anyway",
+        vm.runInContext("api.lastSan", sandbox) === "c4");
+  vm.runInContext("CFG.guardPawnPushes = true;", sandbox);
 
   // ---- w65: "rugby" and "rug" are rooks (game w64-1) ----
   // "Rook b8" fused into "Rugby" and "Rugby eight" - BOTH
