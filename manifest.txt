@@ -24,7 +24,6 @@ parsing.js
 matching.js
 dialogue.js
 practice.js
-repairs.js
 speech-out.js
 chimes.js
 mic.js

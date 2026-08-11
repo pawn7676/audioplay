@@ -1,103 +1,42 @@
   /*=========================== DIALOGUE ===========================\
    *
    *  WHAT THIS FILE IS. Everything between "some words arrived"
-   *  and "a move was sent, or a question was asked". matching.js
-   *  decides which moves a sentence COULD mean; this decides
-   *  what to do about it - play it, ask about it, repair it, or
-   *  refuse it - and it is the file that owes the user a
-   *  sentence on every path out.
+   *  and "a move was sent, or a sentence was spoken". matching.js
+   *  reduces the readings to at most one legal move; this decides
+   *  what to do about it - play it, or say "Say again." - and it
+   *  is the file that owes the user a sentence on every path out.
    *
-   *  It had no header at all until w54, which is the only file
-   *  of this size that did. The reasoning was all here, but as
-   *  fifty local comments with no map over them, so the shape
-   *  of the thing had to be reconstructed by reading it end to
-   *  end. This is the map.
+   *  IT WAS 1,270 LINES THE DAY BEFORE w118, and its size WAS
+   *  the old grammar: four kinds of open question, a repair
+   *  chain, a candidate walk, a piece prompt, a partial prompt -
+   *  all machinery for finishing sentences the mic had half
+   *  delivered. The four-item grammar (parsing.js) does not
+   *  allow half a sentence, so the machinery went with the
+   *  hazard it managed. What survives is the one question that
+   *  is not a move (resign/draw/claim, yes or no), the busy
+   *  guard, the post pipeline, and the chime.
    *
-   *  THE FOUR QUESTIONS IT CAN HAVE OPEN, and they are the
-   *  file's real state:
-   *    pending     - a walk through candidate moves, yes/no
-   *    confirmAction - a yes/no on resign, draw, takeback
-   *    pieceAsk    - "no pawn can go there, say queen or rook"
-   *    partialAsk  - half a move heard, "say the rank"
-   *  The last two carry the ply they were asked at, so they
-   *  expire when the position moves on. None of them may
-   *  outlive their GAME - see clearDialogue, and w50, which is
-   *  what happens when they do.
-   *
-   *  THE ORDER OF handleTranscripts IS LOAD-BEARING, and every
-   *  step of it was paid for: memo first (a memo naming a move
-   *  must never be played), then an open question's answer,
-   *  then commands, then moves, then the repair chain. Moving
-   *  any of these changes the grammar.
+   *  THE ORDER OF handleTranscripts IS STILL LOAD-BEARING:
+   *  memo first (a memo naming a move must never be played),
+   *  then the open yes/no, then commands, then the move.
    *
    *  SILENCE IS NOT AN ANSWER (constraint 5, header.js). Every
-   *  path out of here speaks, including the refusals, the
-   *  busy path and the failures. Two deliberate exceptions are
-   *  documented where they live: stray talk on the opponent's
-   *  clock, and a filler-only utterance. (A third joined them
-   *  at w100: bare "clock"/"time" is stray talk now, not a
-   *  command - the overlay's large digits answer that question
-   *  and the words are too common near an open mic.)
+   *  path out of here speaks or chimes, except the two
+   *  deliberate exceptions documented where they live: stray
+   *  talk with no square in it, and yes/no/cancel with nothing
+   *  open.
    *
-   *  THE REPAIR CHAIN is an ordered list of named repairs, each
-   *  stating its own constraint, tried in order until one can
-   *  ask something answerable. A repair may be fired by a RIVAL
-   *  transcription, but then it may only ask, never play (w49).
-   *
-   *  This file has grown three jobs - the dialogue proper,
-   *  practice mode, and the repair chain - and the review that
-   *  produced w50 to w54 recommends splitting the last two out.
-   *  That is deliberately NOT done yet: it is pure motion, and
-   *  pure motion belongs on its own, after the behaviour has
-   *  settled.
+   *  "Say again." IS THE WHOLE REFUSAL, verbatim, for
+   *  everything that is not a clean legal four-item move
+   *  (owner's decision, w118). The previous grammar's refusals
+   *  read the hearing back ("I heard queen takes...") so a
+   *  mishearing could be told from a bad move - worth it when
+   *  a question hung on the answer, all talk now that nothing
+   *  is ever asked. The log still carries what was heard, for
+   *  afterwards; the room gets three words.
    *================================================================*/
 
-  var pending = null;        // { cands: [{m,san}], idx }
   var confirmAction = null;  // key into CONFIRMS
-
-  // THE PIECE QUESTION IS ANSWERABLE (v92). When a bare
-  // square can only be reached by a piece, this file says
-  // so and names the pieces — "no pawn can go there. say
-  // queen, king or bishop." Through v91 that question had
-  // nowhere to land: the branch spoke and returned, so the
-  // square was gone, and the one-word answer arrived as a
-  // request with no square at all. reqIsEmpty counts that
-  // as nothing heard, so game11 answered "Bishop" exactly
-  // as asked and got "Say again."
-  // CONFIRMED in practice: "echo two" after 1.e4 raises the
-  // question, and "Night" plays Ne2 with no yes/no. That
-  // position is the standing test — e2 is unreachable by
-  // any pawn and reachable by three pieces.
-  // A prompt must be able to receive its own answer.
-  // The square is kept here with the ply it was asked at,
-  // so it expires by itself the moment the position moves
-  // on and no clearing is needed anywhere else.
-  var pieceAsk = null;       // { moves, ply, capture, sq }
-
-  // HALF A MOVE IS KEPT AS A QUESTION (v117). When the mic
-  // delivers a recognisable half - "queen alpha" with the
-  // rank eaten, "queen takes" with the target eaten - and
-  // MORE than one move fits, re-saying the whole move
-  // wastes the half that arrived. The half is stored here
-  // with the ply it was heard at, exactly as pieceAsk keeps
-  // its square, and the prompt asks for ONLY the missing
-  // part: "say the rank", "say the target". The answer
-  // completes the move; both halves came from the user, so
-  // a unique fit is accepted the v92 way. Ply-guarded, so
-  // it expires by itself when the position moves on.
-  //
-  // "BOTH HALVES CAME FROM THE USER" IS ALMOST TRUE (w54).
-  // Since w49 a repair may also be raised by a RIVAL reading -
-  // one the mic ranked second - and in that case the first
-  // half came from a guess, not from the user. The question
-  // is still the whole safeguard: the rival reading may only
-  // ASK, so nothing plays until the user has answered, and the
-  // answer is unambiguously theirs. The claim is left standing
-  // because it says what matters - a completed move has been
-  // confirmed by the person - but it is not literally the
-  // provenance of both halves, and the difference is worth
-  // knowing before widening this again.
-  var partialAsk = null;     // { req, want, chk, mate, ply }
 
   var CONFIRMS = {
     resign:        { yes: "resign", yesSay: "resigning.",
@@ -116,89 +55,51 @@
     claimvictory:  { yes: "claim-victory", yesSay: "claiming the win.",
                      no: null, noSay: "waiting." }
   };
-  /* (repairMayPlay stood here from w49 to w115, carrying the
-   * rule that a repair fired by a RIVAL reading may only ask,
-   * never play - game w47-1's "Pond takes" would otherwise
-   * have played off Safari's second guess. w116 subsumed it:
-   * NOTHING plays without asking now, whichever reading it
-   * came from, so the distinction the flag guarded has no
-   * second side left. The w49 rule is not repealed - it is
-   * enforced everywhere, which is why the flag could go.) */
+
   var busy = false;
 
-  /* NO QUESTION OUTLIVES THE GAME IT WAS ASKED IN (w50).
-   *
-   * There are four dialogue states and, until now, no single
-   * place that put them down. The two ply-guarded ones expire
-   * by themselves WHILE a game runs - that is what the ply is
-   * for - but joinGame resets api.moves to empty, so a question
-   * asked at ply 0 of one game is still "current" at ply 0 of
-   * the next. The two yes/no states had no expiry at all.
-   *
-   * The bad case is not hypothetical and it is not small: ask
-   * "resign", get "Resign the game? Yes or no.", have the
-   * opponent mate you or flag you before you answer, let the
-   * next game auto-join off the event stream - and the first
-   * "yes" of the new game resigns it. Nothing in the old code
-   * stood between those two events.
-   *
+  /* NO QUESTION OUTLIVES THE GAME IT WAS ASKED IN (w50). The
+   * bad case is not hypothetical: ask "resign", get "Resign
+   * the game? Yes or no.", have the opponent mate you before
+   * you answer, let the next game auto-join off the event
+   * stream - and the first "yes" of the new game resigns it.
    * Called from everywhere a game begins or ends: joinGame,
    * the game-over branch, practice on and off, voice off. The
-   * armed read-back goes with them, since it refers to a move
-   * posted in a game that is no longer the current one.
+   * armed read-back goes too, since it refers to a move posted
+   * in a game that is no longer the current one. (Four kinds
+   * of question stood here until w118; the move questions died
+   * with the grammar that needed them.)
    */
   function clearDialogue() {
-    pending = null;
     confirmAction = null;
-    pieceAsk = null;
-    partialAsk = null;
     armedUci = null;
   }
 
-  // (readBackMineNow and speakOpponentNow stood here from
-  // v124 to w110, routing per-mode switches; w110 folded
-  // them into one CFG.confirmMine, and w116 retired that
-  // too - the pre-move question is the read-back now, and
-  // what follows a yes is confirmFeedback, unswitched. The
-  // opponent's move is always spoken, as ever.)
-
-  // THE READ-BACK BELONGS TO WHICHEVER EVENT ARRIVES FIRST
-  // (v134). Two things confirm a move we posted - the
-  // stream carrying our own uci back, and the 200 - and
-  // they arrive in either order within the same second (see
-  // the note in acceptMove). Hanging the read-back on the
-  // 200 alone meant that when the stream won AND the
-  // opponent replied instantly, their move was announced
-  // first: game24 14:18:58 said "black charlie 5" before
-  // "white echo 4", an answer before the question.
-  //
-  // armedUci is set by acceptMove to the move we sent, and
-  // the first caller to match it takes it. The loser finds
-  // it null and says nothing, so nothing is doubled and
-  // nothing depends on who won.
+  // THE CONFIRMATION BELONGS TO WHICHEVER EVENT ARRIVES FIRST
+  // (v134). Two things confirm a move we posted - the stream
+  // carrying our own uci back, and the 200 - and they arrive
+  // in either order within the same second. armedUci is set by
+  // acceptMove to the move we sent, and the first caller to
+  // match it takes it. The loser finds it null and says
+  // nothing, so nothing is doubled and nothing depends on who
+  // won.
   //
   // ONLY A MOVE WE POSTED IS ARMED. A move made by hand on
   // the Lichess board arrives through the same syncMoves
   // path with no arm behind it and stays unspoken, as it
   // always has been. A TAPPED move (w86) is posted by us and
   // still not armed, on purpose: two taps prove the eyes are
-  // on the screen, where the piece appearing is the answer,
-  // and in the time scramble the feature exists for, speech
-  // would talk over the next tap.
+  // on the screen, where the piece appearing is the answer.
   var armedUci = null;
 
-  // (w108 hung a `confirmed` flag beside the arm and chimed
-  // only for yes-answered moves; w112 removed it. w116 needs
-  // no flag at all: every armed move IS a yes-answered move
-  // now, because no voice move posts without its question,
-  // and a tapped move was never armed.)
-
-  // The post-yes feedback (w108 shape, w116 job): the chime
-  // when it can be scheduled, a spoken "okay." when it
-  // cannot (rule 5 - never silence). The color word rides
-  // along so clock mode's message gate treats the fallback
-  // as the move confirmation it is, not as a message for
-  // the strip.
+  // The post-move feedback (w108 shape; the whole own-move
+  // channel since w116): the chime when it can be scheduled, a
+  // spoken "okay." when it cannot (rule 5 - never silence).
+  // Under the w118 grammar the chime confirms a move the user
+  // spoke WHOLE - all four items - so the one bit it carries
+  // is the bit that is owed: heard exactly, legal, played. The
+  // color word rides along so clock mode's message gate treats
+  // the fallback as the move confirmation it is.
   function confirmFeedback() {
     if (playConfirmChime()) return;
     speak("okay.", colorWord(api.myColor || "w"));
@@ -206,54 +107,42 @@
 
   // announce=false is a catch-up replay (reconnect,
   // takeback rebuild): it still DISARMS - that move is
-  // history now and must not be read back when some later
+  // history now and must not be confirmed when some later
   // event happens to match - but speaks nothing.
   function readBackMine(san, uci, announce) {
     if (!armedUci || armedUci !== uci) return;
     armedUci = null;
     if (!announce) return;
-    // v104's rule, moved here whole: a SAN ending in # ends
-    // the game whoever gets there first, and the result
-    // line says it better than a read-back can. api.over
-    // alone was not enough then and is not now.
+    // v104's rule: a SAN ending in # ends the game whoever
+    // gets there first, and the result line says it better
+    // than a confirmation can. api.over alone was not enough
+    // then and is not now.
     if (api.over || /#$/.test(san)) return;
-    // THE MOVE IS NOT REPEATED AFTER A YES (w116, owner's
-    // order). The question already spoke it; what is owed
-    // here is one bit - your yes landed - and that is the
-    // chime, or its spoken fallback. (CFG.confirmMine died
-    // with this: there is nothing left for it to switch.)
     confirmFeedback();
   }
 
-  /* quiet=true is a tapped move (touch.js): no read-back, no
-   * arming - but every ERROR below still speaks, because a
+  /* quiet=true is a tapped move (touch.js): no confirmation,
+   * no arming - but every ERROR below still speaks, because a
    * failure must be heard whichever way the move went in.
    *
-   * SINCE w116 THE ONLY OTHER CALLER IS THE YES (and the
-   * phantom-yes stray-talk hazard that entails is bounded by
-   * the same fact: the move a stray yes can play is one that
-   * was read aloud two seconds earlier). Every voice path
-   * that used to call this directly now goes through
-   * confirmMove below and arrives here carrying the user's
-   * answer. If a new path ever wants to call this without a
-   * question standing behind it, that is the game-of-11-Aug
-   * conversation to have again, and the answer is no. */
+   * SINCE w118 THE ONLY OTHER CALLER IS THE FOUR-ITEM MATCH in
+   * handleTranscripts: a reading that reduced to exactly one
+   * legal move, spoken whole by the user. Nothing arrives here
+   * inferred, repaired, or picked from a list - that machinery
+   * is gone, and if a new path ever wants in without the whole
+   * move behind it, that is the 11-Aug conversation to have
+   * again, and the answer is no. */
   function acceptMove(c, quiet) {
     if (busy) {
       // SILENCE IS NOT AN ANSWER, not even for "I am still
-      // working on the last one" (w50). This logged and
-      // returned, so a move dictated while the previous post
-      // was still in flight produced nothing at all - and
-      // nothing is the same sound as not heard, which is an
-      // invitation to say it again and to keep saying it. It
-      // is a short window normally; it was an unbounded one
-      // until postMove grew a timeout.
+      // working on the last one" (w50). It is a short window
+      // normally; it was an unbounded one until postMove grew
+      // a timeout.
       log("DLG", "ignored, busy");
       speak("still sending the last move.");
       return;
     }
     busy = true;
-    pending = null;
     var uci = api.pos.uciOf(c.m);
 
     if (dryRun) {
@@ -264,16 +153,11 @@
       log("DRY", "you play " + uci + " = " + c.san + " (not sent)");
       // same one-bit feedback as the live path, so practice
       // is where the chime can be heard without a game at
-      // stake (the w108 trial's own test bench)
+      // stake
       if (!quiet) confirmFeedback();
-      // CALLED BY NAME, NOT BY REFERENCE (w54). Passing the
-      // function itself captures whatever it is bound to RIGHT
-      // NOW, so a reply already in flight could not be called
-      // off - the harness stubs dryOpponentReply out and the
-      // scheduled one ran the original anyway, which is why it
-      // then had to sleep 1.7 seconds to absorb it, once, in
-      // the middle of the suite. Late binding costs nothing and
-      // means the current definition is the one that runs.
+      // CALLED BY NAME, NOT BY REFERENCE (w54): late binding
+      // costs nothing and means the current definition is the
+      // one that runs.
       setTimeout(function () { dryOpponentReply(); }, 1600);
       return;
     }
@@ -284,50 +168,20 @@
       var ok = r.status === 200 && r.body && r.body.ok !== false && !r.body.error;
       log("PST", uci + " -> " + r.status + " " + JSON.stringify(r.body).slice(0, 120));
       if (ok) {
-        // THIS RESOLVES LATE. The gameState event for
-        // the same move usually arrives before this promise
-        // does — on the mating move, always — so the clear
-        // below can land after something more important has
-        // already been written. It must never stomp it.
-        // The same lateness is why api.over silences the
-        // read-back: on the mating move game13 heard
-        // "checkmate. white wins." and THEN "queen takes
-        // golf 7, checkmate", learning the result before
-        // the move that caused it and hearing checkmate
-        // twice. Once the game is over the read-back has
-        // nothing left to confirm — the result confirms it.
-        // CONFIRMED: a one-move mate played on purpose, the
-        // 200 landing after the game-over line exactly as
-        // before, and nothing spoken after "checkmate.
-        // white wins."
-        //
-        // api.over ALONE WAS NOT ENOUGH (v104). It is only
-        // true here when the stream won the race; game15
-        // had the 200 come back FIRST, so the flag was
-        // still false and the read-back went out ahead of
-        // the result — "rook delta 8, checkmate. checkmate.
-        // white wins." Both orderings happen within the
-        // same second and neither can be predicted. The SAN
-        // itself is the signal that does not race: a move
-        // ending in # ENDS THE GAME, whoever gets there
-        // first, so it is never read back at all. Both
-        // rules now live in readBackMine, which this branch
-        // and the stream both call; whichever got here
-        // first speaks, the other finds it disarmed.
+        // THIS RESOLVES LATE. The gameState event for the same
+        // move usually arrives before this promise does - on
+        // the mating move, always - so whichever got here first
+        // confirms, the other finds it disarmed (v134, v104:
+        // see readBackMine).
         readBackMine(c.san, uci, true);
       } else {
-        armedUci = null;     /* rejected: nothing to read back */
+        armedUci = null;     /* rejected: nothing to confirm */
         // A DEAD TOKEN IS NOT A BAD MOVE (w60). Mid-game
         // revocation used to speak "Lichess rejected that
         // move. error 401" per move - true words, wrong
         // diagnosis, and the one useful instruction (sign in
-        // again) never said. noteAuthFailure says it once and
-        // stops the retrying that cannot work.
+        // again) never said.
         if (r.status === 401 || r.status === 403) {
-          // noteAuthFailure speaks the full sentence ONCE; a
-          // silent true on later calls would leave this move
-          // answered with nothing, so the repeat case gets a
-          // short answer of its own.
           var firstAuthFail = !authGone;
           noteAuthFailure(new Error("move HTTP " + r.status));
           if (!firstAuthFail) speak("still signed out. sign in again.");
@@ -362,9 +216,7 @@
       // these paths in ordinary play - resign in the abortable
       // phase, a takeback the opponent just withdrew, a draw
       // offer that expired - and this spoke "resigning." over
-      // every one of them. A refused token routes through the
-      // same sentence the streams use, instead of pretending
-      // the action happened.
+      // every one of them.
       if (r.status === 401 || r.status === 403) {
         var firstFail = !authGone;
         noteAuthFailure(new Error("action HTTP " + r.status));
@@ -386,406 +238,9 @@
     });
   }
 
-  /* EVERY VOICE MOVE GOES THROUGH HERE (w116). One question,
-   * however the move arrived - parsed whole, repaired,
-   * assembled from a piece answer - and nothing posts until
-   * the user answers it. Not a setting, not a guard with
-   * exemptions: the game of 11 Aug played a silent wrong
-   * pawn out of a doubly-damaged hearing, and the owner's
-   * verdict was that a system that can do that once cannot
-   * be trusted to decide when to ask. The cost is one word
-   * per move, priced in and accepted.
-   *
-   * The named exemption is the TAP (touch.js): two taps
-   * prove the eyes are on the screen, and fingers are not
-   * subject to mishearing.
-   */
-  function confirmMove(cands) {
-    pending = { cands: cands, idx: 0 };
-    askCandidate();
-  }
-
-  function askCandidate() {
-    if (!pending || pending.idx >= pending.cands.length) {
-      // "no" to a one-entry list deserves the truth: there
-      // was nothing else it could have been. Game7 rejected
-      // a correct Qxf7 repair expecting to hear
-      // alternatives, and "no more options" read as a
-      // malfunction rather than the answer.
-      var lone = pending && pending.cands.length === 1;
-      pending = null;
-      speak(lone
-        ? "That was the only legal move fitting what I " +
-          "heard. Say the whole move again."
-        : "No more options. Say the whole move again.");
-      return;
-    }
-    var c = pending.cands[pending.idx];
-    // The piece-answer shortcut (v116) still works on every
-    // question - "knight" jumps the walk, see the
-    // piece-answer branch in handleTranscripts - but the
-    // question no longer SAYS so. v116 advertised it once
-    // per mixed list ("? Yes, no, or name the piece"), and
-    // the owner cut the advertisement at w109 as too much
-    // talk: the shortcut is his own habit now, and a
-    // standing offer restated every mixed ask was airtime
-    // spent on nothing new. Game20's lesson (pawn-no,
-    // queen-no, knight-yes) lives in the CAPABILITY, which
-    // stays.
-    //
-    // "Did you mean" went at w116, when this became every
-    // move's question rather than the doubtful ones': three
-    // words times every move of every game is real airtime,
-    // and the rising "?" carries the asking by itself.
-    speak(sanToSpeech(c.san) + "?");
-  }
-
-
-  // The moves matching a one-word answer to an outstanding
-  // piece question, or null if this is not one (v92). A
-  // named PAWN is never an answer: the question is only
-  // ever asked because no pawn can reach the square.
-  // Is a piece question outstanding, and is this utterance
-  // shaped like an answer to it — a piece and nothing else?
-  function pieceAskOpen(req) {
-    if (!pieceAsk || !api.pos) return false;
-    if (pieceAsk.ply !== api.moves.length) return false;
-    if (req.squares.length || req.castle) return false;
-    // "A PIECE AND NOTHING ELSE" HAS TO MEAN IT (w51). The
-    // comment above said that and the code excluded only
-    // squares and castling, so a capture word, a named victim
-    // or a trailing piece all sailed through. With a push
-    // question open ("no pawn can go there. say queen, king or
-    // bishop.") an unrelated "queen takes rook" that finds no
-    // move of its own reached here FIRST - handleTranscripts
-    // tries the answer before the move - and was swallowed as
-    // the one-word answer "queen", offering, or with confirm
-    // off PLAYING, a quiet queen move nobody asked for. An
-    // answer is a word; this is a sentence.
-    if (req.capture && !pieceAsk.capture) return false;
-    if (req.victim || req.trailingPiece) return false;
-    // a capture question can also be answered with a FILE,
-    // because that is how it offers its pawn options
-    // ("echo takes delta 5" -> "echo"). A bare file lands in
-    // fromFile, as game13's "Rock Charli" showed.
-    if (pieceAsk.capture && req.fromFile && !req.fromRank) return true;
-    return !!req.piece;
-  }
-
-  // What the user just named, in the words the question
-  // used: a piece name, or a file for a pawn capture.
-  function pieceAskNamed(req) {
-    if (req.piece) return PIECE_NAME[req.piece];
-    if (req.fromFile) {
-      return (SPOKEN_FILE[req.fromFile] || req.fromFile) + " pawn";
-    }
-    return "that";
-  }
-
-  // ...and can that piece actually go there. Null covers
-  // both "not an answer" and "wrong piece"; the caller
-  // separates them with pieceAskOpen.
-  //
-  // A NAMED PAWN USED TO BE REFUSED OUTRIGHT, on the grounds
-  // that "the question exists because no pawn can" - which was
-  // true of the only question that existed when that was
-  // written (v92's "no pawn can go there. say queen, king or
-  // bishop"). w43 gave askPiece a second job: asking WHICH
-  // piece captures, where the options routinely include pawns,
-  // offered by their file because that is how a pawn capture is
-  // spoken. Game w44-1 at 17:50:11 answered such a question
-  // with "pawn" - two of the three options were pawn captures -
-  // and was told "no pawn can take there", which was both false
-  // and a dead end.
-  //
-  // So a named pawn narrows to the pawn moves on offer, the
-  // same way naming any other piece does. One pawn move left
-  // plays it; several walk the ordinary yes/no, which names
-  // each capture in full - "did you mean charlie takes delta
-  // 6?" - so the files still reach the ear.
-  function pieceAskAnswer(req) {
-    if (!pieceAskOpen(req)) return null;
-    var ms;
-    if (req.piece === "p") {
-      ms = pieceAsk.moves.filter(function (m) { return m.piece === "p"; });
-    } else if (req.piece) {
-      ms = pieceAsk.moves.filter(function (m) {
-        return m.piece === req.piece;
-      });
-    } else if (pieceAsk.capture && req.fromFile) {
-      // a file answers for the pawn that stands on it
-      ms = pieceAsk.moves.filter(function (m) {
-        return m.piece === "p" &&
-               RULES.sqName(m.from)[0] === req.fromFile;
-      });
-    } else return null;
-    return ms.length ? ms : null;
-  }
-
-  // THE QUESTION AND ITS RE-ASK IN ONE PLACE (v96), so the
-  // two wordings cannot drift apart and both leave the same
-  // state behind. Answering with a piece that cannot reach
-  // the square used to fall through to "I didn't catch a
-  // move", which is a lie — "Rook" was caught exactly, it
-  // simply does not fit — and it dropped the question on
-  // the floor, so the user was left re-saying a whole move
-  // to a script that had just asked them a question.
-  // CONFIRMED in practice from the e2 position: "Rook"
-  // twice in a row re-asked twice and left the question
-  // standing, then "King" played Ke2. Worth knowing when
-  // reading these logs — Safari hears "Rock", so HRD shows
-  // that while PRS shows the r it parsed to. The rook was
-  // always recognised; it simply cannot reach e2, which is
-  // exactly why that square is the test.
-  function askPiece(moves, lead, sq) {
-    var seen = {}, list = [];
-    moves.forEach(function (m) {
-      var w;
-      if (sq && m.piece === "p") {
-        var f = RULES.sqName(m.from)[0];
-        w = SPOKEN_FILE[f] || f;
-      } else w = PIECE_NAME[m.piece];
-      if (seen[w]) return;
-      seen[w] = 1;
-      list.push(sq ? w + " takes " + spokenSquare(sq) : w);
-    });
-    pieceAsk = { moves: moves, ply: api.moves.length,
-                 capture: !!sq, sq: sq || null };
-    // ", or " not " or ": splitForSpeech gives a comma
-    // GAP_CLAUSE_MS, and the boundary between the options
-    // is where a pause helps most
-    speak(lead + " say " +
-      (list.length === 1 ? list[0]
-                         : list.slice(0, -1).join(", ") + ", or " +
-                           list[list.length - 1]) + ".");
-  }
-
-  /* ONE PLACE DECIDES PLAY OR ASK, AND ONE NARROWS BY CHECK.
-   *
-   * Six repairs carried a copy of each. The play-or-ask copy was
-   * always the same three lines - one candidate and confirmation
-   * off means play it, anything else asks - re-decided six times,
-   * each with its own log line saying the same thing in slightly
-   * different words. The check/mate copy was five lines, pasted
-   * verbatim; the w40 origin repair got its copy by pasting the
-   * w116 one, which is how a seventh would have arrived.
-   *
-   * Nothing behavioural changes here. The point is that the rule
-   * for when a move may be played WITHOUT being confirmed is the
-   * most consequential rule in this file - game6 was that rule
-   * getting it wrong once - and a rule worth that much should be
-   * readable in one place rather than reconstructed from six.
-   *
-   * The one caller NOT folded in is the main candidate path,
-   * which runs bareGuardCands first: that guard exists precisely
-   * because an ordinary reading is the one shape a misheard piece
-   * name can slip through, and the repairs below have already
-   * counted over every legal move landing where they are looking.
-   * Different decision, kept separate.
-   */
-  /* MOVES BECOME CANDIDATES IN ONE PLACE, and the promotion
-   * variants collapse on the way.
-   *
-   * Game w46-1, 19:19:24: answering "pawn" to a half-square
-   * question offered bxa4 and then bxa8 FOUR TIMES over -
-   * queen, rook, bishop, knight - so five questions stood
-   * between the owner and two moves he could name. findMoves
-   * has collapsed promotions since long before today, but six
-   * repair sites each built their own candidate list and none
-   * of them did.
-   *
-   * THE TRADEOFF, and it is a real one: underpromotion is no
-   * longer reachable by saying "no" four times. It is reachable
-   * the way the grammar has always offered it, by naming the
-   * piece - "echo takes delta 8 equals rook" - which the owner
-   * already says fluently. Four questions to reach a rook, on
-   * every promotion, to keep a path that duplicates a phrase
-   * that already works, is the wrong side of that trade. If a
-   * game ever wants the old behaviour back this is the comment
-   * to argue with.
-   */
-  function candidatesOf(moves, req) {
-    var want = (req && req.trailingPiece && req.trailingPiece !== "p")
-             ? req.trailingPiece : "q";
-    var at = {}, kept = [];
-    moves.forEach(function (m) {
-      if (!m.promotion) { kept.push(m); return; }
-      var key = RULES.sqName(m.from) + RULES.sqName(m.to);
-      if (!(key in at)) { at[key] = kept.length; kept.push(m); return; }
-      // same pawn, same square, different piece: keep whichever
-      // was asked for, in the position the first one held
-      if (m.promotion === want) kept[at[key]] = m;
-    });
-    var legal = api.pos.legalMoves();
-    return kept.map(function (m) {
-      return { m: m, san: api.pos.sanOf(m, legal) };
-    });
-  }
-
-  /* NAMING SEVERAL MOVES FROM ONE POSITION (w53). sanOf
-   * regenerates the legal move list whenever it is not handed
-   * one - it needs it for disambiguation - so a map or filter
-   * that names N moves generated the list N times, from a
-   * position that cannot have changed inside the loop. Every
-   * such place now generates it once and passes it down. */
-  function sansOf(moves) {
-    var legal = api.pos.legalMoves();
-    return moves.map(function (m) { return api.pos.sanOf(m, legal); });
-  }
-
-  function offer(cands, label) {
-    if (label) {
-      log("CND", label + ": " +
-          cands.map(function (c) { return c.san; }).join(",") +
-          (cands.length === 1 ? " fits, asking" : " fit, asking"));
-    }
-    // a lone fit used to play here when the primary reading
-    // produced it (repairMayPlay); since w116 a repaired or
-    // assembled move asks like every other
-    confirmMove(cands);
-  }
-
-  /* A spoken check word narrows the fits to checks, "mate"
-   * narrows further to mates - but only when something survives,
-   * so a misheard check word can never empty the list. */
-  /* SAYING "CHECK" OR "MATE" NARROWS A LIST, and there was one
-   * copy of that per SHAPE of list (w57): this one over
-   * candidates, which carry their san, and a second inside
-   * partialAnswer over raw moves, which have to be named
-   * first. Ten lines each, the same ten lines, in two places
-   * that would be edited for different reasons - and check and
-   * mate are the two words in this grammar that describe the
-   * position AFTER a move rather than the move, so they are
-   * exactly the kind of thing whose handling should not fork.
-   *
-   * One rule, given a way to name whatever it is filtering.
-   * Neither caller's behaviour changes: chk and mate stay the
-   * callers' to decide, because partialAnswer also honours a
-   * check that was said in the EARLIER half of the utterance
-   * (partialAsk.chk), and this one does not have one.
-   */
-  function narrowByCheck(list, sanOf, chk, mate) {
-    if (chk) {
-      var c = list.filter(function (x) { return /[+#]$/.test(sanOf(x)); });
-      if (c.length) list = c;
-    }
-    if (mate) {
-      var m = list.filter(function (x) { return sanOf(x).slice(-1) === "#"; });
-      if (m.length) list = m;
-    }
-    return list;
-  }
-
-  function narrowBySaid(cands, transcripts) {
-    return narrowByCheck(cands, function (c) { return c.san; },
-                         transcripts.some(saysCheck),
-                         transcripts.some(saysMate));
-  }
-
   function repeatLast() {
     speak(api.lastSan ? "Last move: " + sanToSpeech(api.lastSan)
                       : "No move to repeat yet.");
-  }
-
-  // THE v122 HOLD-AND-RECOVER MACHINERY STOOD HERE -
-  // heldAlts, spokenRecent, isEchoOf, flushHeard - and was
-  // deleted at v132 with the gate it served: the mic never
-  // receives our own voice (AEC, see the platform finding),
-  // so nothing needs holding, testing, or recovering.
-
-  // The targeted question for a half-heard move (v117).
-  // Speaks back what WAS heard, then asks for only the
-  // missing part, and leaves the state open to receive it.
-  // chk and mate remember whether the original utterance
-  // said check or mate, so the answer inherits the
-  // narrowing ("queen alpha checkmate" answered with "8"
-  // still prefers the mating move).
-  // WHAT WAS ACTUALLY HEARD, IN THE WORDS IT WAS HEARD IN.
-  //
-  // "I heard ..." is a claim about the user, not about the
-  // board, and it has to be true or it is worse than saying
-  // nothing: the owner is standing away from the screen with
-  // this sentence as his only evidence of what landed. w42
-  // wrote that rule down here after "I heard undefined
-  // charlie" - and w43 then broke it in askPiece one commit
-  // later, telling game w43-1 "I heard takes delta 5" when
-  // what was said was "takes delta". The 5 was deduced from
-  // the board. Right move, false sentence, and the owner
-  // caught it immediately.
-  //
-  // So the rule gets one implementation instead of being
-  // restated in each place that needs it. Anything DEDUCED
-  // belongs in the options that follow, never in the lead -
-  // askPiece names the whole move in each option, so the
-  // square still reaches the ear, as something offered
-  // rather than something claimed.
-  function heardSoFar(req) {
-    if (req.castle) {
-      return "castle" + (req.castle === "k" ? " kingside"
-                       : req.castle === "q" ? " queenside" : "");
-    }
-    // IN THE ORDER IT WAS SPOKEN. The first version rendered
-    // piece, take word and dangling half and stopped there,
-    // because the only callers were the half-square questions
-    // and those cannot have a whole square in them. Used
-    // anywhere else it silently dropped one: "queen delta
-    // four" came back as "queen". A read-back that quietly
-    // omits half the sentence is the w44 fault from the other
-    // side - it does not claim something unsaid, it swallows
-    // something said, and either one leaves the owner unable
-    // to tell a mishearing from a bad move.
-    //
-    // takeAt is how many squares had arrived when the take
-    // word did, so it puts the halves back on the right sides
-    // of it without guessing.
-    var bits = [], i;
-    var n = req.takeAt < 0 ? req.squares.length : req.takeAt;
-    if (req.piece) bits.push(PIECE_NAME[req.piece]);
-    for (i = 0; i < n; i++) bits.push(spokenSquare(req.squares[i]));
-    if (req.fromBeforeTake) {
-      if (req.fromFile) bits.push(SPOKEN_FILE[req.fromFile] || req.fromFile);
-      if (req.fromRank) bits.push("rank " + req.fromRank);
-    }
-    if (req.capture) bits.push("takes");
-    if (req.victim) bits.push(PIECE_NAME[req.victim]);
-    for (; i < req.squares.length; i++) bits.push(spokenSquare(req.squares[i]));
-    if (!req.fromBeforeTake) {
-      if (req.fromFile) bits.push(SPOKEN_FILE[req.fromFile] || req.fromFile);
-      if (req.fromRank) bits.push("rank " + req.fromRank);
-    }
-    if (req.toFile) bits.push(SPOKEN_FILE[req.toFile] || req.toFile);
-    if (req.toRank) bits.push("rank " + req.toRank);
-    if (req.trailingPiece) bits.push(PIECE_NAME[req.trailingPiece]);
-    // LAST, BECAUSE IT IS SAID LAST (w58). "Queen check" was
-    // read back as "I heard queen" - the same w44 fault from
-    // the swallowing side, and it appeared twice in one game
-    // log while the owner was trying to find a move that the
-    // program was in fact refusing for a different reason.
-    if (req.saidMate) bits.push("checkmate");
-    else if (req.saidCheck) bits.push("check");
-    return bits.join(" ") || "that";
-  }
-
-  /* EVERY REFUSAL SAYS TWO THINGS: what was heard, and what
-   * ruled it out. Neither is usable alone, and the missing
-   * one is always the same missing one.
-   *
-   * "That's not a legal move. Say again." was the whole
-   * sentence until now, and it answers the wrong question.
-   * Standing at a board across the room, what the owner needs
-   * to know first is whether the MACHINE misheard him or
-   * whether HIS MOVE is wrong - and those want opposite next
-   * actions: say it again more clearly, or look at the board.
-   * The old sentence cannot be told apart in either case, so
-   * it was worth nothing on the one occasion it was heard.
-   * Saying the reading back settles it in three words.
-   *
-   * The same rule caught w44 (a lead claiming an unspoken
-   * rank) and w45 (a refusal blaming the file when the victim
-   * was what was missing). Third time it is a function.
-   */
-  function refuse(req, because) {
-    speak("I heard " + heardSoFar(req) + ". " + because + " Say again.");
   }
 
   function handleTranscripts(rawList) {
@@ -799,11 +254,9 @@
 
     // A verbal memo for the log. Checked before ANYTHING
     // else, because a memo that mentions a move must never
-    // be parsed as one: in game3 a note containing the word
-    // "castles" was answered "that's not a legal move", and
-    // one naming a currently legal move would have been
-    // PLAYED. Any reading may carry the memo word, see
-    // memoTranscript in parsing.js. A pending yes/no
+    // be parsed as one: in game3 a note containing a
+    // currently legal move would have been PLAYED. Any
+    // reading may carry the memo word. A pending yes/no
     // question survives a memo untouched.
     var memoText = memoTranscript(transcripts);
     if (memoText) {
@@ -812,33 +265,18 @@
       return;
     }
     // COMMANDS ARE READ FROM THE PRIMARY TRANSCRIPT ONLY, and
-    // that is a decision, not an oversight (documented at w54).
-    // answerPieceOf and memoTranscript scan every rival
-    // reading; this does not, so a "yes" that appears only in
-    // Safari's second guess is missed and the question is
-    // asked again.
-    //
-    // That is the safe direction. w49 settled what a rival
-    // reading may do - raise a question, never play a move -
-    // and a command is further from a question than a move is:
-    // "resign", "yes" and "draw" all END something, some of
-    // them a game. A missed command costs one repetition; a
-    // command invented from a reading the mic ranked second
-    // could resign a game the user is winning.
+    // that is a decision, not an oversight (documented at
+    // w54): "resign", "yes" and "draw" all END something, and
+    // a command invented from a reading the mic ranked second
+    // could resign a game the user is winning. A missed
+    // command costs one repetition.
     var cmd = classifyCommand(primary);
 
     if (confirmAction) {
       var spec = CONFIRMS[confirmAction];
-      // THE ANSWER WAITS FOR THE POST (w50). These spoke
-      // "resigning." and "draw accepted." the instant the
-      // request left, and postAction has no catch of its own,
-      // so a failed send was an unhandled rejection and the
-      // user was told a game-ending action had happened when
-      // it had not. acceptMove has said "Could not reach
-      // Lichess." on the same shape of failure since the
-      // v-series; there is no reason the yes/no path should
-      // be the one that lies. The wording is unchanged when
-      // it works.
+      // THE ANSWER WAITS FOR THE POST (w50): nothing is
+      // claimed until the send succeeds, and a failed send
+      // says so.
       if (cmd === "yes") {
         confirmAction = null;
         confirmedAction(spec.yes, spec.yesSay);
@@ -854,133 +292,29 @@
       return;
     }
 
-    if (pending) {
-      if (cmd === "yes") { acceptMove(pending.cands[pending.idx]); return; }
-      if (cmd === "no") { pending.idx++; askCandidate(); return; }
-      if (cmd === "cancel") { pending = null; speak("Cancelled. Say the move again."); return; }
-      // A PIECE NAME PICKS ITS CANDIDATE (v116). The guard
-      // used to walk its list one yes/no at a time, which
-      // cost game20 three questions on "foxtrot three":
-      // pawn? no. queen? no. knight? yes. The strict prompt
-      // has taken a one-word piece answer since v92; the
-      // same shape of question now takes the same answer.
-      // Both halves came from the user - the square from
-      // the utterance that raised the question, the piece
-      // from this one - so a UNIQUE fit used to be accepted,
-      // like the v92 path. Since w116 it is CONFIRMED
-      // instead: both halves came from the user, but neither
-      // half's HEARING has been read back whole, and an
-      // assembled move is built from the least reliably
-      // heard fragments in the system (owner's call, with
-      // last night's Qxf3 as the example - "queen takes" +
-      // "bishop", posted with the full move never spoken).
-      // The jump the shortcut buys is preserved: one word
-      // skips the walk and goes straight to the right
-      // question. Two candidates of the named piece (two
-      // knights to one square) jump the walk to the first
-      // of them and ask as before.
-      var pa = answerPieceOf(transcripts);
-      if (pa) {
-        var fits = [], firstFit = -1;
-        for (var pi = 0; pi < pending.cands.length; pi++) {
-          if (pending.cands[pi].m.piece === pa) {
-            fits.push(pending.cands[pi]);
-            if (firstFit < 0) firstFit = pi;
-          }
-        }
-        if (fits.length === 1) {
-          log("DLG", "piece answer picked " + fits[0].san + ", confirming");
-          confirmMove([fits[0]]);
-          return;
-        }
-        if (fits.length > 1) {
-          pending.idx = firstFit;
-          askCandidate();
-          return;
-        }
-        // named a piece that is not among the options: say
-        // so and re-ask, never "I didn't hear you" (v96)
-        speak("No " + PIECE_NAME[pa] + " among the options.");
-        askCandidate();
-        return;
-      }
-      // SAYING THE MOVE AGAIN REPLACES THE QUESTION, and does
-      // it by the same rules the move would get if no question
-      // were open (w51). Before that, a re-said AMBIGUOUS
-      // move was thrown away in favour of "Say yes or no.",
-      // re-asking about the OLD list while the new one went
-      // in the bin. Both shapes now go where the main path
-      // sends them. (w51's other finding - this branch
-      // ignoring confirmMyMove - died with that setting at
-      // w110.)
-      var re = collectCandidates(api.pos, transcripts);
-      if (re.length === 1) {
-        confirmMove(bareGuardCands(re[0]) || [re[0]]);
-        return;
-      }
-      if (re.length > 1) {
-        confirmMove(re);
-        return;
-      }
-      speak("Say yes or no.");
-      var c = pending.cands[pending.idx];
-      speak(sanToSpeech(c.san) + "?");
-      return;
-    }
-
     if (cmd === "repeat") { repeatLast(); return; }
     if (classifyFlipClock(primary)) { flipClockSides(); return; }
-
-    /* Questions about the position work on either side's clock */
-    var q = classifyQuery(primary);
-    if (q) { log("QRY", q.kind + " " + (q.sq || q.piece || "")); answerQuery(q); return; }
 
     if (cmd === "resign") { confirmAction = "resign";
       speak("Resign the game? Yes or no."); return; }
     if (cmd === "draw") { confirmAction = "offerdraw";
       speak("Offer a draw? Yes or no."); return; }
-    // CANCEL CLOSES A REPAIR QUESTION TOO (v136, game
-    // w25-1 at 18:42:58). The yes/no walk and the
-    // confirmations have taken "cancel" since v92, but the
-    // two REPAIR questions - askPartial's "say the rank"
-    // and askPiece's "which piece" - kept their state in
-    // partialAsk/pieceAsk and fell through to the silent
-    // return below. The owner said "cancel" twice into an
-    // open "say the rank" and heard NOTHING either time,
-    // then waited a hundred seconds before playing
-    // something else. Silence is the one answer an
-    // eyes-free user cannot read: it is indistinguishable
-    // from not being heard at all. Same words as the
-    // pending path, because it is the same act.
-    if (cmd === "cancel" && (partialAsk || pieceAsk)) {
-      partialAsk = null; pieceAsk = null;
-      log("CND", "repair question cancelled");
-      speak("Cancelled. Say the move again.");
-      return;
-    }
     // YES, NO AND CANCEL WITH NOTHING OPEN ARE SILENT, ON
     // PURPOSE (documented at w54; the behaviour is older). It
     // looks like a constraint-5 violation and it is the
-    // stray-talk exemption: the mic is open the whole game, and
-    // CANCEL_WORDS includes "stop" and "forget", which land in
-    // ordinary speech at the board more often than as commands.
-    // Answering every one of them with "nothing to cancel"
-    // would be flat, repeated speech that carries no
-    // information - the exact thing the sound arc ended by
-    // deleting (see the chimes tombstone).
-    //
-    // The trade is only safe because it is narrow: a cancel
-    // that has something to cancel always speaks, four lines
-    // up and in the pending path, and those are the cases the
-    // user is actually waiting on an answer for.
+    // stray-talk exemption: the mic is open the whole game,
+    // and CANCEL_WORDS includes "stop" and "forget", which
+    // land in ordinary speech at the board more often than as
+    // commands. The trade is only safe because it is narrow: a
+    // yes or no that has a question to answer always speaks,
+    // in the confirmAction block above.
     if (cmd === "yes" || cmd === "no" || cmd === "cancel") return;
 
-    // Is there anything move-shaped in ANY reading. The mic
-    // is open the whole game, so stray talk arrives here
+    // Is there anything move-shaped in ANY reading - a
+    // complete square, file and rank together. The mic is
+    // open the whole game, so stray talk arrives here
     // constantly, and it should not be answered out loud.
-    var moveLike = transcripts.some(function (tt) {
-      return !reqIsEmpty(parseTranscript(tt));
-    });
+    var moveLike = transcripts.some(hasSquare);
 
     if (!api.pos || api.over || api.pos.turn !== api.myColor) {
       if (!moveLike) {
@@ -996,277 +330,31 @@
       return;
     }
 
-    var req = parseTranscript(primary);
-    log("PRS", describeReq(req));
-    var cands = collectCandidates(api.pos, transcripts);
-    log("CND", cands.map(function (c) { return c.san; }).join(",") || "(none)");
+    log("PRS", describeItems(primary));
+    var cands = collectMoves(api.pos, transcripts);
+    log("CND", cands.map(function (c) { return c.san; }).join(",") ||
+        "(none)");
 
+    // EXACTLY ONE legal four-item move across every reading:
+    // play it. The chime that follows the post is the whole
+    // confirmation - see confirmFeedback.
     if (cands.length === 1) {
-      // ONE candidate is still a QUESTION now (w116). The
-      // bare-square guard keeps its job in a smaller office:
-      // it no longer decides WHETHER to ask - everything
-      // asks - it decides what "no" walks to, by putting the
-      // piece moves that could also have been meant behind
-      // the pawn in the list.
-      confirmMove(bareGuardCands(cands[0]) || [cands[0]]);
+      acceptMove(cands[0]);
       return;
     }
-    if (cands.length === 0) {
-      // Before anything else: is this the answer to the
-      // piece question (v92)? It arrives as a piece and
-      // nothing else, which every other path reads as
-      // silence. Both halves came from the user — the
-      // square from the utterance that raised the
-      // question, the piece from this one — so a single
-      // fit is a complete move and goes through the
-      // ordinary accept path, not a second yes/no. The
-      // ply guard means a stale answer, after the position
-      // has moved on, is simply not an answer.
-      // Before checking: if a question is open and this
-      // reading has NO piece in it, see whether it is a
-      // "-ship" word - "Relationship", "Leadership" - which
-      // is how Safari returned "Bishop" as an answer in
-      // game20 (17:49). answerPieceOf applies the suffix
-      // rule; only the piece slot is filled, so a wrong
-      // guess lands in the ordinary "no bishop can go
-      // there" re-ask, never in a move.
-      if (!req.piece && !req.squares.length && !req.castle &&
-          !req.victim && pieceAsk &&
-          pieceAsk.ply === api.moves.length) {
-        var sfx = answerPieceOf(transcripts);
-        if (sfx) {
-          log("PRS", "answer read as " + PIECE_NAME[sfx]);
-          req.piece = sfx;
-        }
-      }
-      var answered = pieceAskAnswer(req);
-      if (answered) {
-        var acs = candidatesOf(answered, req);
-        log("CND", "piece answer: " +
-            acs.map(function (c) { return c.san; }).join(","));
-        pieceAsk = null;
-        // no bare-square guard here: it fires only on pawn
-        // moves, and this question is only ever asked about
-        // a square no pawn can reach
-        offer(acs);
-        return;
-      }
-      // A piece was named, the question is still open, and
-      // that piece cannot go there. Say so and ask again
-      // with the same list: the question stays open, and
-      // the user is never told they were not heard when
-      // they were (v96).
-      if (pieceAskOpen(req)) {
-        var named = pieceAskNamed(req);
-        log("CND", "piece answer: no " + named + " fits, re-asking");
-        askPiece(pieceAsk.moves,
-                 "no " + named +
-                 (pieceAsk.capture ? " can take there." : " can go there."),
-                 pieceAsk.sq);
-        return;
-      }
-      // Is this the answer to an open PARTIAL question
-      // (v117)? "say the rank" answered "eight", "say the
-      // target" answered "alpha one" or "rook". Both
-      // halves came from the user, so a unique fit is
-      // accepted the v92 way; several fits walk the
-      // ordinary yes/no; an answer that fits nothing is
-      // told so and the question is asked again (v96).
-      var pAns = partialAnswer(req, transcripts);
-      if (pAns) {
-        if (pAns.length) {
-          var pcs = candidatesOf(pAns, req);
-          log("CND", "partial answer: " + pcs.map(function (c2) {
-            return c2.san;
-          }).join(","));
-          partialAsk = null;
-          offer(pcs);
-          return;
-        }
-        log("CND", "partial answer: nothing fits, re-asking");
-        var pk = partialAsk;
-        speak("That does not fit.");
-        askPartial(pk.req, pk.want, pk.chk, pk.mate);
-        return;
-      }
-      // THE REPAIR CHAIN, IN ORDER, AS DATA (see REPAIRS above).
-      // Each one is asked in turn and answers "I handled this"
-      // or "not mine". They were 294 lines inline here, and
-      // their order - which is load-bearing, and which I had to
-      // reason about carefully when the origin repair was added
-      // - was their position in this function and nothing else.
-      // EVERY READING GETS A LOOK, primary first. A later one
-      // is only reached when every repair has declined every
-      // earlier one, so nothing that works today changes.
-      // (Which reading fired a repair stopped mattering at
-      // w116: every outcome is a question now - see the
-      // repairMayPlay tombstone at the top of this file.)
-      for (var ti = 0; ti < transcripts.length; ti++) {
-        var rq = ti === 0 ? req : parseTranscript(transcripts[ti]);
-        if (ti > 0) {
-          // nothing in it at all is not a reading worth trying
-          if (reqIsEmpty(rq) && !rq.piece &&
-              !rq.fromFile && !rq.fromRank) continue;
-          log("PRS", "rival reading " + ti + ": " + describeReq(rq));
-        }
-        for (var ri = 0; ri < REPAIRS.length; ri++) {
-          if (REPAIRS[ri](rq, transcripts)) return;
-        }
-      }
-
-      if (reqIsEmpty(req)) {
-        // an open partial question deserves its re-ask, not
-        // "Say again." - the v96 principle again
-        if (partialAsk && partialAsk.ply === api.moves.length) {
-          var pk2 = partialAsk;
-          askPartial(pk2.req, pk2.want, pk2.chk, pk2.mate);
-          return;
-        }
-        // NOTHING BUT FILLER IS NOT A FAILED MOVE (v122).
-        // Game22 heard a lone "A" (19:48) and answered "I
-        // didn't catch a move" - and that sentence then ate
-        // the real move spoken over it. On the opponent's
-        // clock the stray-talk rule already keeps quiet;
-        // this extends the same judgement to our own turn
-        // for an utterance with no content word at all,
-        // which is a mic artifact rather than a move that
-        // failed to land. A garbled WORD still gets the
-        // sentence: there something was said, and silence
-        // would leave the user waiting.
-        var anyContent = transcripts.some(function (tt) {
-          return wordsOf(tt).some(function (w) { return !FILLER[w]; });
-        });
-        if (!anyContent) {
-          log("HRD", "ignored, nothing but filler: " + primary);
-          return;
-        }
-        // THIS ONE STAYS BARE, and it is the exception that
-        // shows the rule. Everywhere else a refusal says the
-        // reading back, so the owner can tell a mishearing
-        // from a bad move. Here there IS no reading - words
-        // arrived and no move came out of them - and we
-        // cannot tell whether they were misheard or simply
-        // were not a move. "No move in that" would claim the
-        // second. "Say again." claims neither, which is the
-        // only true thing available.
-        // WAS THERE A READING TO GIVE BACK? reqIsEmpty asks
-        // only about castle, squares and victim, so "rook
-        // delta" - a piece and a file, said plainly - counted
-        // as nothing heard and got this bare sentence twice in
-        // game w46-1 (19:12:51), as did "text delta" at
-        // 19:22:19. w46's rule is that a refusal says the
-        // reading back unless there is no reading, and there
-        // plainly was one.
-        //
-        // reqIsEmpty is left alone: collectCandidates uses it
-        // to decide what counts as a move at all, and widening
-        // it there would change which utterances are
-        // candidates. This is a different question - "is there
-        // anything to repeat" - and it gets its own answer.
-        if (req.piece || req.fromFile || req.fromRank) {
-          refuse(req, "That is not a legal move.");
-          return;
-        }
-        speak("Say again.");
-        return;
-      }
-      // Relax the pawn-only reading of a bare square and see
-      // what fits. If EXACTLY one move does, the piece name
-      // was almost certainly lost by the mic, so offer that
-      // move as a yes/no question instead of demanding the
-      // whole move again: "takes echo one" with only Rxe1 on
-      // the board becomes "did you mean rook takes echo one?"
-      // Still never sent to Lichess without a yes. With
-      // several fits, the old teaching prompt names the pieces,
-      // since guessing an order among them helps less than one
-      // clean re-say.
-      //
-      // A NAMED PAWN gets the same relaxation (v72): "pawn
-      // takes delta five" heard as "Ponte delta five"
-      // arrives as a pawn push, illegal, though exd5 was
-      // meant and unique — game8 answered it with a bare
-      // "not a legal move". A named pawn can only relax
-      // into pawn captures, so named-piece requests are
-      // otherwise untouched.
-      var all = [];
-      if ((!req.piece || req.piece === "p") &&
-          req.squares.length === 1) {
-        all = findMoves(api.pos, req, true);
-      }
-      if (all.length === 1) {
-        var only = all[0];
-        log("CND", "repair: only " + api.pos.sanOf(only) +
-            " fits, asking");
-        pending = { cands: [{ m: only, san: api.pos.sanOf(only) }],
-                    idx: 0 };
-        askCandidate();
-        return;
-      }
-      // If a piece could have reached that square, say which,
-      // rather than a bare "illegal" that teaches nothing.
-      var alt = [];
-      if (all.length) {
-        // EVERY WAY TO TAKE THERE, not just the pawn's
-        // (v95). Through v94 this listed pawn captures
-        // alone, so game13 said "Queen takes delta six",
-        // lost the queen off the reading, and was told to
-        // say "echo takes delta 6" — naming the one move
-        // the user had not asked for, while the queen
-        // capture sat legal and unmentioned. Obeying the
-        // prompt would have played the wrong piece. A
-        // prompt that recommends must recommend all of it.
-        // CONFIRMED in practice on a bare "delta five" with
-        // both Nxd5 and exd5 legal: both were offered. Note
-        // they come out in move-generation order, which is
-        // not order of likelihood — deliberately, since a
-        // bare square is pawn-shaped but game13 meant the
-        // queen, and there is no honest way to rank them.
-        // The lead says what actually went wrong, since
-        // being told about a move you did not ask for,
-        // without being told why, is alarming mid-game.
-        // A NAMED PAWN cannot reach here with piece moves
-        // in hand: findMoves relaxes a named pawn into
-        // pawn captures only (v72), so that case still
-        // lists exactly the files, and keeps its wording.
-        var caps = all.filter(function (m) { return m.captured; });
-        if (!req.capture && caps.length) {
-          log("CND", "push-only: capture available " +
-              sansOf(caps).join(","));
-          // THE ANSWER MAY BE ONE WORD (v103). Through v102
-          // this spoke and returned, leaving nothing behind,
-          // so game14 answered "Bishop" — twice — and was
-          // told nothing was heard, while the other prompt
-          // three lines below had accepted exactly that
-          // since v92. Two questions of the same shape must
-          // take the same answers. Passing the square makes
-          // askPiece phrase the options as captures and
-          // accept a FILE as well as a piece name, since
-          // that is how it offers the pawn.
-          askPiece(caps, req.piece ? "that would be a capture."
-                                   : "no piece heard.",
-                   req.squares[0]);
-          return;
-        }
-        alt = all.filter(function (m) { return m.piece !== "p"; });
-      }
-      if (alt.length) {
-        log("CND", "strict: pawn cannot, but " +
-            sansOf(alt).join(",") +
-            " could");
-        // askPiece leaves the question open: see pieceAsk
-        // in the state block at the top of this file for why
-        // "go there" is a PUSH. Game w46-1, 19:26:49: "takes
-        // golf five" was refused with "No pawn can go there",
-        // and he had said takes. The verb has to match the
-        // sentence it is answering.
-        askPiece(alt, req.capture ? "No pawn can take there."
-                                  : "No pawn can go there.");
-        return;
-      }
-      refuse(req, "That is not a legal move.");
+    // More than one means rival readings disagree about which
+    // legal move was said - a mishearing by definition, and
+    // never a pick (w118; the log above names them both).
+    // Zero with a square in the utterance means damaged,
+    // incomplete, or illegal. ONE ANSWER FOR ALL OF IT
+    // (owner's decision, w118): no read-back of the hearing,
+    // no legality lecture, no filling the gap however unique
+    // the completion. "If we get too fancy with using logic to
+    // fix mishears, we're going down the wrong path."
+    if (moveLike || cands.length > 1) {
+      speak("Say again.");
       return;
     }
-    pending = { cands: cands, idx: 0 };
-    askCandidate();
+    // no square anywhere: stray talk, logged and left alone
+    log("HRD", "ignored, not a move: " + primary);
   }
-

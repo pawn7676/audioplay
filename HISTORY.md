@@ -3452,3 +3452,64 @@ The boot line keeps its job with fewer words: "loaded:
 ratings=off voice=system". A pasted log still names its
 configuration; the configuration is just smaller than the
 apparatus that used to carry it.
+
+### w118
+
+THE GRAMMAR IS FOUR ITEMS NOW, and the piece names are gone.
+The owner's design, in his words: "we get rid of all the 'queen
+takes', 'queen check', 'bishop charlie four'. too much
+finickiness, too many mishearing. user only inputs in this
+format 'file - # - file - #'. simple."
+
+The reasoning holds up under the project's own history. Every
+catastrophic mishearing in three years of logs was a PIECE
+NAME: bishop as "Patient" (the 11 Aug resignation), pawn as
+"Plants" (four minutes of game w47-1), rook as "Rug", queen as
+"Clean", knight as "Nate". The NATO files and the digits, the
+sixteen words this grammar keeps, were chosen BY DESIGN to
+share no neighbours, and they survived those same logs almost
+untouched. The old grammar spent two hundred versions teaching
+a parser to survive words the ear was always going to lose;
+this one stops saying them.
+
+And the format is its own guard, which is what let w116's
+question die after two days. Four items name one move outright
+- nothing is inferred, so there is nothing to confirm - and
+the from-square must hold the mover's own piece with the whole
+move legal, so a misheard item almost always lands illegal and
+is refused. A clean legal four-item move plays AT ONCE and the
+chime is the whole confirmation (its fourth act, and the
+steadiest: the user spoke every item, so the one bit owed is
+"heard exactly, legal, played").
+
+EVERYTHING ELSE IS "Say again." - verbatim, all three words of
+it, on the owner's explicit instruction. No reading back what
+was heard, no "that is not legal", and above all NO COMPLETION:
+a lone "bravo five" with Bb5 the only legal fit still gets "Say
+again", because "if we get too fancy with using logic to fix
+mishears, then we're going down the wrong path." The system
+that never guesses cannot guess wrong. Rival readings may still
+rescue a move - Safari's third guess is the same mouth saying
+the same squares - but only when every reading that parses
+AGREES; two readings naming two legal moves is a mishearing by
+definition and refuses.
+
+What was decided at the edges: promotion is a queen unless
+"equals knight" (the one surviving piece phrase); castling is
+the king's own two squares ("echo one golf one"); resign, draw,
+repeat, memo, cancel and flip clock keep their words; the
+position queries ("whose turn", "what is on...") are deleted
+whole - the owner never used them.
+
+What it cost in code: repairs.js deleted entire; dialogue.js
+from 1,272 lines to ~350; matching.js from 550 to ~80;
+parsing.js rewritten; the piece tables, take words, castle
+words, check words, victim grammar, candidate scoring,
+demotion, the bare-pawn guard - gone. property_check.js was
+rewritten around the new promises, sound and complete, and
+checks them on 130,922 generated utterances. The one hazard
+knowingly accepted: a mishearing that lands on ANOTHER legal
+move (rook slides, "four" for "five") plays it, and only the
+opponent's reply reveals it. It is a far smaller door than the
+one that closed, it is the door the owner chose with open eyes,
+and the log will show it if it ever opens.

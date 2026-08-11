@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w117";
+  VERSION = "w118";
 
   var RULES = makeRules();
 
@@ -432,7 +432,6 @@
       if (ev.claimWinInSeconds != null && ev.claimWinInSeconds <= 0 &&
           !claimAsked) {
         claimAsked = true;
-        pending = null;
         confirmAction = "claimvictory";
         speak("you can claim the win. say yes to claim it, " +
               "no to keep waiting.");
@@ -482,13 +481,11 @@
       if (confirmAction === "resign") return "that cancels the resign question. ";
       if (confirmAction === "offerdraw") return "that cancels your draw offer question. ";
       if (confirmAction === "claimvictory") return "that cancels the claim question. ";
-      if (pending) return "that cancels the move question. ";
       return "";
     }
 
     if (oppDraw && !offerState.draw && !api.over) {
       var wasD = displaced();
-      pending = null;
       confirmAction = "drawoffer";
       log("API", "opponent offers a draw" + (wasD ? " (displacing a question)" : ""));
       speak(them + " offers a draw. " + wasD +
@@ -496,7 +493,6 @@
     }
     if (oppTake && !offerState.takeback && !api.over) {
       var wasT = displaced();
-      pending = null;
       confirmAction = "takebackoffer";
       log("API", "opponent asks for a takeback" +
           (wasT ? " (displacing a question)" : ""));
