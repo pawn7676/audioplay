@@ -96,8 +96,17 @@
     // reach it or seed from it either way (both ends of
     // fuzzyToken require four).
     r: "rook rooks rock rocks brook ruck roof rooke brooke ruts rug",
+    // "patient" joined at w115 from the game of 11 Aug, where
+    // "bishop charlie four" came back as "Patient Charlie four"
+    // and "Patient of Charlie four" - BOTH readings, so there
+    // was no undamaged rival, and what played was the c-pawn.
+    // Exact-only, like "clean": it is an everyday word with an
+    // everyday neighbourhood, and a seven-letter fuzzy target
+    // gets two edits of room - enough to swallow "patients",
+    // "patience", "ancient" and "impatient", none of which is
+    // a bishop.
     b: "bishop bishops bishoff bishup fish fisher fishop ship bish " +
-       "vision visions bitch",
+       "vision visions bitch patient",
     // WHAT EARNS A WORD A PLACE IN THESE TABLES, stated
     // after w113 got it wrong for a day: a spelling joins
     // because Safari RETURNED it when a vocabulary word was
@@ -323,10 +332,16 @@
   // them. parseTranscript is untouched: its own "a" branch
   // runs BEFORE the filler check, so the a-file still
   // reads as the a-file in "a takes bravo five".
+  // "of" joined at w115: Safari wrote the owner's "bishop
+  // charlie four" as "Patient OF Charlie four", and since
+  // w115 an unaccounted word next to a bare square raises a
+  // question, a stray "of" would have raised one on its own.
+  // It carries no meaning here in any sentence this grammar
+  // accepts, so it is filler like "the" and "on".
   var FILLER = wordSet("please move moves play plays the piece um " +
     "uh a an then and go goes on my is it to into onto how much " +
     "many left remaining whats hows got have has do does me we us " +
-    "i whose whos who which");
+    "i whose whos who which of");
 
   var YES_WORDS = wordSet("yes yeah yep yup correct right confirm " +
     "confirmed affirmative ok okay sure aye");
@@ -402,7 +417,12 @@
     // everyday neighbourhood - chill, chills, child, hilly,
     // dilly - and none of that family is the c-file. Named
     // as spellings they match when spoken and seed nothing.
-    "chili chilly");
+    "chili chilly " +
+    // w115. "patient" is the bishop by the same rule and the
+    // same hazard, one size worse: at seven letters the fuzzy
+    // matcher allows TWO edits, which reaches "patients",
+    // "patience", "ancient" and "impatient".
+    "patient");
 
   // Ordinary words sit one edit from vocabulary words and
   // were being converted silently: "good" became "gold", a

@@ -3303,3 +3303,54 @@ break ('near-miss "light" dropped: could be "night" or
 Whether such a drop should ever ASK instead of playing the
 bare square is left open on purpose; the log line is how
 future pasted games will show whether it matters.
+
+### w115
+
+THE WORD THE MIC DROPS IS ALMOST ALWAYS THE PIECE NAME, and
+until now dropping it was silent and irreversible. Game of 11
+Aug: the owner said "bishop charlie four", Safari returned
+"Patient Charlie four" and "Patient of Charlie four" - BOTH
+readings damaged the same way, so the rival-reading defence had
+nothing to offer - and what reached the parser was a bare c4
+with an unaccounted word beside it. The c-pawn went to c4. That
+is the square the bishop was being sent to, so Bc4 was gone for
+good; the game was resigned four moves later. The log's own
+line for it reads "PRS - - c4 - -", a parse with no trace of
+the word that had been thrown away.
+
+Two changes, and the second is the one that matters.
+
+"patient" joins the bishop table, by the rule w114 wrote at the
+top of PIECES: Safari RETURNED it for a spoken vocabulary word,
+which is the only thing that earns a spelling its place. It is
+exact-only, like "clean" - at seven letters the fuzzy matcher
+would allow two edits, which reaches "patients", "patience",
+"ancient" and "impatient", none of them a bishop. "of" joins
+FILLER on the way past, since the second reading contained one
+and it means nothing in any sentence this grammar accepts.
+
+And the class, which the next accent will find another word
+for: A READING WITH A WORD IT COULD NOT ACCOUNT FOR NO LONGER
+PLAYS A BARE PAWN PUSH UNASKED. w114 left exactly this open -
+"whether such a drop should ever ASK instead of playing the
+bare square is left open on purpose; the log line is how future
+pasted games will show whether it matters" - and this is the
+game that showed it. The parser now remembers the first word it
+could not place, the guard asks whenever a piece could also
+have reached that square, and the ask fires with
+guardPawnPushes OFF, which is how the owner had it. Off still
+means off for a clean reading, which is nearly every bare push:
+"charlie four" plays at once as before, and a command word
+("yeah charlie four") is accounted for rather than missing.
+Where no piece could have been meant there is nothing to ask
+about and nothing changes.
+
+One reading vouching for another was considered and rejected -
+if a clean rival could clear the doubt, "Patient Charlie four"
+plus a bare "Charlie four" would have played the pawn anyway.
+clippedIndexes settled that argument earlier: when one reading
+is another minus its first word, the SHORT one is the damaged
+one, and it is the last thing that should vouch for anything.
+
+The parse line carries the word now, so a pasted log says what
+was thrown away: 'PRS - - c4 - -   ("patient" not understood)'.

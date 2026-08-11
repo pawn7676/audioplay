@@ -250,6 +250,23 @@
     return !!(flip && clk && !other);
   }
 
+  /* A WORD THAT IS NOT PART OF A MOVE BUT IS NOT UNKNOWN
+   * EITHER (w115). The tables above this one hold every word
+   * the program recognises without it being a piece, a file or
+   * a rank - "yes", "no", "cancel", "resign", "repeat",
+   * "memo", the clock and flip words. parseTranscript has no
+   * use for any of them, so they fall off the end of its token
+   * loop exactly as gibberish does; only the stray-word test
+   * needs to tell the two apart, and only so that "yeah,
+   * charlie four" is not treated as a reading with a word
+   * missing from it. Nothing else reads this.
+   */
+  function knownNonMoveWord(tk) {
+    return !!(YES_WORDS[tk] || NO_WORDS[tk] || CANCEL_WORDS[tk] ||
+              REPEAT_WORDS[tk] || CLOCK_WORDS[tk] || FLIP_WORDS[tk] ||
+              RESIGN_WORDS[tk] || DRAW_WORDS[tk] || MEMO_WORDS[tk]);
+  }
+
   function classifyCommand(raw) {
     var toks = wordsOf(raw);
     var yes = 0, no = 0, cancel = 0, repeat = 0,
@@ -316,7 +333,11 @@
                  * the token loop and "queen check" was read
                  * back as "I heard queen", dropping a word the
                  * user had said. */
-                saidCheck: false, saidMate: false };
+                saidCheck: false, saidMate: false,
+                /* w115: the first word this reading could not
+                 * account for, or null. See the note at the
+                 * bottom of the token loop. */
+                strayWord: null };
     var syms = [], i, tk;
     for (i = 0; i < toks.length; i++) {
       tk = toks[i];
@@ -417,8 +438,7 @@
       if (/^[a-h]$/.test(tk)) { syms.push({ t: "file", v: tk }); continue; }
       if (/^[1-8]$/.test(tk)) { syms.push({ t: "rank", v: tk }); continue; }
       if (FILLER[tk]) continue;
-      if (noFuzzy) continue;
-      var fz = fuzzyToken(tk);
+      var fz = noFuzzy ? null : fuzzyToken(tk);
       if (fz) {
         req.usedFuzzy = true;
         // Logged ONCE per utterance (v116). Each transcript
@@ -436,7 +456,30 @@
           log("PRS", nmsg);
         }
         syms.push({ t: fz.t, v: fz.v });
+        continue;
       }
+      /* A WORD THIS READING COULD NOT ACCOUNT FOR (w115). Not
+       * in the tables, not a compound, not filler, and no
+       * near-miss would have it: the reading is IGNORING
+       * something the user said, and the commonest thing for
+       * that something to have been is the piece name. w114
+       * left it open whether such a drop should ask instead of
+       * playing the bare square; the game of 11 Aug closed it -
+       * "bishop charlie four" arrived as "Patient Charlie four"
+       * and the c-pawn went, silently and unrepeatably.
+       *
+       * Recorded here, judged in bareGuardCands, which is the
+       * one place that already knows whether a piece could have
+       * been meant. The FIRST such word is kept, to name in the
+       * log line: a pasted game should say WHICH word was
+       * thrown away, the way the near-miss lines do.
+       *
+       * Command words are not stray. "yes", "cancel", "resign"
+       * and the rest are accounted for - they are simply not
+       * part of a move - and a reading is not damaged for
+       * containing one.
+       */
+      if (!req.strayWord && !knownNonMoveWord(tk)) req.strayWord = tk;
     }
 
     if (req.castle === "?") {
@@ -880,10 +923,21 @@
     // still shows which end of the move each one was.
     var half = (req.fromFile || "") + (req.fromRank || "");
     var target = (req.toFile || "") + (req.toRank || "");
+    // A WORD THE READING THREW AWAY IS PART OF THE PARSE
+    // (w115), so it belongs on the line that prints the parse.
+    // The near-miss lines already say when a word was bent into
+    // a symbol or refused as a tie; this says when one was
+    // simply not understood - which is the case that lost
+    // "bishop" and played a pawn. Here rather than in the token
+    // loop because this line is printed once per move attempt,
+    // after the stray-talk filter: the loop itself runs over
+    // every rival reading of every cough in the room.
     return [req.piece || "-", req.capture ? "x" : "-",
             req.squares.join(">") ||
               (req.victim ? "<" + req.victim + ">" : "-"),
             (half + (target ? ">" + target : "")) || "-",
-            req.trailingPiece || "-"].join(" ");
+            req.trailingPiece || "-"].join(" ") +
+           (req.strayWord ? "   (\"" + req.strayWord +
+                            "\" not understood)" : "");
   }
 
