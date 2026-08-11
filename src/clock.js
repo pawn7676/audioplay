@@ -263,7 +263,6 @@
     clockTimer = setInterval(renderClockMode, OVERLAY_TICK_MS);
     acquireClockLock();
     renderButton();
-    if (setPanel) setPanel.style.display = "none";
     log("CLK", "clock mode on");
   }
 

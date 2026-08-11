@@ -394,29 +394,24 @@ const sleep = ms =>
         overlayShape[0] === 2 && overlayShape[1] === "1,1");
   vm.runInContext("exitClockMode(true);", sandbox);
 
-  // w111: NO migrations live in loadSettings. Dead blob
-  // keys - confirmMyMove (whose reuse as a key is barred:
-  // an old save can hold false under it), readBackMine
-  // (whose w110 carry was deleted once the owner's log
-  // proved the panel saved), and since w116 confirmMine and
-  // guardPawnPushes themselves - move NOTHING. If any of
-  // these ever moves a value again, a shim crept back in.
-  const deadBlob = vm.runInContext(`
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(
-      { confirmMyMove: false, readBackMine: false,
-        confirmMine: false, guardPawnPushes: false }));
-    var c = loadSettings();
-    localStorage.removeItem(SETTINGS_KEY);
-    [("confirmMyMove" in c), ("readBackMine" in c),
-     ("confirmMine" in c), ("guardPawnPushes" in c)];
-  `, sandbox);
-  check("dead blob keys move nothing (" + deadBlob + ")",
-        deadBlob.every(function (b) { return b === false; }));
+  // w117: THE SETTINGS PERSISTENCE LAYER IS GONE WHOLE.
+  // loadSettings, saveSettings, CFG and the stored blob all
+  // died with the panel - settings are code constants now -
+  // so the w111 "dead blob keys move nothing" and w75
+  // "deleted setting is dropped" properties hold vacuously:
+  // NOTHING reads the blob any more, and the blob itself is
+  // a dead key the scrub removes. Asserted directly.
+  check("the settings persistence layer is gone whole",
+        vm.runInContext(
+          'typeof loadSettings === "undefined" && ' +
+          'typeof saveSettings === "undefined" && ' +
+          'typeof CFG === "undefined"', sandbox));
 
   // w111: the storage scrub. Every name a previous era
   // wrote on this origin is removed on boot - including
   // the two old token keys, whose stranded credentials are
-  // the point - and current keys are untouched.
+  // the point, and (since w117) the settings blob - and
+  // current keys are untouched.
   const scrubbed = vm.runInContext(`
     localStorage.setItem("audioplay.token", "CURRENT");
     localStorage.setItem("audioplay_lichess_token", "OLD");
@@ -425,10 +420,12 @@ const sleep = ms =>
     localStorage.setItem("audioplay.web.opponent", "x");
     localStorage.setItem("audioplay.web.rated", "x");
     localStorage.setItem("audioplay.web.timecontrol", "x");
+    localStorage.setItem("audioplay.settings", '{"showRatings":true}');
     scrubDeadStorage();
     var left = ["audioplay_lichess_token", "audioplay.lichess.token",
                 "audioplay.lichess.verifier", "audioplay.web.opponent",
-                "audioplay.web.rated", "audioplay.web.timecontrol"]
+                "audioplay.web.rated", "audioplay.web.timecontrol",
+                "audioplay.settings"]
       .filter(function (k) { return localStorage.getItem(k) !== null; });
     var kept = localStorage.getItem("audioplay.token");
     localStorage.removeItem("audioplay.token");
@@ -437,23 +434,6 @@ const sleep = ms =>
   check("the scrub removes every dead key and keeps the live one (" +
         scrubbed + ")",
         scrubbed[0] === 0 && scrubbed[1] === "CURRENT");
-
-  // w75: a settings key that no longer exists must be IGNORED,
-  // not carried. showPlayers was deleted with the switch, and
-  // a device that saved it off would otherwise have hidden the
-  // names forever with no control left to bring them back.
-  // loadSettings only copies keys present in SETTING_DEFAULTS,
-  // which is what makes that safe - asserted, because it is
-  // the property the deletion relies on.
-  const dropped = vm.runInContext(`
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(
-      { showPlayers: false, showRatings: true }));
-    var c2 = loadSettings();
-    localStorage.removeItem(SETTINGS_KEY);
-    [("showPlayers" in c2), c2.showRatings];
-  `, sandbox);
-  check("a deleted setting is dropped from a stored save (" + dropped + ")",
-        dropped[0] === false && dropped[1] === true);
 
   // ---- w10/w12/w76/w77: one account button; the sign-out ----
   // is a question first. At rest the signed-in button is the
@@ -747,17 +727,23 @@ const sleep = ms =>
   await sleep(120); heard();
 
   // ---- v135/w23: the starting switches are logged ----
+  // Since w117 the switches are code constants (the panel and
+  // its blob are gone), but the boot line's job is unchanged:
+  // a pasted log names its configuration.
   const bootLine = vm.runInContext(
     'LOG.filter(function (l) { return l.indexOf("loaded:") >= 0; })[0] || ""',
     sandbox);
-  check("boot logs every switch (" +
+  check("boot logs the configuration (" +
         bootLine.slice(bootLine.indexOf("loaded:")).slice(0, 40) + "...)",
         /loaded:/.test(bootLine) &&
-        /showRatings=(on|off)/.test(bootLine) &&
-        // the w116 dead switches must NOT be in the boot line:
+        /ratings=(on|off)/.test(bootLine) &&
+        // the dead switch names must NOT be in the boot line:
         // a name reappearing here means a setting crept back
         !/confirmMine|guardPawnPushes/.test(bootLine) &&
         /voice=(system|\S+)/.test(bootLine));
+  check("and ratings default off (w117, owner's order)",
+        /ratings=off/.test(bootLine) &&
+        vm.runInContext("SHOW_RATINGS", sandbox) === false);
 
   // ---- w70/w71: the rail follows the board; the CLOCK BOX
   // is the turn indicator ----
@@ -1061,19 +1047,15 @@ const sleep = ms =>
         fakePanels[0].open === true && fakePanels[2].open === true);
 
   // ---- w25: no double-tap zoom on the overlays ----
-  // The built panels, not the source (w54). The old grep
+  // The built panel, not the source (w54). The old grep
   // matched the assignment wherever it appeared - including
   // inside the comment above it explaining why the viewport
-  // meta cannot do this job.
-  check("the overlays themselves get touch-action",
-        vm.runInContext(`
-          (function () {
-            return [setPanel, logPanel].filter(Boolean).length === 2 &&
-              [setPanel, logPanel].every(function (p) {
-                return p.style.touchAction === "manipulation";
-              });
-          })()
-        `, sandbox) === true);
+  // meta cannot do this job. (The settings panel was the
+  // other overlay here until it died at w117.)
+  check("the log overlay gets touch-action",
+        vm.runInContext(
+          'logPanel && logPanel.style.touchAction === "manipulation"',
+          sandbox) === true);
 
   // ---- w29: the voice button is a labelled pill ----
   const btnState = () => vm.runInContext(`
@@ -1135,7 +1117,7 @@ const sleep = ms =>
       return [b.style.fontSize, b.style.padding, b.style.flex].join("|");
     })
   `, sandbox);
-  check("the other five are sized by the stylesheet too",
+  check("the other four are sized by the stylesheet too",
         others.every(s => s === "||0 0 auto"));
   vm.runInContext("running = false; listening = false; renderButton();",
                   sandbox);
@@ -1176,8 +1158,9 @@ const sleep = ms =>
       };
     })()
   `, sandbox);
-  check("the row holding the buttons has all six " +
-        "(" + styled.innerKids + " children)", styled.innerKids === 6);
+  // six until w117, when the Settings button died with its panel
+  check("the row holding the buttons has all five " +
+        "(" + styled.innerKids + " children)", styled.innerKids === 5);
   // w31: order is DOM order, so it survives wrapping
   const rowOrder = vm.runInContext(`
     wrapEl.firstChild.children.map(function (c) { return c.textContent; })
@@ -1199,94 +1182,21 @@ const sleep = ms =>
         rowOrder[rowOrder.length - 2] + ")",
         /Practice/.test(rowOrder[rowOrder.length - 2]));
 
-  // ---- w24: the settings panel anchors to its button ----
-  // ASK THE BUILT PANEL. This grepped ui.js for four strings
-  // until now, and one of the four had rotted into
-  // `srcUi.includes(x) === srcUi.includes(x)` - a clause that
-  // is true whatever the page does. The grep could not do
-  // better: anchoring is the work of TWO click listeners (one
-  // from buildUI, one from buildWebUI), and reading the file
-  // says nothing about what happens when they both run. Open
-  // the panel the way a tap does and read where it landed.
-  const anchored = vm.runInContext(`
-    (function () {
-      setPanel.style.display = "none";     // start from closed
-      settingsBtn.on_click();              // both real handlers
-      var s = setPanel.style;
-      var out = { display: s.display, top: s.top, left: s.left,
-                  right: s.right, bottom: s.bottom };
-      setPanel.style.display = "none";     // leave it as found
-      return out;
-    })()
-  `, sandbox);
-  // display proves buildUI's listener ran (it owns the toggle);
-  // the released right/bottom prove buildWebUI's ran after it
-  check("a tap opens the settings panel (" + anchored.display + ")",
-        anchored.display === "block");
-  check("settings panel anchored on both axes (top " + anchored.top +
-        ", left " + anchored.left + ")",
-        /^\d+px$/.test(anchored.top) && /^\d+px$/.test(anchored.left));
-  check("and it lets go of the corner it was pinned to " +
-        "(right " + anchored.right + ", bottom " + anchored.bottom + ")",
-        anchored.right === "auto" && anchored.bottom === "auto");
-
-  // ---- w69: the panel carries its own exit ----
-  // It is position:fixed and its button is not - buildWebUI
-  // moves the row into the top panel, which scrolls. Open the
-  // panel, scroll down, and the only control that could close
-  // it is above the fold. Both exits are asked of the built
-  // panel, by clicking what a finger would click.
-  const setOpen = () => vm.runInContext(
-    'setPanel.style.display', sandbox) === "block";
-  // The w69 header - title and Done button - was deleted by
-  // the owner at w71: tap-outside already closes the panel, so
-  // the header spent a row restating the tap that opened it.
-  // The panel must NOT contain a Done button any more, and the
-  // first child must be a settings row, not a header.
-  vm.runInContext('setPanel.style.display = "none"; settingsBtn.on_click();',
-                  sandbox);
-  const doneCount = vm.runInContext(`
-    (function () {
-      var n = 0;
-      (function walk(el) {
-        if (el.textContent === "Done") n++;
-        (el.children || []).forEach(walk);
-      })(setPanel);
-      return n;
-    })()
-  `, sandbox);
-  check("the w69 Done button is gone (owner's call, w71)", doneCount === 0);
-
-  // tap-outside is therefore the WHOLE exit. The guard is
-  // that a tap ON the button must NOT run this - that is
-  // already a toggle, and closing here too would fight it.
-  check("panel is open for the outside-tap test", setOpen() === true);
-  vm.runInContext(`
-    document.__fireClick({ target: document.body });
-  `, sandbox);
-  check("a tap outside closes it", setOpen() === false);
-  vm.runInContext('settingsBtn.on_click();', sandbox);
-  vm.runInContext(`
-    document.__fireClick({ target: setPanel });
-  `, sandbox);
-  check("a tap INSIDE the panel does not", setOpen() === true);
-  vm.runInContext(`
-    document.__fireClick({ target: settingsBtn });
-  `, sandbox);
-  check("nor does the document handler fight the button's own toggle",
-        setOpen() === true);
-  // THE CASE THAT ACTUALLY MATTERS: a tap on a PILL, nested
-  // inside the panel rather than being the panel. Flipping a
-  // setting must not shut the panel you are flipping it in.
-  // This is why the element stub grew real parent links (w69) -
-  // without them every node looks like a root and this reads
-  // as "outside".
-  vm.runInContext(`
-    document.__fireClick({ target: setPanel.children[0].children[1] });
-  `, sandbox);
-  check("nor a tap on a pill nested inside the panel",
-        setOpen() === true);
-  vm.runInContext('setPanel.style.display = "none";', sandbox);
+  // ---- w117: the settings button and panel are GONE ----
+  // (owner's order: "dump the settings menu. not needed").
+  // The w24 anchoring tests, the w69 exit tests and the pill
+  // tests all died with the DOM they drove. What is left to
+  // assert is the absence, of the built page - a re-added
+  // button or panel fails loudly here.
+  check("no settings button on the built page",
+        vm.runInContext(`
+          typeof settingsBtn === "undefined" &&
+          wrapEl.firstChild.children.every(function (c) {
+            return !/settings/i.test(c.textContent || "");
+          })
+        `, sandbox));
+  check("and no settings panel behind it",
+        vm.runInContext('typeof setPanel === "undefined"', sandbox));
 
   // ---- w33: time controls are presets ----
   // w34: the row is clean at load. Checked FIRST, before any
@@ -1780,17 +1690,9 @@ const sleep = ms =>
         vm.runInContext("__chimeStarts", sandbox) === 2);
   vm.runInContext('chimeCtx.state = "running";', sandbox);
 
-  // the panel carries neither a chime row nor the two dead
-  // confirm rows (w116): the built DOM holds ONE switch,
-  // show ratings - a re-added row fails loudly here
-  const panelRows = vm.runInContext(`
-    setPanel.children.map(function (r) {
-      return r.children.length ? (r.children[0].textContent || "") : "";
-    }).filter(Boolean)
-  `, sandbox);
-  check("the settings panel is one row: show ratings (" +
-        panelRows.join(", ") + ")",
-        panelRows.length === 1 && /show ratings/i.test(panelRows[0]));
+  // (the "panel is one row" check lived here for w116; the
+  // panel itself died at w117 and its absence is asserted
+  // with the other page-furniture tests)
 
   // leave the sandbox as WebAudio-less as it started, so
   // every later yes-flow exercises the spoken fallback
@@ -2913,7 +2815,7 @@ const sleep = ms =>
     ' document.getElementById("nameBottom").innerHTML', sandbox);
   vm.runInContext(`
     api.gameId = "P1"; api.over = false; api.myId = "me"; dryRun = false;
-    CFG.showRatings = true;
+    SHOW_RATINGS = true;   /* a code constant since w117; set for the test */
     handleGameFull({
       white: { id: "me", name: "pawn76", rating: 1500 },
       black: { id: "maia1", name: "maia1", title: "BOT", rating: 1900 },
@@ -2991,10 +2893,10 @@ const sleep = ms =>
   // tests below.)
   // w75: names are unconditional now, so the row can never be
   // empty while a game is on - only the rating comes and goes.
-  vm.runInContext("CFG.showRatings = false; renderPlayers();", sandbox);
+  vm.runInContext("SHOW_RATINGS = false; renderPlayers();", sandbox);
   check("ratings off still leaves the names (" + playersHtml() + ")",
         /pawn76/.test(playersHtml()) && !/1500/.test(playersHtml()));
-  vm.runInContext("CFG.showRatings = true; renderPlayers();", sandbox);
+  vm.runInContext("SHOW_RATINGS = true; renderPlayers();", sandbox);
   check("and back on restores the numbers", /1500/.test(playersHtml()));
 
   // A Lichess AI opponent has aiLevel and NO name at all - the
@@ -3019,18 +2921,16 @@ const sleep = ms =>
         (playersHtml() || "empty") + ")", playersHtml() === "");
   vm.runInContext("dryRun = false;", sandbox);
 
-  // ---- w69/w75: ratings are a free switch; names are not a
-  // switch at all ----
-  // Fourth and last landing for this pair. w69 split ratings
-  // off but nested (players off + ratings on showed nothing -
-  // "half-baked"), w71 freed them (a bare number floated
-  // beside a clock - "sucks"), w72 chained them together, and
-  // w75 deletes the thing they were chained to: a week on the
-  // device turned up no occasion to hide a name, so names
-  // always show and the rating answers to nobody.
+  // ---- w69/w75/w117: the rating's long walk to a constant ----
+  // w69 split ratings off but nested, w71 freed them, w72
+  // chained them to showPlayers, w75 deleted the chain, and
+  // w117 deleted the panel around the one switch left:
+  // SHOW_RATINGS is a code constant now, owner's default OFF.
+  // The render is still driven both ways, and the shipped
+  // default is left in force at the end.
   vm.runInContext(`
     api.gameId = "P3"; api.over = false;
-    CFG.showRatings = true;
+    SHOW_RATINGS = false;
     handleGameFull({
       white: { id: "me", name: "pawn76", rating: 1500 },
       black: { id: "maia1", name: "maia1", title: "BOT", rating: 1900 },
@@ -3038,43 +2938,17 @@ const sleep = ms =>
     uiGameChanged();
   `, sandbox);
   await sleep(40);
-  check("both names and both ratings are there to start (" +
-        playersHtml() + ")",
-        /pawn76/.test(playersHtml()) && /maia1/.test(playersHtml()) &&
-        /1500/.test(playersHtml()) && /1900/.test(playersHtml()));
-
-  // driven through the panel's own pill, as a finger would -
-  // a test that set CFG directly would pass with the row
-  // unwired from the panel entirely
-  const tapPill = (label) => vm.runInContext(
-    '(function () {' +
-    '  var rows = setPanel.children;' +
-    '  for (var i = 0; i < rows.length; i++) {' +
-    '    var kids = rows[i].children || [];' +
-    '    if (kids.length === 2 && kids[0].textContent === ' +
-         JSON.stringify(label) + ') {' +
-    '      kids[1].on_click();' +
-    '      return true;' +
-    '    }' +
-    '  }' +
-    '  return false;' +
-    '})()', sandbox);
-  check("the players switch is gone from the panel (w75)",
-        tapPill("show players") === false);
-  check("the ratings switch is still there and answers a tap",
-        tapPill("show ratings") === true);
   const noRatings = playersHtml();
-  check("tapping it drops the numbers and keeps the names (" +
+  check("off (the shipped default) keeps names, drops numbers (" +
         noRatings + ")",
-        vm.runInContext("CFG.showRatings", sandbox) === false &&
         /pawn76/.test(noRatings) && /maia1/.test(noRatings) &&
         !/1500/.test(noRatings) && !/1900/.test(noRatings));
   check("but not the title - a BOT is not a rating",
         /BOT/.test(noRatings));
-  tapPill("show ratings");
-  check("and nothing drags it back down again",
-        vm.runInContext("CFG.showRatings", sandbox) === true &&
-        /1500/.test(playersHtml()));
+  vm.runInContext("SHOW_RATINGS = true; renderPlayers();", sandbox);
+  check("flipping the constant in code brings the numbers back",
+        /1500/.test(playersHtml()) && /1900/.test(playersHtml()));
+  vm.runInContext("SHOW_RATINGS = false; renderPlayers();", sandbox);
 
   // ---- w69: the game id is for the log, not the panel ----
   heard();

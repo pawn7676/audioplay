@@ -32,7 +32,7 @@
    *================================================================*/
 
 
-  var wrapEl, bigBtn, logPanel, logBtn, practiceBtn, clockBtn, settingsBtn, setPanel;
+  var wrapEl, bigBtn, logPanel, logBtn, practiceBtn, clockBtn;
 
   /* THE SHARED UI'S PAINT POTS - the stylesheet's values, in
    * the one place that cannot read the stylesheet.
@@ -86,8 +86,6 @@
     paintButton(logBtn, !!(logPanel && logPanel.style.display !== "none"),
               BLUE);
     paintButton(clockBtn, clockModeOn(), BLUE);
-    paintButton(settingsBtn, !!(setPanel && setPanel.style.display !== "none"),
-              BLUE);
     if (!bigBtn) return;
     // WEB (delta 4): a labelled pill, not a 72px circle -
     // see paintVoiceButton with the page furniture below.
@@ -171,164 +169,23 @@
       toggleClockMode();
     });
 
-    // THE SETTINGS PANEL (v124). One "settings" button, one
-    // panel of switches. Every persisted setting lives
-    // here so nothing behavioural is buried in the source
-    // any more; the file's values are first-run defaults
-    // only. The panel follows the button aesthetic - a lit
-    // pill is ON, same colors as everything else - and the
-    // rows are grouped the way the modes are grouped:
-    // all modes, voice mode, clock mode. Clock
-    // mode's full-screen overlay sits above it, and
-    // enterClockMode() closes it besides, so the switches
-    // are only ever seen with the clock down.
-    settingsBtn = document.createElement("button");
-    settingsBtn.textContent = "Settings";   /* WEB w30: capitalised */
-    settingsBtn.style.cssText = logBtn.style.cssText;
-    // THIS LISTENER OWNS THE TOGGLE, AND ONLY THE TOGGLE (w54).
-    // It used to anchor the panel above the voice button as
-    // well, and that work was always thrown away: buildWebUI
-    // registers a SECOND listener on this same button which
-    // re-anchors to top/left within the same click dispatch,
-    // so the value computed here survived for no time at all
-    // and its correctness rested entirely on the order the two
-    // listeners happened to be registered in. One anchoring,
-    // in the file that knows where the button actually is.
-    settingsBtn.addEventListener("click", function () {
-      var open = setPanel.style.display !== "none";
-      setPanel.style.display = open ? "none" : "block";
-      renderButton();
-    });
-
-    setPanel = document.createElement("div");
-    setPanel.style.cssText =
-      "position:fixed;right:10px;bottom:118px;z-index:99990;" +
-      "display:none;background:" + PANEL_BG + ";border:1px solid " + BORDER + ";" +
-      "border-radius:14px;padding:10px 12px;min-width:230px;" +
-      "font-family:-apple-system,system-ui,sans-serif;" +
-      "-webkit-user-select:none;user-select:none;";
-
-    /* THE PANEL OUTLIVED ITS OWN BUTTON (w69). It is
-     * position:fixed, so it rides the viewport and stays put
-     * while the page scrolls under it. Its button does NOT:
-     * buildWebUI moves the whole button row off the fixed
-     * wrapper and into the top panel of the page,
-     * where it scrolls away like any other content. Scroll
-     * down with the panel open and the only control that can
-     * close it is somewhere above the fold - the panel sits
-     * over the board with no way out but scrolling back up.
-     * Neither half is wrong on its own, which is why this
-     * survived from w21 to here.
-     *
-     * A PANEL MUST CARRY ITS OWN EXIT. Anchoring it to the
-     * scrolling button was the alternative and it is worse:
-     * the panel would then scroll off the top with the button,
-     * which fixes the trap by hiding the settings. So: a Done
-     * button at the head of the panel, always in reach because
-     * it is IN the thing that needs closing, plus tap-outside,
-     * which is what everyone tries first. Both go through
-     * closeSettings so there is one way to shut, not three.
-     */
-    function closeSettings() {
-      if (!setPanel || setPanel.style.display === "none") return;
-      setPanel.style.display = "none";
-      renderButton();
-    }
-
-    // The w69 header - a "Settings" title and a Done button -
-    // lasted one day on the device: the owner deleted both,
-    // because tap-outside already closes the panel and the
-    // header spent a row saying what the tap that opened it
-    // just said. Tap-outside is the whole exit now, which
-    // makes the guard on the button in the document listener
-    // below load-bearing rather than belt-and-braces.
-
-    // (settingHeader and the settingPaints map stood here
-    // until w110: the first titled mode groups that no
-    // longer exist, the second let v129's message pair
-    // repaint each other, and the pair is gone too.)
-
-    function settingRow(key, label, onFlip, headerStyle) {
-      var row = document.createElement("div");
-      row.style.cssText =
-        "display:flex;align-items:center;justify-content:space-between;" +
-        "gap:14px;margin:4px 0;";
-      var lab = document.createElement("div");
-      lab.textContent = label;
-      lab.style.cssText = headerStyle
-        ? "color:" + PANEL_HEAD + ";font-size:11px;letter-spacing:.08em;" +
-          "text-transform:uppercase;"
-        : "color:" + PANEL_LABEL + ";font-size:13px;";
-      var pill = document.createElement("button");
-      // weight 600 to match every other button label (w100):
-      // the pills inherited the body's regular weight and
-      // read thinner than the row of buttons above them
-      pill.style.cssText =
-        "font-size:11px;min-width:52px;padding:5px 0;" +
-        "text-align:center;border-radius:10px;" +
-        "font-weight:600;border:1px solid " + BORDER + ";";
-      var paint = function () {
-        pill.textContent = CFG[key] ? "ON" : "OFF";
-        paintButton(pill, CFG[key], BLUE);
-      };
-      pill.addEventListener("click", function () {
-        CFG[key] = !CFG[key];
-        saveSettings();
-        log("SET", key + " = " + CFG[key]);
-        paint();
-        if (onFlip) onFlip();
-      });
-      paint();
-      row.appendChild(lab);
-      row.appendChild(pill);
-      setPanel.appendChild(row);
-    }
-
-    // ONE ROW (w116; three from w110, ten before that). The
-    // "confirm my move" and "guard pawn pushes" rows died
-    // when confirming stopped being optional - every voice
-    // move is a question now, so there is nothing for either
-    // switch to decide (their tombstones are in settings.js).
-    // A panel that shrinks every time a choice becomes a
-    // rule is the panel doing its job.
-    //
-    // The headphones row led the panel from v125 to v131;
-    // deleted at v132 with the setting.
-    //
-    // w68. Repaints on the spot rather than waiting for the
-    // next game event: this is the one setting whose whole
-    // effect is something already on screen, so a flip that
-    // did nothing visible until the opponent moved would read
-    // as a broken switch.
-    // Names are not a switch any more (w75): they always show,
-    // so the w72 coupling that kept ratings from outliving
-    // them has nothing left to couple to. One free switch.
-    settingRow("showRatings", "show ratings", function () {
-      renderPlayers();
-    });
-    document.body.appendChild(setPanel);
-
-    // The other half of the w69 exit: a tap anywhere that is
-    // not the panel and not the button that opens it. Guarded
-    // on BOTH, because a tap on the button is already a toggle
-    // and closing here too would close-then-reopen (or worse,
-    // reopen-then-close) depending on listener order. Attached
-    // once, at build, and cheap: it returns immediately while
-    // the panel is down, which is nearly always.
-    document.addEventListener("click", function (e) {
-      if (!setPanel || setPanel.style.display === "none") return;
-      var t = e.target;
-      while (t) {
-        if (t === setPanel || t === settingsBtn) return;
-        t = t.parentNode;
-      }
-      closeSettings();
-    });
+    // THE SETTINGS BUTTON AND ITS PANEL ARE GONE (w117,
+    // owner's order: "dump the settings menu. not needed").
+    // v124 built them so nothing behavioural was buried in
+    // the source; the panel then shrank for two years as
+    // choices became rules - ten rows to three at w110,
+    // three to one at w116 - until one cosmetic switch was
+    // carrying a button, a fixed-position panel, an
+    // outside-tap closer and a localStorage blob. Settings
+    // are code constants again (settings.js, beside the
+    // voice), which is where one bit that changes twice a
+    // year belongs. The w69 lesson learned here - A PANEL
+    // MUST CARRY ITS OWN EXIT - is the log panel's to keep
+    // now.
 
     if (practiceBtn) row.appendChild(practiceBtn);
     row.appendChild(logBtn);
     row.appendChild(clockBtn);
-    row.appendChild(settingsBtn);
     row.appendChild(bigBtn);
     wrapEl.appendChild(row);
     document.body.appendChild(wrapEl);
@@ -694,7 +551,7 @@
     var parts = [(pl.title
       ? '<span class="' + titleCls + '">' + esc(pl.title) + "</span> " : "") +
       esc(pl.name)];
-    if (CFG.showRatings && pl.rating != null) {
+    if (SHOW_RATINGS && pl.rating != null) {
       parts.push('<span class="rating">' + esc(pl.rating) + "</span>");
     }
     // THE NAME ROW NEVER DIMS (w81). w72's idle class was
@@ -859,9 +716,9 @@
 
   function el(id) { return document.getElementById(id); }
 
-  // The opponent dropdown remembers its choice (the one
-  // per-page setting; everything behavioural is CFG in the
-  // shared settings panel).
+  // The opponent dropdown remembers its choice - the one
+  // stored per-page preference left, now that the settings
+  // panel and its blob are gone (w117; see settings.js).
   //
   // These three carried a ".web." infix until the w111
   // storage audit - minted when "web" distinguished this
@@ -1167,18 +1024,19 @@
       // of after-the-fact move as re-parenting the row.
       // The order is stated outright rather than inherited
       // from buildUI's append sequence: the voice button
-      // first, then Settings, and the two riskiest taps
-      // LAST, furthest from the button pressed every game:
-      // Practice quietly stops moves reaching Lichess, and
-      // the account button (from the markup, joined at w76)
-      // is the door to Sign out once signed in, at the end.
-      // appendChild moves a node that already has a parent,
-      // so re-appending in order IS the reorder - and it is
-      // also how the sign-in button leaves the markup spot
-      // it boots in.
+      // first, then the two riskiest taps LAST, furthest
+      // from the button pressed every game: Practice
+      // quietly stops moves reaching Lichess, and the
+      // account button (from the markup, joined at w76) is
+      // the door to Sign out once signed in, at the end.
+      // (Settings held second place until its button died
+      // at w117.) appendChild moves a node that already has
+      // a parent, so re-appending in order IS the reorder -
+      // and it is also how the sign-in button leaves the
+      // markup spot it boots in.
       var buttonRow = wrapEl.firstChild;
       if (buttonRow && buttonRow.appendChild) {
-        [bigBtn, settingsBtn, clockBtn, logBtn, practiceBtn, signInBtn]
+        [bigBtn, clockBtn, logBtn, practiceBtn, signInBtn]
           .forEach(function (b) {
             if (!b) return;
             if (b !== bigBtn) adoptPageButtonLook(b);
@@ -1189,42 +1047,20 @@
         buttonRow.style.rowGap = "8px";
       }
       host.appendChild(wrapEl);
-      if (settingsBtn && setPanel) {
-        settingsBtn.addEventListener("click", function () {
-          if (setPanel.style.display === "none") return;
-          // ANCHORED TO THE BUTTON IN BOTH AXES (w24). The
-          // userscript pins the panel right:10px because its
-          // buttons live in the bottom-right corner, so the
-          // right edge WAS the button. Here the button is top
-          // left; w21 fixed the vertical half and left the
-          // panel opening "below the button but at the far
-          // right" - the owner rightly asked if that was on
-          // purpose. It opens under the button, left-aligned,
-          // clamped so it never runs off a narrow screen.
-          var r = settingsBtn.getBoundingClientRect();
-          var w = window.innerWidth || 1024;
-          setPanel.style.bottom = "auto";
-          setPanel.style.top = Math.max(8, r.bottom + 8) + "px";
-          setPanel.style.right = "auto";
-          setPanel.style.left =
-            Math.max(8, Math.min(r.left, w - 270)) + "px";
-        });
-      }
     }
 
     // NO DOUBLE-TAP ZOOM ON THE OVERLAYS (w25). Two quick
-    // taps on two settings pills read as a double-tap and
+    // taps on two panel pills read as a double-tap and
     // Safari zoomed the page. The page's own buttons are
     // covered by the scoped .panel button CSS, and the button
     // row picked that up when it moved into the top panel
-    // (w21) - but the settings and log panels attach to
-    // document.body, OUTSIDE any .panel, so the same w21
-    // scoping that fixed their pill sizes also took
-    // touch-action away from them. Set inline, on the
-    // panels and every button in them. (user-scalable=no in
-    // the viewport meta does not help: iOS ignores it for
-    // accessibility, by design.)
-    [setPanel, logPanel].forEach(function (p) {
+    // (w21) - but the log panel attaches to document.body,
+    // OUTSIDE any .panel, so the same w21 scoping that fixed
+    // its pill sizes also took touch-action away from it.
+    // Set inline, on the panel and every button in it.
+    // (user-scalable=no in the viewport meta does not help:
+    // iOS ignores it for accessibility, by design.)
+    [logPanel].forEach(function (p) {
       if (!p) return;
       p.style.touchAction = "manipulation";
       if (!p.querySelectorAll) return;   // harness stub
