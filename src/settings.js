@@ -63,7 +63,7 @@
    *
    * What the panel-era tombstones guarded is now one line
    * each, and the reasoning lives where it acts:
-   *   confirm-every-move  dialogue.js (confirmMove, w116)
+   *   the move grammar     parsing.js (four items, w118)
    *   the chime           chimes.js (three acts)
    *   clock-mode text     w110 HISTORY entry; strip in git
    *                       at w109

@@ -279,7 +279,7 @@ vm.runInContext(`
 // cannot find it by id; enter the mode the way the button does.
 vm.runInContext(`
   dryRun = true; running = true;
-  pending = null; confirmAction = null;
+  confirmAction = null;
   dryStart();
 `, sandbox);
 
@@ -326,34 +326,31 @@ const sleep = ms =>
     cond ? pass++ : fail++;
   }
 
-  // w116: the move comes back as a QUESTION and posts on yes
-  await expect("knight foxtrot three", /knight foxtrot 3\?/i);
-  await expect("yes", /okay/i);  // no WebAudio here: spoken fallback
+  // w118: a whole four-item move plays at once, "okay." (no
+  // WebAudio here) is the one bit spoken, and the practice
+  // opponent replies
+  await expect("golf one foxtrot three", /okay/i);
   await sleep(150); heard();     // the practice random reply
-  await expect("whose turn", /(white|black) to move/i);
-  await expect("what is on foxtrot three", /white knight/i);
   await expect("repeat", /./);
   await expect("memo testing the port", /memo recorded/i);
 
-  // the bare-square property, spot-checked on a fresh
-  // practice game: a bare square must never come back as
-  // a piece move
+  // the four-item property, spot-checked on a fresh practice
+  // game: less than the whole move never plays
   vm.runInContext(`
     dryRun = true; running = true;
-    pending = null; confirmAction = null;
+    confirmAction = null;
     dryStart();
   `, sandbox);
   await sleep(150); heard();
   say("delta four");
   await sleep(120);
   const d4 = heard().join(" | ");
-  const pieceWords = /(knight|bishop|rook|queen|king) delta 4/i;
-  if (pieceWords.test(d4)) {
-    console.log("FAIL bare d4 read as a piece:", d4); fail++;
+  if (vm.runInContext("api.moves.length", sandbox) !== 0) {
+    console.log("FAIL bare d4 played something:", d4); fail++;
   } else {
-    console.log("PASS bare square stayed a pawn:", d4); pass++;
+    console.log("PASS a bare square plays nothing:", d4); pass++;
   }
-  say("yes");                  // w116: close the question
+  say("delta two delta four");
   await sleep(200); heard();   // let the random reply land
 
   // ---- clock mode, as v133 ships it (clock.js) ----
@@ -676,55 +673,8 @@ const sleep = ms =>
         vm.runInContext('sentenceCase("checkmate. white wins.")',
                         sandbox) === "Checkmate. White wins.");
 
-  // "tags" heard for "takes", game17
-  check('"tags" counts as takes',
-        vm.runInContext('!!TAKE_WORDS["tags"] && !!TAKE_WORDS["tag"]',
-                        sandbox) === true);
-  // "text" for "takes", game w43-1 at 17:31:04, where it lost
-  // the move. Asked of the built vocabulary, then proved
-  // through the real pipeline further down.
-  check('"text" counts as takes (w44)',
-        vm.runInContext('!!TAKE_WORDS["text"] && !!TAKE_WORDS["texts"]',
-                        sandbox) === true);
-
-  // ---- v136/w26: cancel closes a repair question ----
-  // reproduce game w25-1 18:42:47: a bishop with half a
-  // square, the rank asked for, then "cancel"
-  vm.runInContext(`
-    dryRun = true; running = true;
-    pending = null; confirmAction = null;
-    partialAsk = null; pieceAsk = null;
-    dryStart();
-  `, sandbox);
-  await sleep(200); heard();          // let practice's own reply land FIRST
-  // THEN the position: a board where "bishop bravo" is
-  // genuinely half a square - Bc3 reaches b2 and b4, Bc6
-  // reaches b5 and b7. (The start position cannot raise
-  // this question at all: no bishop can move. The first
-  // draft of this test used it and proved nothing, and the
-  // second set the board before practice's stray reply,
-  // which moved a bishop and flipped the turn - the
-  // utterance was then correctly ignored as "not your
-  // move". Both drafts failed for reasons that had nothing
-  // to do with the fix under test.)
-  vm.runInContext(`
-    api.pos = new RULES.Position("k7/8/2B5/8/8/2B5/8/K7 w - - 0 1");
-    api.moves = []; api.myColor = "w"; api.over = false;
-  `, sandbox);
-  say("bishop bravo");
-  await sleep(120);
-  const asked = heard().join(" | ");
-  check("half a square asks for the missing half (" + asked + ")",
-        /say the rank/i.test(asked) &&
-        vm.runInContext("!!partialAsk", sandbox) === true);
-  say("cancel");
-  await sleep(120);
-  const cancelled = heard().join(" | ");
-  check("cancel is ANSWERED, not silent (" + cancelled + ")",
-        /cancelled/i.test(cancelled));
-  check("the question is actually closed",
-        vm.runInContext("!partialAsk && !pieceAsk", sandbox) === true);
-  await sleep(120); heard();
+  // (the "tags"/"text" take-word checks died at w118 with
+  // TAKE_WORDS itself: there is no take word to mishear)
 
   // ---- v135/w23: the starting switches are logged ----
   // Since w117 the switches are code constants (the panel and
@@ -1501,143 +1451,199 @@ const sleep = ms =>
   check("frozen userscript artifact untouched (v137)",
         canonSha === frozen);
 
-  // ---- w40: a capture may name its ORIGIN ----
-  // Game w39-1, 14:29:28 to 14:30:03: four ways of saying
-  // "the e-pawn takes" refused in a row, then the long form
-  // accepted. Each utterance is driven on the board it was
-  // actually spoken on. setBoard is used everywhere below
-  // because practice's own random reply moves a piece and
-  // flips the turn - see the note at the bishop test above.
-  // PRACTICE'S RANDOM REPLY IS NOISE IN EVERY TEST BELOW, AND
-  // IT WAS CORRUPTING THEM. A test that plays a move leaves an
-  // opponent reply on a 1600ms timer (dialogue.js). Install a
-  // position before it fires and it lands in the NEW one: it
-  // moves a piece, bumps api.moves.length, and every open
-  // question goes instantly stale, because pieceAsk and
-  // partialAsk are both ply-guarded. The answer then comes back
-  // "ignored, not a move" and the test fails for a reason that
-  // has nothing to do with what it is testing. The comment on
-  // the bishop test above learned this the same way.
-  //
-  // Sleeping it off was the first attempt and it is the wrong
-  // shape: it makes every helper wait 1.7s and it still races.
-  // These tests set their own position, so the random opponent
-  // has no part in them at all - so it is switched off, and
-  // that now calls off the one already in flight too.
-  //
-  // It could not, until w54. acceptMove scheduled the reply as
-  // setTimeout(dryOpponentReply, 1600), which captures the
-  // function REFERENCE, so this stub only affected replies
-  // scheduled afterwards and the in-flight one still ran the
-  // original - hence the 1.7-second sleep that used to sit
-  // here, absorbing it. dialogue.js now schedules a call by
-  // name, so the stub takes effect immediately and the wait is
-  // gone along with the race the old comment admits to.
-  vm.runInContext("dryOpponentReply = function () {};", sandbox);
-  heard();
-
   async function setBoard(fen) {
     heard();
     vm.runInContext(`
       dryRun = true; running = true;
-      pending = null; confirmAction = null;
-      partialAsk = null; pieceAsk = null;
+      confirmAction = null;
       api.pos = new RULES.Position(${JSON.stringify(fen)});
       api.moves = []; api.myColor = "w"; api.over = false;
     `, sandbox);
     heard();
   }
-  async function onBoard(fen, utt, want, name) {
-    await setBoard(fen);
-    say(utt);
-    await sleep(120);
-    const out = heard().join(" | ");
-    check((name || utt) + " (" + (out || "silence") + ")", want.test(out));
-  }
 
-  // 1.e4 Nf6 2.e5 c6 - the game position. The ONLY capture
-  // from e5, and the only one from the whole e-file, is exf6.
-  const GAME = "rnbqkb1r/pp1ppppp/2p2n2/4P3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3";
-  const takesF6 = /echo takes foxtrot 6/i;
-  await onBoard(GAME, "echo five takes", takesF6);
-  await onBoard(GAME, "echo takes", takesF6);
-  await onBoard(GAME, "pawn echo five takes", takesF6);
-  await onBoard(GAME, "echo five takes night", takesF6);
-  // the long form, which already worked, still works
-  await onBoard(GAME, "echo five takes foxtrot six", takesF6);
+  // ========= w118: THE FOUR-ITEM GRAMMAR =========
+  // A move is from-file, from-rank, to-file, to-rank - sixteen
+  // words of vocabulary, no piece names, no take word, no
+  // castle word. A clean legal four-item move plays AT ONCE
+  // and the chime (or its "okay." fallback, as here, with no
+  // WebAudio) is the whole confirmation. EVERYTHING else that
+  // contains a square is "Say again." - verbatim, with no
+  // read-back and no explanation (owner's decision), and
+  // nothing is ever completed from what is legal, however
+  // unique the completion.
 
-  // nothing to take: a TRUE sentence, not "not a legal move"
-  await onBoard("k7/8/8/4P3/8/8/8/K7 w - - 0 1", "echo five takes",
-                /no capture from echo 5/i);
-  await onBoard("k7/8/8/4P3/8/8/8/K7 w - - 0 1", "echo takes",
-                /no capture from the echo file/i);
+  // the whole move, plainly: plays at once, one bit spoken
+  await setBoard("k7/8/8/8/8/8/4P3/K5N1 w - - 0 1");
+  say("echo two echo four");
+  await sleep(120);
+  const w118play = heard().join(" | ");
+  check("a whole move plays at once (" + w118play + ")",
+        /okay/i.test(w118play) && !/echo/i.test(w118play) &&
+        vm.runInContext("api.lastSan", sandbox) === "e4");
 
-  // TWO victims from one origin: ask, never guess
-  await setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
-  say("echo five takes");
-  await sleep(120);
-  const twoWays = heard().join(" | ");
-  check("two victims ask instead of guessing (" + twoWays + ")",
-        /echo takes (delta 6|foxtrot 6)\?/i.test(twoWays) &&
-        vm.runInContext("!!pending", sandbox) === true);
-  say("yes");
-  await sleep(120);
-  // w116: yes is answered with ONE BIT - the question already
-  // spoke the move, and the owner ruled it is not repeated.
-  // No WebAudio in this sandbox, so the bit is the spoken
-  // fallback; the move itself is checked on the board.
-  const yesPlayed = heard().join(" | ");
-  check("and yes plays one of them (okay, not a re-read: " +
-        yesPlayed + ")",
-        /okay/i.test(yesPlayed) && !/takes/i.test(yesPlayed) &&
-        /^(exd6|exf6)$/.test(vm.runInContext("api.lastSan", sandbox)));
-
-  // ========= w116: EVERY VOICE MOVE IS A QUESTION =========
-  // The game of 11 Aug: "bishop charlie four" arrived with
-  // both readings damaged, a bare c4 survived, and the pawn
-  // played silently onto the bishop's square. The owner's
-  // verdict: no voice move posts without being read back as
-  // a question and answered. Not a setting - the panel rows
-  // that used to decide this are dead (see settings.js).
-  //
-  // The headline case is the one that NEVER asked before: a
-  // cleanly named, unambiguous move.
-  await setBoard("k7/8/8/8/8/8/8/K5N1 w - - 0 1");
-  say("knight foxtrot three");
-  await sleep(120);
-  const cleanAsk = heard().join(" | ");
-  check("a clean named move asks before playing (" + cleanAsk + ")",
-        /knight foxtrot 3\?/i.test(cleanAsk) &&
-        vm.runInContext("api.moves.length", sandbox) === 0);
-  say("no");
-  await sleep(120);
-  const saidNo = heard().join(" | ");
-  check("and no does not play it (" + saidNo + ")",
-        vm.runInContext("api.moves.length", sandbox) === 0 &&
-        /only legal move fitting|say the whole move again/i.test(saidNo));
-  // a TAPPED move is the named exemption: eyes on the screen
-  await setBoard("k7/8/8/8/8/8/8/K5N1 w - - 0 1");
-  vm.runInContext(`
-    (function () {
-      var legal = api.pos.legalMoves();
-      var m = legal.filter(function (x) {
-        return RULES.sqName(x.to) === "f3"; })[0];
-      acceptMove({ m: m, san: api.pos.sanOf(m, legal) }, true);
-    })()
-  `, sandbox);
-  await sleep(120);
-  check("a tapped move still plays without a question",
+  // a piece move needs no piece name
+  await setBoard("k7/8/8/8/8/8/4P3/K5N1 w - - 0 1");
+  say("golf one foxtrot three");
+  await sleep(120); heard();
+  check("a knight moves by its squares alone",
         vm.runInContext("api.lastSan", sandbox) === "Nf3");
-  heard();
 
-  // ====== w116: THE CHIME IS THE POST-YES ANSWER ======
-  // w108's trial block, back for its third act (chimes.js
-  // has the whole story): with WebAudio present and running
-  // the yes is answered by the chime and NOTHING is spoken -
-  // the owner ruled the move is not repeated after his yes.
-  // With the context suspended or the API missing, the same
-  // moment speaks "okay." instead - rule 5 does not trust a
-  // chime that could not even be scheduled.
+  // a capture is nothing special: the board knows what is
+  // standing on the to-square
+  await setBoard("k7/8/8/3p4/4P3/8/8/K7 w - - 0 1");
+  say("echo four delta five");
+  await sleep(120); heard();
+  check("a capture is just the four items",
+        vm.runInContext("api.lastSan", sandbox) === "exd5");
+
+  // castling is the king's own two-square move
+  await setBoard("k7/8/8/8/8/8/8/4K2R w K - 0 1");
+  say("echo one golf one");
+  await sleep(120); heard();
+  check('"echo one golf one" castles kingside',
+        vm.runInContext("api.lastSan", sandbox) === "O-O");
+
+  // bare letters and glued squares still work
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("e2 e4");
+  await sleep(120); heard();
+  check("glued letter squares play",
+        vm.runInContext("api.lastSan", sandbox) === "e4");
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("e2e4");
+  await sleep(120); heard();
+  check("one glued token plays",
+        vm.runInContext("api.lastSan", sandbox) === "e4");
+
+  // ---- everything less is "Say again.", verbatim ----
+  // THREE items - even when exactly one legal move could
+  // complete them. This is the owner's own example (a lone
+  // "bravo five" early on, Bb5 the only fit) and his rule:
+  // "if we get too fancy with using logic to fix mishears,
+  // we're going down the wrong path." The system never
+  // guesses.
+  await setBoard(
+    "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2");
+  say("bravo five");
+  await sleep(120);
+  const lone = heard().join(" | ");
+  check('a lone square is "Say again." even with one unique fit (' +
+        lone + ")",
+        lone === "Say again." &&
+        vm.runInContext("api.moves.length", sandbox) === 0);
+  say("foxtrot one bravo five");
+  await sleep(120); heard();
+  check("the whole move then plays the bishop",
+        vm.runInContext("api.lastSan", sandbox) === "Bb5");
+
+  // a dropped item
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo echo four");
+  await sleep(120);
+  check('a dropped item is "Say again."',
+        heard().join(" | ") === "Say again." &&
+        vm.runInContext("api.moves.length", sandbox) === 0);
+  // a fifth item
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo two echo four five");
+  await sleep(120);
+  check('a fifth item is "Say again."',
+        heard().join(" | ") === "Say again.");
+  // an unknown word beside the whole move: the hearing is
+  // damaged (w115's lesson) and the log still names the word
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("patient echo two echo four");
+  await sleep(120);
+  check('an unknown word damns the reading ("Say again.")',
+        heard().join(" | ") === "Say again." &&
+        vm.runInContext("api.moves.length", sandbox) === 0);
+  check("and the log names the word it could not place",
+        vm.runInContext(`
+          LOG.some(function (l) {
+            return l.indexOf('"patient" not understood') >= 0;
+          })
+        `, sandbox));
+  // an illegal four-item move: same three words, no lecture
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo two golf four");
+  await sleep(120);
+  check('an illegal move is the same "Say again."',
+        heard().join(" | ") === "Say again.");
+  // the OLD grammar's sentences are foreign now: piece words
+  // are unknown words
+  await setBoard("k7/8/8/3p4/4P3/8/8/K7 w - - 0 1");
+  say("queen takes delta five");
+  await sleep(120);
+  check('the old grammar gets "Say again." too',
+        heard().join(" | ") === "Say again." &&
+        vm.runInContext("api.moves.length", sandbox) === 0);
+
+  // ---- rival readings ----
+  // a rival can rescue a mangled primary: same move, one of
+  // Safari's guesses clean
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  vm.runInContext(
+    'handleTranscripts(["I go to a floor", "echo two echo four"]);',
+    sandbox);
+  await sleep(120); heard();
+  check("a clean rival reading rescues the move",
+        vm.runInContext("api.lastSan", sandbox) === "e4");
+  // but two readings naming two DIFFERENT legal moves is a
+  // mishearing by definition: refuse, never pick
+  await setBoard("k7/8/8/8/8/8/3PP3/K7 w - - 0 1");
+  vm.runInContext(
+    'handleTranscripts(["echo two echo four", "delta two delta four"]);',
+    sandbox);
+  await sleep(120);
+  check('disagreeing rivals are "Say again."',
+        heard().join(" | ") === "Say again." &&
+        vm.runInContext("api.moves.length", sandbox) === 0);
+
+  // ---- stray talk and mistimed moves ----
+  // no square anywhere: silence, logged
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("what a lovely evening");
+  await sleep(120);
+  check("stray talk with no square stays silent",
+        heard().length === 0);
+  // a square in the room but not our turn: the true answer
+  vm.runInContext('api.myColor = "b";', sandbox);
+  say("echo two echo four");
+  await sleep(120);
+  check("a mistimed move is answered, not swallowed",
+        /white to move/i.test(heard().join(" | ")));
+  vm.runInContext('api.myColor = "w";', sandbox);
+
+  // ---- promotion ----
+  // the bare four items promote to a QUEEN (black king kept
+  // clear so no check suffix muddies the SAN)
+  await setBoard("8/4P3/k7/8/8/8/8/K7 w - - 0 1");
+  say("echo seven echo eight");
+  await sleep(120); heard();
+  check("a bare promotion is a queen",
+        vm.runInContext("api.lastSan", sandbox) === "e8=Q");
+  // "equals knight" is the one surviving piece phrase
+  await setBoard("8/4P3/k7/8/8/8/8/K7 w - - 0 1");
+  say("echo seven echo eight equals knight");
+  await sleep(120); heard();
+  check('"equals knight" underpromotes',
+        vm.runInContext("api.lastSan", sandbox) === "e8=N");
+  // a promotion word on a move that does not promote is a
+  // mishearing, not a move
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo two echo four equals knight");
+  await sleep(120);
+  check('a stray promotion word is "Say again."',
+        heard().join(" | ") === "Say again.");
+
+  // ====== w118: THE CHIME CONFIRMS THE MOVE ======
+  // (w108's trial, w116's post-yes answer, and now the whole
+  // own-move channel: the user spoke all four items, so the
+  // one bit owed is "heard exactly, legal, played". With
+  // WebAudio present and running, the chime and NOTHING
+  // spoken; suspended or absent, "okay." - rule 5 never
+  // trusts a chime that could not even be scheduled.)
   vm.runInContext(`
     __chimeStarts = 0;
     AudioContext = function () {
@@ -1662,26 +1668,19 @@ const sleep = ms =>
   check("the gesture prime creates a running chime context",
         vm.runInContext('!!chimeCtx && chimeCtx.state === "running"',
                         sandbox));
-  await setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
-  say("echo five takes");
-  await sleep(120);
-  heard();                       /* drop the question */
-  say("yes");
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo two echo four");
   await sleep(120);
   const chimed = heard().join(" | ");
-  check("a yes is answered by the chime and NOTHING spoken (" +
+  check("a played move chimes and speaks NOTHING (" +
         (chimed || "silence") + ")",
         chimed === "" &&
         vm.runInContext("__chimeStarts", sandbox) === 2 &&
-        /^(exd6|exf6)$/.test(vm.runInContext("api.lastSan", sandbox)));
-
+        vm.runInContext("api.lastSan", sandbox) === "e4");
   // a suspended context is detected and the fallback speaks
   vm.runInContext('chimeCtx.state = "suspended";', sandbox);
-  await setBoard("k7/8/3n1n2/4P3/8/8/8/K7 w - - 0 1");
-  say("echo five takes");
-  await sleep(120);
-  heard();
-  say("yes");
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo two echo four");
   await sleep(120);
   const suspendedSaid = heard().join(" | ");
   check("a suspended chime context falls back to spoken okay (" +
@@ -1689,596 +1688,42 @@ const sleep = ms =>
         /okay/i.test(suspendedSaid) &&
         vm.runInContext("__chimeStarts", sandbox) === 2);
   vm.runInContext('chimeCtx.state = "running";', sandbox);
-
-  // (the "panel is one row" check lived here for w116; the
-  // panel itself died at w117 and its absence is asserted
-  // with the other page-furniture tests)
-
-  // leave the sandbox as WebAudio-less as it started, so
-  // every later yes-flow exercises the spoken fallback
+  // "Say again." is SPOKEN, never chimed: a refusal must
+  // carry its word
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo two golf four");
+  await sleep(120);
+  check('"Say again." is spoken even with the chime available',
+        /say again/i.test(heard().join(" | ")) &&
+        vm.runInContext("__chimeStarts", sandbox) === 2);
+  // leave the sandbox as WebAudio-less as it started
   vm.runInContext("AudioContext = undefined; chimeCtx = null;", sandbox);
 
-  // ===== w109: THE QUESTION LOST ITS TAIL, NOT ITS EARS =====
-  // A mixed list's first ask used to append "Yes, no, or
-  // name the piece" (v116's advertisement). The owner cut
-  // the advertisement as too much talk; the shortcut it
-  // advertised must keep working unannounced. (w116 cut
-  // "did you mean" too - the question is the bare move.)
-  await setBoard("k7/8/8/8/8/8/4NP2/K7 w - - 0 1");
-  say("foxtrot four");
+  // ---- a TAPPED move stays instant and unconfirmed ----
+  await setBoard("k7/8/8/8/8/8/8/K5N1 w - - 0 1");
+  vm.runInContext(`
+    (function () {
+      var legal = api.pos.legalMoves();
+      var m = legal.filter(function (x) {
+        return RULES.sqName(x.to) === "f3"; })[0];
+      acceptMove({ m: m, san: api.pos.sanOf(m, legal) }, true);
+    })()
+  `, sandbox);
   await sleep(120);
-  const mixedAsk = heard().join(" | ");
-  check("a mixed-list ask is the bare question (" + mixedAsk + ")",
-        /foxtrot 4\?/i.test(mixedAsk) &&
-        !/name the piece/i.test(mixedAsk) &&
-        !/did you mean/i.test(mixedAsk));
-  say("knight");
+  check("a tapped move still plays without any of this",
+        vm.runInContext("api.lastSan", sandbox) === "Nf3" &&
+        heard().length === 0);
+
+  // ---- the queries are gone (owner: never used them) ----
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("whose turn is it");
   await sleep(120);
-  // w116: the piece answer jumps the walk to the right
-  // QUESTION now, not straight to the board - the assembled
-  // move ("foxtrot four" + "knight") was never spoken whole
-  // until this ask.
-  const unadvertised = heard().join(" | ");
-  check("and the piece answer jumps the walk to its question (" +
-        unadvertised + ")",
-        /knight foxtrot 4\?/i.test(unadvertised) &&
-        vm.runInContext("api.lastSan", sandbox) !== "Nf4");
-  say("yes");
+  check("the turn query is dead: no square, silence",
+        heard().length === 0);
+  say("what is on foxtrot three");
   await sleep(120);
-  heard();
-  check("and yes plays the assembled move",
-        vm.runInContext("api.lastSan", sandbox) === "Nf4");
-
-  // THE DESTINATION FORM SURVIVES UNTOUCHED: white pawn d4,
-  // black pawn e5, and "takes echo five" is still dxe5.
-  //
-  // The repair is additive - it runs only where the ordinary
-  // reading came back empty - so on THIS board "echo five
-  // takes" also plays dxe5, and that is correct rather than a
-  // near miss. For a whole square the two readings can never
-  // both be live: if e5 carries a piece of ours the origin
-  // reading has something to work with and nothing of ours can
-  // capture onto its own square; if it carries theirs the
-  // origin reading is empty and only the destination reading
-  // remains. One capture in the room either way.
-  const D4E5 = "k7/8/8/4p3/3P4/8/8/K7 w - - 0 1";
-  await onBoard(D4E5, "takes echo five", /delta takes echo 5/i,
-                'the destination form survives: "takes echo five"');
-  await onBoard(D4E5, "echo five takes", /delta takes echo 5/i,
-                "a live destination reading is never overridden");
-
-  // The one deliberate reordering: "pawn echo takes" used to
-  // reach the half-square repair, which reads a dangling file
-  // as the DESTINATION file - here that would be dxe5. With a
-  // take word the file is the origin, so it must be exf3.
-  await onBoard("k7/8/8/4p3/3P4/5n2/4P3/K7 w - - 0 1", "pawn echo takes",
-                /echo takes foxtrot 3/i,
-                '"pawn echo takes" is the e-pawn, not the e-file target');
-
-  // ---- w41: file takes file, and who counts as "on the file" ----
-  // UNIQUENESS SPANS PIECES, NOT JUST PAWNS. "echo takes" can
-  // be the e-pawn or a piece on the e-file whose name the mic
-  // ate, so both must be counted before anything is played.
-  // Here Rxe7 and exf3 are both captures from the e-file.
-  await setBoard("4k3/4p3/8/4R3/8/5n2/4P3/K7 w - - 0 1");
-  say("echo takes");
-  await sleep(120);
-  const eFile = heard().join(" | ");
-  check("a PIECE on the file counts too, so it asks (" + eFile + ")",
-        /(echo takes foxtrot 3|rook takes echo 7)\?/i.test(eFile) &&
-        vm.runInContext("!!pending", sandbox) === true);
-  // and with the rook gone it is the pawn's alone, played
-  await onBoard("4k3/4p3/8/8/8/5n2/4P3/K7 w - - 0 1", "echo takes",
-                /echo takes foxtrot 3/i,
-                "one capture left on the file plays at once");
-
-  // FILE TAKES FILE. 1.c4 d5 2.Nc3 a6: "charlie takes delta"
-  // is cxd5 OR Nxd5 with the knight's name lost, so it asks.
-  await onBoard("rnbqkbnr/1pp1pppp/p7/3p4/2P5/2N5/PP1PPPPP/R1BQKBNR w KQkq - 0 3",
-                "charlie takes delta",
-                /(charlie|knight) takes delta 5\?/i,
-                '"charlie takes delta" with cxd5 AND Nxd5 asks');
-  // 1.c4 d5: only the pawn can do it, so it plays at once
-  await onBoard("rnbqkbnr/ppp1pppp/8/3p4/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 0 2",
-                "charlie takes delta", /charlie takes delta 5/i,
-                '"charlie takes delta" with only cxd5 plays');
-  // the target half is NAMED when nothing fits, or the
-  // sentence blames the wrong file
-  await onBoard("rnbqkbnr/ppp1pppp/8/3p4/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 0 2",
-                "charlie takes hotel",
-                /no capture from the charlie file onto the hotel file/i,
-                "a target that fits nothing is named in the refusal");
-  // an origin SQUARE with a target file, same machinery
-  await onBoard(GAME, "echo five takes foxtrot", takesF6,
-                '"echo five takes foxtrot" resolves to exf6');
-  // and the form that already worked is still untouched: a
-  // lone file after "takes" with NO origin before it is still
-  // the half-square repair's destination-file guess
-  await onBoard("4k3/8/8/3Qn3/8/8/8/4K3 w - - 0 1", "queen takes",
-                /queen takes echo 5/i,
-                '"queen takes" still belongs to the v117 repair');
-
-  // ---- w42: "takes charlie" needs no piece name ----
-  // Game w41-1, 16:32:18. The owner said "takes charlie"
-  // TWICE, got "Say again." both times, added the word "rook"
-  // and played Rxc6 on the third. The sentence was complete;
-  // the half-square repair just refused to run without a
-  // piece. Replayed as the game actually went, rather than
-  // from a FEN, so the position is checkable against the log.
-  async function setGame(ucis) {
-    heard();
-    vm.runInContext(`
-      dryRun = true; running = true;
-      pending = null; confirmAction = null;
-      partialAsk = null; pieceAsk = null;
-      api.pos = new RULES.Position();
-      ${JSON.stringify(ucis)}.forEach(function (u) { api.pos.applyUci(u); });
-      api.moves = []; api.myColor = "w"; api.over = false;
-    `, sandbox);
-    heard();
-  }
-  const W41_GAME = ["c2c4","e7e6","b1c3","h7h6","d2d4","g8e7","e2e4","a7a6",
-                    "b2b4","h8h7","f2f4","b7b6","g1f3","h6h5","h2h4","a6a5",
-                    "d1a4","c8a6","b4a5","g7g5","f4g5","c7c6","a1b1","f7f5",
-                    "b1b6","f8h6","g5h6","h7f7"];
-
-  await setGame(W41_GAME);
-  say("takes charlie");
-  await sleep(120);
-  const takesC = heard().join(" | ");
-  // TWO captures land on the c-file here, Qxc6 and Rxc6, so
-  // the honest answer is the question - not the rook. That is
-  // the game6 count doing its job: the queen could also take
-  // there, and the rook is what was meant.
-  check('"takes charlie" is heard at all now (' + takesC + ")",
-        !/say again/i.test(takesC));
-  // w43 improved this case as well: Qxc6 and Rxc6 both land on
-  // c6, so the rank is not the missing half here either and it
-  // asks which piece. In the log this cost rank, then yes/no,
-  // then no, then yes. It is now one question and one word.
-  check("it names the movers, since both land on c6",
-        /I heard takes charlie\./i.test(takesC) &&
-        /queen takes charlie 6/i.test(takesC) &&
-        /rook takes charlie 6/i.test(takesC));
-  check("the lead is never \"undefined\"", !/undefined/i.test(takesC));
-  say("rook");
-  await sleep(120);
-  check("and one word plays the rook capture from the log",
-        /rook takes charlie 6/i.test(heard().join(" | ")));
-
-  // the form that DID work in the log still works, unchanged
-  await setGame(W41_GAME);
-  say("rook takes charlie");
-  await sleep(120);
-  check("\"rook takes charlie\" still plays Rxc6 at once",
-        /rook takes charlie 6/i.test(heard().join(" | ")));
-
-  // one capture onto the file: play it, no question
-  await onBoard("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1", "takes delta",
-                /echo takes delta 5/i,
-                "a unique piece-less capture onto a file plays");
-
-  // REGRESSIONS. A named piece with half a square keeps its
-  // own wording - the lead must still say the piece.
-  await onBoard("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1", "queen alpha",
-                /I heard queen alpha\. Say the rank/i,
-                "a named piece still leads with the piece");
-  // and a dangling file with NO take word must stay inert: a
-  // square with no piece named is a push, never a piece move
-  await setGame(W41_GAME);
-  say("charlie");
-  await sleep(120);
-  const bareFile = heard().join(" | ");
-  check("a bare file without \"takes\" is still not a move (" +
-        bareFile + ")",
-        !/did you mean/i.test(bareFile) && !/takes/i.test(bareFile));
-
-  // ---- w43: ask about the half that actually narrows ----
-  // Game w42-1, 16:51:44. "takes delta" with Nxd5 and cxd5 on
-  // the board asked for the RANK - and both fits land on d5,
-  // so the question had exactly one possible answer and could
-  // not discriminate. "three" and "four" fit nothing, "five"
-  // got back to where it started, and "knight" said in the
-  // middle of it was ignored entirely.
-  const W42_GAME = ["d2d4","b8a6","c2c4","d7d5","b1c3","e7e6"];
-
-  await setGame(W42_GAME);
-  say("takes delta");
-  await sleep(120);
-  const takesD = heard().join(" | ");
-  check("it no longer asks for a rank it already knows (" +
-        takesD + ")", !/say the rank/i.test(takesD));
-  check("it asks WHICH PIECE, offering the knight and the pawn",
-        /knight takes delta 5/i.test(takesD) &&
-        /charlie takes delta 5/i.test(takesD));
-  // w44: THE LEAD MUST NOT CLAIM A RANK NOBODY SAID. "takes
-  // delta" was answered "I heard takes delta 5" - true move,
-  // false sentence. The deduced square belongs in the options,
-  // which name the whole move, never in the "I heard" clause.
-  const lead = takesD.split(/ say /i)[0];
-  check("the lead repeats only what was said (" + lead + ")",
-        /I heard takes delta\./i.test(lead) && !/[1-8]/.test(lead));
-  say("night");
-  await sleep(120);
-  check("and the piece answers it in one word",
-        /knight takes delta 5/i.test(heard().join(" | ")));
-
-  // the pawn is offered by its FILE, and answers by its file
-  await setGame(W42_GAME);
-  say("takes delta");
-  await sleep(120); heard();
-  say("charlie");
-  await sleep(120);
-  check("a file answers for the pawn that stands on it",
-        /charlie takes delta 5/i.test(heard().join(" | ")));
-
-  // REGRESSION: when the fits really do span ranks, the rank
-  // question is still the right one. Rxd7 and Nxd5 differ in
-  // destination, so "say the rank" narrows for real.
-  await onBoard("4k3/8/8/3n4/8/2Nb4/2P5/4K3 w - - 0 1", "takes delta",
-                /say the rank/i,
-                "fits spanning ranks still ask for the rank");
-  // and a piece name now answers THAT question too, instead of
-  // falling silently through it
-  say("night");
-  await sleep(120);
-  check("a piece name answers a rank question (w43)",
-        /knight takes delta 5/i.test(heard().join(" | ")));
-
-  // REGRESSION: a named piece with half a square is untouched
-  await onBoard("4k3/8/8/3Q4/8/8/8/4K3 w - - 0 1", "queen alpha",
-                /I heard queen alpha\. Say the rank/i,
-                "a named piece with half a square still asks the rank");
-
-  // and the whole utterance that was lost, driven for real:
-  // "text delta" must reach the same question "takes delta"
-  // does, not "Say again."
-  await onBoard("4k3/8/8/3n4/8/2Nb4/2P5/4K3 w - - 0 1", "text delta",
-                /say the rank/i,
-                '"text delta" is heard as a capture (w44)');
-
-  // ---- PROPERTY: "I heard" never claims what was not said ----
-  // The unit-level properties live in property_check.js, which
-  // runs the parser and matcher over hundreds of thousands of
-  // generated utterances. Two invariants cannot be checked
-  // there because they are about what the page SAYS, not about
-  // which moves it finds, and saying things is the whole job:
-  //
-  //   1. every utterance with a content word in it gets an
-  //      answer (CLAUDE.md rule 5 - silence reads as "not
-  //      heard", never as "done")
-  //   2. an "I heard ..." lead repeats only what was spoken
-  //      (w44 - it is the one sentence that makes a claim about
-  //      the USER, and the owner is across the room with it as
-  //      his only evidence)
-  //
-  // Generated rather than listed, because w44 was a lie that a
-  // hand-written test asserted verbatim and therefore blessed.
-  const FILE_WORD = { a: "alpha", b: "bravo", c: "charlie", d: "delta",
-                      e: "echo", f: "foxtrot", g: "golf", h: "hotel" };
-  const RANK_WORD = { 1: "one", 2: "two", 3: "three", 4: "four",
-                      5: "five", 6: "six", 7: "seven", 8: "eight" };
-  const spokenForms = [];
-  Object.keys(FILE_WORD).forEach(f => {
-    spokenForms.push("takes " + FILE_WORD[f]);
-    spokenForms.push(FILE_WORD[f] + " takes");
-    spokenForms.push("queen " + FILE_WORD[f]);
-    spokenForms.push(FILE_WORD[f] + " five takes");
-    spokenForms.push("queen " + FILE_WORD[f] + " four");
-    spokenForms.push(FILE_WORD[f] + " takes knight");
-  });
-  const boards = [
-    ["1.c4 d5 2.Nc3 a6", null, W42_GAME],
-    ["the w41 game at 16:32", null, W41_GAME]
-  ];
-  let heardClaims = 0, silences = 0, lies = 0, worst = "";
-  for (const [, , game] of boards) {
-    for (const utt of spokenForms) {
-      await setGame(game);
-      say(utt);
-      await sleep(60);
-      const out = heard().join(" | ");
-      if (!out) { silences++; worst = worst || ("silent on: " + utt); continue; }
-      // NOTHING SPOKEN MAY CONTAIN "undefined" (w54). One
-      // hand-picked utterance was checked for this and the
-      // whole generated battery was not - and this is the
-      // cheapest possible check on a class of bug that is
-      // pure embarrassment out loud: a missing table entry,
-      // a renamed field, a piece with no spoken name. The
-      // owner hears "I heard queen undefined" across a room
-      // and has no idea what the program thinks it heard.
-      if (/undefined|\[object|NaN/i.test(out)) {
-        lies++;
-        worst = worst || ('said "' + utt + '" -> spoke a placeholder: "' +
-                          out + '"');
-      }
-      // A REFUSAL MUST CARRY THE READING. Checking only the
-      // sentences that already say "I heard" leaves the way
-      // out wide open: delete the clause and the property
-      // stops looking. That mutant survived when this block
-      // was first written, which is the same blind spot the
-      // from-square property had this morning - a rule that
-      // only inspects what already obeys it.
-      //
-      // The one legitimate bare refusal is an utterance that
-      // parsed to NOTHING: there is no reading to give back,
-      // and we cannot tell a mishearing from words that were
-      // never a move. Ask the parser which case this is
-      // rather than guessing from the text.
-      if (/say again/i.test(out)) {
-        const empty = vm.runInContext(
-          "reqIsEmpty(parseTranscript(" + JSON.stringify(utt) + "))", sandbox);
-        if (!empty && !/I heard/i.test(out)) {
-          lies++;
-          worst = worst ||
-            ('said "' + utt + '" -> refused with no reading: "' + out + '"');
-        }
-      }
-      const m = /I heard ([^.]*)\./i.exec(out);
-      if (!m) continue;
-      heardClaims++;
-      const lead = m[1].toLowerCase();
-      const bad = why => {
-        lies++;
-        worst = worst ||
-          ('said "' + utt + '" -> "I heard ' + m[1] + '" (' + why + ")");
-      };
-      // EXACTLY WHAT WAS SAID: nothing added, nothing dropped.
-      // w44 only checked the first half - that no rank appears
-      // unless one was spoken - and that let the other half
-      // through: heardSoFar rendered no squares at all, so
-      // "queen delta four" came back as "queen" and nobody
-      // noticed until the refusals started using it. A
-      // read-back that swallows half the sentence fails the
-      // same job as one that invents: the owner cannot tell a
-      // mishearing from a bad move either way.
-      const saidRank = Object.keys(RANK_WORD)
-        .some(r => utt.indexOf(RANK_WORD[r]) >= 0);
-      if (!saidRank && /[1-8]/.test(lead)) bad("rank nobody said");
-      if (saidRank && !/[1-8]/.test(lead)) bad("rank dropped");
-      Object.keys(FILE_WORD).forEach(f => {
-        const said = utt.indexOf(FILE_WORD[f]) >= 0;
-        const heardIt = lead.indexOf(FILE_WORD[f]) >= 0;
-        if (heardIt && !said) bad(FILE_WORD[f] + " nobody said");
-        if (said && !heardIt) bad(FILE_WORD[f] + " dropped");
-      });
-      // and the take word, which is what tells a capture from
-      // a push - the one word that changes what a sentence
-      // MEANS rather than which square it points at
-      if (/\btakes?\b/.test(utt) !== /\btakes?\b/.test(lead)) {
-        bad("take word " + (/takes?/.test(utt) ? "dropped" : "invented"));
-      }
-    }
-  }
-  check("every utterance got an answer (" +
-        (spokenForms.length * boards.length) + " driven, " +
-        heardClaims + ' made an "I heard" claim)',
-        silences === 0);
-  check('no "I heard" claimed anything unsaid' +
-        (worst ? " (" + worst + ")" : ""), lies === 0);
-
-  // ---- w45: two false sentences from game w44-1 ----
-  const W44_GAME = ["e2e4","c7c6","d2d4","h7h6","c2c4","g7g6","f2f4","h8h7",
-                    "g2g4","h7h8","h2h4","g6g5","h4g5","f7f6"];
-
-  // 17:49:08. "golf takes night" - no knight to take, but gxh6
-  // and gxf6 both sit there legal, so "No capture from the golf
-  // file" blamed the wrong half of the sentence.
-  await setGame(W44_GAME);
-  say("golf takes night");
-  await sleep(80);
-  const noKnight = heard().join(" | ");
-  check("a missing VICTIM is named, not blamed on the file (" +
-        noKnight + ")", /knight/i.test(noKnight));
-  check("and it does not claim there is no capture from the file",
-        !/^No capture from the golf file\. Say again\./i.test(noKnight));
-  // the file really is empty of captures -> the old sentence, correctly
-  await onBoard("4k3/8/8/8/8/8/6P1/4K3 w - - 0 1", "golf takes",
-                /no capture from the golf file/i,
-                "an empty file still says so plainly");
-
-  // 17:50:11. "takes delta" offered Qxd6, cxd6 and exd6; answering
-  // "pawn" was refused with "no pawn can take there" while two of
-  // the three options were pawn captures.
-  await setGame(W44_GAME.concat(["e4e5","c6c5","d4c5","d7d6"]));
-  say("takes delta");
-  await sleep(80);
-  const askedD = heard().join(" | ");
-  check("the question offers the queen and both pawns (" + askedD + ")",
-        /queen takes delta 6/i.test(askedD) &&
-        /charlie takes delta 6/i.test(askedD) &&
-        /echo takes delta 6/i.test(askedD));
-  say("pawn");
-  await sleep(80);
-  const saidPawn = heard().join(" | ");
-  check('"pawn" is no longer refused as impossible (' + saidPawn + ")",
-        !/no pawn can take there/i.test(saidPawn));
-  check('"pawn" narrows to the pawn captures and offers one',
-        /(charlie|echo) takes delta 6/i.test(saidPawn) &&
-        !/queen takes delta 6/i.test(saidPawn));
-  // a named piece that genuinely cannot is still told so
-  await setGame(W44_GAME.concat(["e4e5","c6c5","d4c5","d7d6"]));
-  say("takes delta");
-  await sleep(80); heard();
-  say("bishop");
-  await sleep(80);
-  check("a piece that truly cannot take there is still refused",
-        /no bishop can take there/i.test(heard().join(" | ")));
-
-  // ---- w47: three things game w46-1 turned up ----
-
-  // 19:19:24. Answering a question offered bxa4 and then bxa8
-  // FOUR TIMES - queen, rook, bishop, knight. findMoves has
-  // collapsed promotions for years; the six repair sites each
-  // built their own candidate list and none of them did. Here
-  // the four bxa8 variants are the ONLY captures from the
-  // b-file, so before the fix this asked, and after it plays.
-  await onBoard("r3k3/1P6/8/8/8/8/8/4K3 w - - 0 1", "bravo takes",
-                /bravo takes alpha 8, promotes to queen/i,
-                "promotion variants collapse to one candidate");
-  // and naming the piece still gets that piece
-  await onBoard("r3k3/1P6/8/8/8/8/8/4K3 w - - 0 1",
-                "bravo takes alpha eight equals rook",
-                /promotes to rook/i,
-                "an underpromotion said out loud is still honoured");
-
-  // 19:12:51 and 19:22:19. "Rook Delta" - a piece and a file,
-  // said plainly - got a bare "Say again." twice, because
-  // reqIsEmpty counts only castle, squares and victim, so this
-  // read as nothing heard at all.
-  await onBoard("4k3/8/8/8/8/8/8/R2QK3 w - - 0 1", "rook delta",
-                /I heard rook delta\. That is not a legal move/i,
-                '"rook delta" gets its reading back, not a bare refusal');
-  // an utterance with genuinely nothing in it still gets the
-  // bare sentence - there is no reading to repeat
-  await setBoard("4k3/8/8/8/8/8/8/R2QK3 w - - 0 1");
-  say("wobble");
-  await sleep(80);
-  const noise = heard().join(" | ");
-  check("noise with no move in it stays bare (" + noise + ")",
-        /say again/i.test(noise) && !/I heard/i.test(noise));
-
-  // 19:26:49. "takes golf five" was refused with "No pawn can
-  // GO there" - he had said takes. The verb has to match the
-  // sentence it answers.
-  await onBoard("4k3/8/8/6p1/8/5N2/8/4K1R1 w - - 0 1", "takes golf five",
-                /no pawn can take there/i,
-                "a capture is refused with the capture verb");
-  // the push wording needs an EMPTY target: with a piece
-  // standing on g5 the request takes the "that would be a
-  // capture" branch instead, which is a different sentence.
-  // The first draft of this test asserted the push wording on
-  // the capture board and failed for that reason - the
-  // position, not the code.
-  await onBoard("4k3/8/8/8/8/5N2/8/4K1R1 w - - 0 1", "golf five",
-                /no pawn can go there/i,
-                "and a push is still refused with the push verb");
-
-  // ---- w48: the pawn word, and the question it was asked ----
-  // Game w47-1, 20:09:24. "pawn takes" with bxc6 and dxc6 both
-  // available was answered "Say the target" - and both take on
-  // c6. The owner filed a memo mid-game saying exactly that.
-  // w43 had already taught this to the half-square repair; the
-  // capture repair next door never got it.
-  await onBoard("4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1", "pawn takes",
-                /bravo takes charlie 6/i,
-                '"pawn takes" names the movers, both landing on c6');
-  const bothPawns = heard().join(" | ");
-  check("and it does NOT ask for a target both moves share",
-        !/say the target/i.test(bothPawns));
-  // when the targets really do differ, the target question is
-  // still the right one
-  await onBoard("4k3/8/2n1n3/3P4/8/8/8/4K3 w - - 0 1", "pawn takes",
-                /say the target/i,
-                "two different targets still ask for the target");
-
-  // 20:09:06. "Plants" was the primary and the move was lost.
-  // Every one of these is a real Safari rendering of "pawn"
-  // from that game, and three of them cost a move.
-  for (const word of ["plants", "plant", "plantains",
-                      "fontes", "pontes", "po"]) {
-    await onBoard("4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1", word + " takes",
-                  /bravo takes charlie 6/i,
-                  '"' + word + '" is heard as the pawn');
-    heard();
-  }
-  // "cakes" for takes, three times in the same log
-  await onBoard("4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1", "pawn cakes",
-                /bravo takes charlie 6/i,
-                '"cakes" is heard as takes');
-
-  // ---- w49: three from game w47-1 ----
-
-  // 20:14:26. "queen takes pawn" with no queen-takes-pawn on
-  // the board got the generic "That is not a legal move" three
-  // times. The VICTIM ruled it out, and w45 settled that a
-  // refusal names the half that did.
-  await onBoard("4k3/8/3n4/8/8/8/8/3QK3 w - - 0 1", "queen takes pawn",
-                /no pawn for it to take/i,
-                "a named victim that rules everything out is named");
-  await onBoard("4k3/8/3n4/8/8/8/8/3QK3 w - - 0 1", "takes bishop",
-                /no bishop for it to take/i,
-                "and with no mover named either");
-  // a victim that IS available still just plays
-  await onBoard("4k3/8/3n4/8/8/8/8/3QK3 w - - 0 1", "queen takes knight",
-                /queen takes delta 6/i,
-                "a victim that is there is still played");
-
-  // 19:15:14. "Nate takes pawn" put an unrecognised word where
-  // the piece belongs, so the knight-less reading ranked level
-  // with the real one and contributed three non-knight moves.
-  // "It takes pawn" - the word DROPPED rather than mutated -
-  // was demoted correctly. Same evidence, one caught.
-  const demoted = vm.runInContext(
-    'JSON.stringify(clippedIndexes(["Night takes pawn","Nate takes pawn"]))',
-    sandbox);
-  check("a MIS-HEARD first word demotes like a dropped one (" +
-        demoted + ")", demoted === '{"1":true}');
-  check("and unrelated readings are left alone",
-        vm.runInContext(
-          'JSON.stringify(clippedIndexes(["Echo four","Delta four"]))',
-          sandbox) === "{}");
-
-  // 20:09:06. Six readings arrived; the SECOND was "Pond
-  // takes", which parses and would have played. The primary
-  // was "Plants" and the move was lost. A rival reading may
-  // now raise the question - but only ask, never play.
-  await setGame(["e2e4","b7b6","d2d4","h7h5","c2c4","b6b5","a2a4","g7g5"]);
-  vm.runInContext(
-    'handleTranscripts(["Plants","Pond takes","Takes","Plant takes"]);',
-    sandbox);
-  await sleep(90);
-  const rival = heard().join(" | ");
-  check("a rival reading is heard at all now (" + rival + ")",
-        !/say again/i.test(rival) && rival.length > 0);
-  // and the ask-only rule: a unique fit from a rival asks
-  await setBoard("4k3/8/3n4/8/8/8/8/3QK3 w - - 0 1");
-  vm.runInContext('handleTranscripts(["Wobble","Queen takes"]);', sandbox);
-  await sleep(90);
-  const onlyAsks = heard().join(" | ");
-  check("a unique fit from a RIVAL reading asks, never plays (" +
-        onlyAsks + ")",
-        /queen takes delta 6\?/i.test(onlyAsks) &&
-        !/^white /i.test(onlyAsks));
-  say("yes");
-  await sleep(90);
-  check("and yes then plays it",
-        vm.runInContext("api.lastSan", sandbox) === "Qxd6");
-
-  // "push" is a pawn word everywhere, not only on a push -
-  // the owner's point after game w47-1, where "pawn" would
-  // not transcribe. Odd English, and the parser does not care.
-  await onBoard("4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1", "push takes",
-                /bravo takes charlie 6/i,
-                '"push takes" is heard as "pawn takes"');
-  // and naming the pawn by its FILE needs no pawn word at all,
-  // which in that position would have played first time
-  await onBoard("4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1", "bravo takes",
-                /bravo takes charlie 6/i,
-                '"bravo takes" plays the b-pawn capture outright');
-
-  // BARE LETTERS, which the grammar header promises work as
-  // well as NATO words and which nothing tested until now.
-  // Two lines in parsing.js carry all of it - the glued
-  // "([a-h])([1-8])" square and the lone "[a-h]" file - and
-  // either could have been refactored away with every test
-  // still green. They are the owner's natural English, so
-  // they will be reached for under time whatever the
-  // practised habit is.
-  const LETTERS = "4k3/8/2n5/1P1P4/8/8/8/4K3 w - - 0 1";
-  await onBoard(LETTERS, "b takes", /bravo takes charlie 6/i,
-                'a bare letter names the mover: "b takes"');
-  await onBoard(LETTERS, "b takes c6", /bravo takes charlie 6/i,
-                'a glued letter-and-digit square: "b takes c6"');
-  await onBoard(LETTERS, "b takes charlie six", /bravo takes charlie 6/i,
-                'letters and NATO words mix freely in one move');
-  await onBoard("4k3/8/8/8/8/8/1P6/4K3 w - - 0 1", "b4",
-                /bravo 4/i, 'a bare "b4" is still a pawn push');
-  // and the game6 invariant holds for the short form too: a
-  // bare square spoken as letters is a push, never a capture
-  await onBoard("4k3/8/8/1n6/8/1P6/8/4K3 w - - 0 1", "b4",
-                /bravo 4|nothing|say again|which/i,
-                'a bare "b4" never becomes the capture on b5');
+  check('a dead query with a square in it gets "Say again."',
+        heard().join(" | ") === "Say again.");
 
   // ---- w54: the version is a w-number, at RUNTIME ----
   // settings.js declared VERSION = "v137" and lichess.js
@@ -3088,540 +2533,32 @@ const sleep = ms =>
   // test stood here from v126: questionOpen and the strip it
   // held both left at w110 with the clock-mode text)
 
-  // ---- w59: "clean" is a queen (game w58-1) ----
-  // Safari returned "Clean check" for "queen check" twice
-  // running. The fuzzy matcher could not have saved it -
-  // "clean" is three edits from "queen" - so it is a named
-  // spelling, and exact-only, because six ordinary words sit
-  // one edit from it.
-  check('"clean" parses as the queen',
-        vm.runInContext('PIECES["clean"]', sandbox) === "q");
-  check("and it is never a fuzzy target (clear/lean stay themselves)",
-        vm.runInContext('FUZZY_EXACT_ONLY["clean"]', sandbox) === 1 &&
-        vm.runInContext('fuzzyToken("clear")', sandbox) === null &&
-        vm.runInContext('fuzzyToken("glean")', sandbox) === null);
-  await onBoard("4k3/8/8/8/8/8/8/3QK3 w - - 0 1", "clean charlie two",
-                /queen charlie 2/i,
-                '"clean charlie two" plays the queen move');
-
-  // ---- w114: RHYMES ARE NOT SPELLINGS (the light lesson) ----
-  // w113 added "light" as a knight from a misread log; the
-  // owner had said "light" ON PURPOSE, as a test. The table
-  // criterion is what Safari RETURNED for a spoken word,
-  // never what rhymes - so "light" is out, the deliberate
-  // word is dropped as before, and the drop now leaves a
-  // trace: an ambiguous near-miss names its tie in the log.
-  check('"light" is NOT a piece word (rhymes are not spellings)',
-        vm.runInContext('PIECES["light"]', sandbox) === undefined);
-  check("ambiguous -ight words still refuse to guess",
-        vm.runInContext('fuzzyToken("right")', sandbox) === null &&
-        vm.runInContext('fuzzyToken("might")', sandbox) === null);
-  await setBoard(
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-  say("light charlie three");
-  await sleep(120);
-  // w115 answered the question w114 left open (a dropped word
-  // asks instead of playing the bare square); w116 made the
-  // ask universal. What is still this test's to guard: the
-  // deliberate word is DROPPED, not mapped to a piece, and
-  // the drop leaves its trace in the log.
-  const lightAsk = heard().join(" | ");
-  check('"light" is dropped and the bare square is ASKED about (' +
-        lightAsk + ")",
-        /charlie 3\?/i.test(lightAsk) &&
-        vm.runInContext("api.lastSan", sandbox) !== "c3");
-  check("and the drop leaves a trace in the log",
-        vm.runInContext(`
-          LOG.some(function (l) {
-            return l.indexOf('near-miss "light" dropped: could be') >= 0;
-          })
-        `, sandbox));
-  say("yes");
-  await sleep(120);
-  check("and yes still plays the pawn push it was asked about",
-        vm.runInContext("api.lastSan", sandbox) === "c3");
-
-  // ---- w114: "chili"/"chilly" are the c-file ----
-  // A rival transcript in the same log wrote "charlie" as
-  // "chili" - Safari's own output for the spoken word,
-  // which is exactly what earns a spelling its place.
-  check('"chili" and "chilly" parse as the c-file, exact-only',
-        vm.runInContext('NATO["chili"]', sandbox) === "c" &&
-        vm.runInContext('NATO["chilly"]', sandbox) === "c" &&
-        vm.runInContext('FUZZY_EXACT_ONLY["chili"]', sandbox) === 1 &&
-        vm.runInContext('FUZZY_EXACT_ONLY["chilly"]', sandbox) === 1);
-  await onBoard("4k3/8/8/8/8/8/8/3QK3 w - - 0 1", "queen chili two",
-                /queen charlie 2/i,
-                '"queen chili two" plays the queen to c2');
-
-  // ==== w115: THE LOST WORD NEXT TO A BARE SQUARE ====
-  // Game of 11 Aug, 20:45:51. The owner said "bishop charlie
-  // four"; Safari returned "Patient Charlie four" and "Patient
-  // of Charlie four" - both readings, so no undamaged rival -
-  // and what played was c4, the pawn, onto the square the
-  // bishop was being sent to. Bc4 was gone for good, and the
-  // game was resigned four moves later.
-  //
-  // Two fixes, tested separately: the spelling, and the class.
-  check('"patient" parses as the bishop',
-        vm.runInContext('PIECES["patient"]', sandbox) === "b");
-  check("and it is exact-only (patients/patience/ancient stay themselves)",
-        vm.runInContext('FUZZY_EXACT_ONLY["patient"]', sandbox) === 1 &&
-        vm.runInContext('fuzzyToken("patients")', sandbox) === null &&
-        vm.runInContext('fuzzyToken("patience")', sandbox) === null &&
-        vm.runInContext('fuzzyToken("ancient")', sandbox) === null);
-
-  // The position the game was in, and it is the position that
-  // makes the test: the c-pawn CAN go to c4 and the f1 bishop
-  // CAN reach it, so the utterance decides which, exactly as
-  // it did on the device.
-  const BC4 = "rn1qkbnr/ppp2ppp/8/4p3/4P3/5Q2/PPP2PPP/RNB1KB1R w KQkq - 0 6";
-  await onBoard(BC4, "patient charlie four", /bishop charlie 4/i,
-                '"patient charlie four" is the bishop, not the c-pawn');
-  await onBoard(BC4, "patient of charlie four", /bishop charlie 4/i,
-                'and so is the second reading, "patient of charlie four"');
-
-  // THE CLASS, not the word. Any word the parser cannot
-  // account for beside a bare square may have been the piece
-  // name. w115 made that case ask; w116 makes everything ask,
-  // so what is left to this test is what the stray word still
-  // DOES: it is named in the log, and the walk behind the
-  // question carries the piece moves, so "no" - or the piece's
-  // name - reaches what the mic dropped. "Relationship" is not
-  // invented: game20 (17:49) is Safari returning it for a
-  // spoken "bishop", too far from anything for the fuzzy
-  // matcher to reach.
-  await setBoard(BC4);
-  say("relationship charlie four");
-  await sleep(120);
-  const strayAsk = heard().join(" | ");
-  check("a lost word beside a bare square asks (" + strayAsk + ")",
-        /charlie 4\?/i.test(strayAsk) &&
-        vm.runInContext("api.lastSan", sandbox) !== "c4");
-  check("and the log names the word it could not place",
-        vm.runInContext(`
-          LOG.some(function (l) {
-            return l.indexOf('"relationship" was not understood') >= 0;
-          })
-        `, sandbox));
-  say("bishop");
-  await sleep(120);
-  const bishopJump = heard().join(" | ");
-  check("and one word jumps to the bishop's own question (" +
-        bishopJump + ")",
-        /bishop charlie 4\?/i.test(bishopJump));
-  say("yes");
+  // ==== w118: THE SURVIVING HOMOPHONES AND FUSIONS ====
+  // The piece-word tables died with the piece grammar, but the
+  // FILE and RANK spellings are as load-bearing as ever, and
+  // the square fusions with them. Each of these was paid for
+  // with a real game's log.
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo two aquaphor");        // w84: "echo four" as one word
   await sleep(120); heard();
-  check("and yes plays the bishop",
-        vm.runInContext("api.lastSan", sandbox) === "Bc4");
-
-  // A command word is accounted for, so it is not a lost
-  // word: "yeah charlie four" asks like any bare square but
-  // leaves no not-understood trace in the log.
-  await setBoard(BC4);
-  say("yeah charlie four");
+  check('"aquaphor" is still the square e4',
+        vm.runInContext("api.lastSan", sandbox) === "e4");
+  await setBoard("k7/8/8/8/8/8/2P5/K7 w - - 0 1");
+  say("chili two chili four");     // w114: "charlie" as "chili"
   await sleep(120); heard();
-  check("a stray command word is not a lost word",
-        vm.runInContext(`
-          !LOG.some(function (l) {
-            return l.indexOf('"yeah" was not understood') >= 0;
-          })
-        `, sandbox));
-
-  // ---- w65: "rugby" and "rug" are rooks (game w64-1) ----
-  // "Rook b8" fused into "Rugby" and "Rugby eight" - BOTH
-  // readings of the one utterance, so unlike "Rug B8" later in
-  // the same game there was no undamaged rival to fall back
-  // on, and the move was lost outright ("Say again.").
-  //
-  // BOTH A ROOK AND A QUEEN REACH b8 HERE, and that is the
-  // whole design of the board: the first version put a lone
-  // rook on b1, where "b8" named one move whoever was said to
-  // be moving, so "rug bravo eight" passed with "rug" deleted
-  // from the rook words. The word has to be load-bearing for
-  // the test to be about the word. Kings are kept off rank 8
-  // and the b-file so neither move carries a check.
-  const RUGBY = "R7/8/8/7k/8/8/8/1Q2K3 w - - 0 1";
-  // asserted as the ASK, not just "the word rook appears" -
-  // that laxer form would have matched a played "rook bravo 8"
-  // too, which is the outcome this is here to rule out
-  await onBoard(RUGBY, "bravo eight",
-                /no pawn can go there.*say queen, or rook/i,
-                "with two pieces on b8 the bare square is not decided");
-  await onBoard(RUGBY, "rugby eight", /rook bravo 8/i,
-                '"rugby eight" splits into rook + b-file');
-  check('"rug" parses as the rook',
-        vm.runInContext('PIECES["rug"]', sandbox) === "r");
-  await onBoard(RUGBY, "rug bravo eight", /rook bravo 8/i,
-                '"rug bravo eight" plays the rook move');
-  // three letters, so both ends of fuzzyToken refuse it and it
-  // can neither be reached by a near-miss nor seed one
-  check('"rug" is too short to be a fuzzy target either way',
-        vm.runInContext('fuzzyToken("rug")', sandbox) === null &&
-        vm.runInContext('fuzzyToken("rag")', sandbox) === null);
-
-  // w65: COMPOUND is now cross-checked against the other four
-  // tables. It is consumed FIRST in parseTranscript, so a word
-  // in both wins there and the other meaning silently never
-  // happens. A collision throws at LOAD, which would take this
-  // whole harness down with a vocab error long before here -
-  // so what is asserted is the invariant that guard protects.
-  const compoundClean = vm.runInContext(`
-    (function () {
-      var others = [NATO, NUMS, PIECES, TAKE_WORDS, CASTLE_WORDS];
-      return Object.keys(COMPOUND).filter(function (w) {
-        return others.some(function (m) { return m[w] !== undefined; });
-      });
-    })()
-  `, sandbox);
-  check("no compound word is also a plain vocabulary word (" +
-        (compoundClean.join(" ") || "none") + ")",
-        compoundClean.length === 0);
-
-  // ---- w66: knight+e, spelled the way Safari writes it ----
-  // The fusion was already accepted, as "knightie" - the one
-  // spelling Safari will not produce, since it writes knight
-  // as "night" everywhere else in this project's evidence.
-  // Same board discipline as the rugby pair, and it took two
-  // goes here as well. A knight AND a queen both reach e4, so
-  // the piece word decides which. But with one knight on the
-  // board the drifted parse - piece n, no file, the 4 read as
-  // a from-rank - still landed on Ne4, so "nightie four"
-  // passed with the entry deleted. A SECOND knight, reaching
-  // a4, makes "the knight move to rank 4" two moves and the
-  // drift ambiguous, so only the real split answers.
-  const NIGHTIE = "7k/8/8/6N1/8/8/1N6/K3Q3 w - - 0 1";
-  await onBoard(NIGHTIE, "echo four",
-                /no pawn can go there.*say queen, or knight/i,
-                "with two pieces on e4 the bare square is not decided");
-  await onBoard(NIGHTIE, "nightie four", /knight echo 4/i,
-                '"nightie four" splits into knight + e-file');
-  await onBoard(NIGHTIE, "nighty four", /knight echo 4/i,
-                '"nighty four" does too');
-  // the original spelling still works - this replaced nothing
-  await onBoard(NIGHTIE, "knightie four", /knight echo 4/i,
-                '"knightie" is still understood');
-  // WITHOUT the entry these do not fail loudly, they DRIFT:
-  // the fuzzy matcher rescues "nightie" as "nights" (piece n)
-  // and the e-file simply evaporates, leaving the 4 to be read
-  // as a from-rank. Asserting the destination square is what
-  // catches that - a test that only asked "is it a knight"
-  // would pass on the broken parse.
-
-  // ---- w84: two Safari spellings from the games of 7 Aug ----
-  // "echo four" came back as "Aquaphor" in BOTH readings, so
-  // as with rugby there was no undamaged rival: the move was
-  // lost outright ("Say again."). The first compound to fuse a
-  // whole SQUARE (file+rank) rather than piece+file. Board
-  // discipline as above: a bishop and a queen both reach e4,
-  // so the bare fused square is not decided and the piece word
-  // must survive beside it.
-  const AQUA = "8/8/8/7k/8/8/2B5/4QK2 w - - 0 1";
-  await onBoard(AQUA, "aquaphor",
-                /no pawn can go there.*(queen.*bishop|bishop.*queen)/i,
-                '"aquaphor" is the square e4, undecided on this board');
-  await onBoard(AQUA, "bishop aquaphor", /bishop echo 4/i,
-                '"bishop aquaphor" plays Be4');
-  // "delta" came back as "down to": "Bishop down to six",
-  // "Rock down to eight", and "Push down to three" the game
-  // before - each surviving only on a rival reading or the
-  // half-square repair. Here the repair is taken away: BOTH
-  // rooks reach rank 8, so "rook ... eight" alone is two
-  // moves and only the d-file itself answers.
-  const DOWNTO = "8/8/8/7k/8/8/8/R2RK3 w - - 0 1";
-  await onBoard(DOWNTO, "rook down to eight", /rook delta 8/i,
-                '"rook down to eight" is the rook to d8');
-  await onBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                "push down to three", /delta 3/i,
-                '"push down to three" is the d-pawn, not eight-way ambiguous');
-  // the gate: "down to" NOT followed by a rank changes nothing
-  // - the branch consumes a possible v116 "to" and must not
-  // fire where the logged shape does not hold
-  const downGate = vm.runInContext(
-    'JSON.stringify((function () {' +
-    '  var r = parseTranscript("rook down to");' +
-    '  return [r.piece, r.fromFile, r.squares.length];' +
-    '})())', sandbox);
-  check('"down to" without a rank stays unparsed (' + downGate + ")",
-        downGate === '["r",null,0]');
-
-  // ---- w85: the square-fusion family, searched like w78's ----
-  // aquaphor proved square fusions are real; the owner asked
-  // for the same word-list sweep over file+rank that w78 ran
-  // over piece+file. The whole batch asked of the LOADED
-  // table, as the w78 check is.
-  const W85 = { golfer: "g 4", golfers: "g 4", gopher: "g 4",
-    gophers: "g 4", gofer: "g 4", chariot: "c 8", chariots: "c 8",
-    equate: "e 8", abbreviate: "b 8" };
-  const w85bad = Object.keys(W85).filter(function (w) {
-    const got = vm.runInContext(
-      "JSON.stringify(COMPOUND[" + JSON.stringify(w) + "] || null)", sandbox);
-    const want = W85[w].split(" ");
-    return got !== JSON.stringify([["file", want[0]], ["rank", want[1]]]);
-  });
-  check("every square fusion maps to its file and rank (" +
-        (w85bad.join(" ") || "all do") + ")", w85bad.length === 0);
-  // Representative boards, rugby discipline: two piece types
-  // reach the fused square, so the bare word asks and the
-  // spoken piece decides.
-  const GOLFER = "k7/8/8/8/8/8/8/3B1KQ1 w - - 0 1";
-  await onBoard(GOLFER, "golfer",
-                /no pawn can go there.*(queen.*bishop|bishop.*queen)/i,
-                '"golfer" is the square g4, undecided on this board');
-  await onBoard(GOLFER, "bishop golfer", /bishop golf 4/i,
-                '"bishop golfer" plays Bg4');
-  const CHARIOT = "8/8/8/7k/8/7B/8/2R1K3 w - - 0 1";
-  await onBoard(CHARIOT, "rook chariot", /rook charlie 8/i,
-                '"rook chariot" plays Rc8');
-  // the rest at parse level, destination asserted so a drift
-  // (word rescued as something else, square evaporating)
-  // cannot pass - the nightie lesson
-  const sq85 = vm.runInContext(
-    'JSON.stringify([parseTranscript("bishop equate").squares,' +
-    ' parseTranscript("rook abbreviate").squares,' +
-    ' parseTranscript("gopher").squares])', sandbox);
-  check("equate, abbreviate and gopher name their squares (" + sq85 + ")",
-        sq85 === '[["e8"],["b8"],["g4"]]');
-  const drift = vm.runInContext(
-    'JSON.stringify(parseTranscript("nightie four").squares || [])',
-    sandbox);
-  check('"nightie four" names e4 as the destination (' + drift + ")",
-        drift === '["e4"]');
-
-  // ---- w78: compounds searched for, not stumbled on ----
-  // The whole batch, asked of the LOADED table so a typo in
-  // vocabulary.js cannot pass on the strength of this list
-  // agreeing with itself.
-  const W78 = { roxy: "r c", roxie: "r c", rocky: "r e", knife: "n f",
-    ponzi: "p c", pansy: "p c", pony: "p e", pawnee: "p e",
-    pontiff: "p f", punchy: "p g", quincy: "q c", quincey: "q c",
-    queenie: "q e", queeny: "q e", cringy: "q g", cringey: "q g",
-    kinsey: "k c", kingie: "k e", kingy: "k e", clingy: "k e" };
-  const w78bad = Object.keys(W78).filter(function (w) {
-    const got = vm.runInContext(
-      "JSON.stringify(COMPOUND[" + JSON.stringify(w) + "] || null)", sandbox);
-    const want = W78[w].split(" ");
-    return got !== JSON.stringify([["piece", want[0]], ["file", want[1]]]);
-  });
-  check("every searched-for compound maps to its piece and file (" +
-        (w78bad.join(" ") || "all do") + ")", w78bad.length === 0);
-
-  // Each board below follows the rugby/nightie discipline: TWO
-  // piece types reach the spoken square, so the bare square
-  // asks and only the fused word's piece half decides. A test
-  // where one piece reached it would pass with the entry
-  // deleted, which is exactly what w66 caught.
-
-  // knight+f: a queen and BOTH knights keep "three" ambiguous
-  // unless the word really splits into knight + f-file.
-  const KNIFE = "7k/8/8/8/8/8/8/1N2KQN1 w - - 0 1";
-  await onBoard(KNIFE, "foxtrot three",
-                /no pawn can go there.*say queen, or knight/i,
-                "with two pieces on f3 the bare square is not decided");
-  await onBoard(KNIFE, "knife three", /knight foxtrot 3/i,
-                '"knife three" splits into knight + f-file: Nf3');
-  const knifeDrift = vm.runInContext(
-    'JSON.stringify(parseTranscript("knife three").squares || [])', sandbox);
-  check('"knife three" names f3 as the destination (' + knifeDrift + ")",
-        knifeDrift === '["f3"]');
-
-  // rook+c and queen+c share one board: both reach c4, so the
-  // piece half of the fused word is what picks.
-  const ROXY = "7k/8/8/8/R7/8/8/2Q1K3 w - - 0 1";
-  await onBoard(ROXY, "charlie four",
-                /no pawn can go there.*say queen, or rook/i,
-                "with two pieces on c4 the bare square is not decided");
-  await onBoard(ROXY, "roxy four", /rook charlie 4/i,
-                '"roxy four" splits into rook + c-file');
-  await onBoard(ROXY, "quincy four", /queen charlie 4/i,
-                '"quincy four" splits into queen + c-file');
-
-  // queen+g against a rook on the same file
-  await onBoard("7k/8/8/8/8/8/8/3QK1R1 w - - 0 1", "cringy four",
-                /queen golf 4/i,
-                '"cringy four" splits into queen + g-file');
-
-  // king+e and king+c, each against a queen reaching the square
-  await onBoard("7k/8/8/8/8/8/8/3QK3 w - - 0 1", "clingy two",
-                /king echo 2/i,
-                '"clingy two" splits into king + e-file');
-  await onBoard("7k/8/8/8/8/8/8/3QK3 w - - 0 1", "kingie two",
-                /king echo 2/i,
-                '"kingie two" does too');
-  await onBoard("7k/8/8/8/Q7/8/8/3K4 w - - 0 1", "kinsey two",
-                /king charlie 2/i,
-                '"kinsey two" splits into king + c-file');
-
-  // pawn family: naming the piece is what SKIPS the pawn-first
-  // WALK a bare square would earn with a queen also reaching
-  // it. Since w116 the named move still asks - everything
-  // does - so what naming buys is a one-entry list: the
-  // question is the move alone, with no piece alternatives
-  // queued behind a "no".
-  const namedLone = () => vm.runInContext(
-    "pending ? pending.cands.length : -1", sandbox);
-  await onBoard("7k/8/8/8/Q7/8/4P3/4K3 w - - 0 1", "pony four",
-                /echo 4\?/i, '"pony four" is the pawn to e4');
-  check("and the question is the pawn alone, no walk behind it",
-        namedLone() === 1);
-  await onBoard("7k/8/8/8/5Q2/8/2P5/4K3 w - - 0 1", "ponzi four",
-                /charlie 4\?/i, '"ponzi four" is the pawn to c4');
-  check("and the question is the pawn alone, no walk behind it",
-        namedLone() === 1);
-  await onBoard("7k/8/8/8/1Q6/8/5P2/4K3 w - - 0 1", "pontiff four",
-                /foxtrot 4\?/i, '"pontiff four" is the pawn to f4');
-  check("and the question is the pawn alone, no walk behind it",
-        namedLone() === 1);
-
-  // ============ w58: "QUEEN CHECK", FROM A REAL GAME ==========
-  // Game w56-1: "queen check" said twice, refused twice with
-  // "that is not a legal move", and Qa4+ was available the
-  // whole time - the owner played it seconds later by naming
-  // the square. Mate had a repair; check did not.
-
-  // EXACTLY ONE checking move by that piece: it resolves to
-  // that move, like the mate and half-square repairs on the
-  // same weight of evidence. Ra8+ is the only check a1's
-  // rook has here; since w116 the resolution is a question.
-  await onBoard("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "rook check",
-                /rook alpha 8, check\?/i,
-                '"rook check" finds the one checking rook move');
-  say("yes");
+  check('"chili" is still the c-file',
+        vm.runInContext("api.lastSan", sandbox) === "c4");
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo to echo four");        // v116: Safari writes "two" as "to"
   await sleep(120); heard();
-  check("and yes plays it",
-        vm.runInContext("api.moves.length", sandbox) === 1);
-
-  // SEVERAL checking moves: it asks, it does not choose.
-  // Uniqueness is counted over every legal move of that piece,
-  // so a lost word can only ever turn one candidate into
-  // several - which asks - never into a different move.
-  await onBoard("4k3/8/8/8/8/8/8/3QK3 w - - 0 1", "queen check",
-                /queen .*check\?/i,
-                'several checks ask rather than guessing');
-  check("and nothing was played while it asks",
-        vm.runInContext("api.moves.length", sandbox) === 0);
-
-  // the check word is repeated back, not swallowed
-  await setBoard("4k3/8/8/8/8/8/8/1B2K3 w - - 0 1");
-  say("queen check");
-  await sleep(120);
-  const qchk = heard().join(" | ");
-  check('a refusal repeats the check word ("' + qchk + '")',
-        /i heard queen check/i.test(qchk));
-
-  // "checkmate" MUST go to the mate repair, not this one.
-  // This board has two checking rook moves - Ra8# and Rh8+ -
-  // and only one of them mates. The check repair would find
-  // both and ask; the mate repair finds one and plays it. So
-  // the difference between the two is exactly what "did you
-  // mean" tells us, and asserting only that Ra8 is mentioned
-  // would pass either way (it did, until this was tightened).
-  // WHICH REPAIR ANSWERED is the claim, so that is what is
-  // asserted - the log names it. Asserting on the spoken move
-  // instead needs a board where the two repairs would differ,
-  // and that is fiddly to construct and easy to get wrong: the
-  // first version of this test used a board where the only
-  // checking rook move WAS the mate, so it passed with the
-  // guard deliberately removed.
-  await setBoard("6k1/5ppp/8/8/8/8/8/R3K2R w - - 0 1");
-  heard();
-  vm.runInContext("LOG.length = 0;", sandbox);
-  vm.runInContext('handleTranscripts(["rook checkmate"]);', sandbox);
-  await sleep(120);
-  const rmate = heard().join(" | ");
-  const whichRepair = vm.runInContext(
-    'LOG.filter(function (l) { return /(mate|check) repair/.test(l); })' +
-    '.map(function (l) { return l.replace(/^.*CND  /, ""); }).join(" | ")',
-    sandbox);
-  check('"rook checkmate" is answered by the MATE repair (' +
-        (whichRepair || "none") + ")",
-        /mate repair/.test(whichRepair) && !/check repair/.test(whichRepair));
-  check("and it plays the mate (" + rmate + ")",
-        /rook alpha 8, checkmate/i.test(rmate));
-
-  // and a piece with no checking move says so rather than
-  // offering something else
-  await onBoard("4k3/8/8/8/8/8/8/4K1NR w - - 0 1", "bishop check",
-                /i heard bishop check/i,
-                'no bishop at all: the refusal names what was said');
-
-  // ============== w53: THE SAME ANSWER, FASTER =============
-  // Every change in w53 is meant to be invisible. The risk is
-  // not that it gets slower, it is that a list passed in to
-  // save regenerating it is the WRONG list - and the thing it
-  // is used for is disambiguation, which is silent when wrong:
-  // "knight f3" instead of "knight b-f3" names a different
-  // move than the one being played.
-  const sanSame = vm.runInContext(`
-    (function () {
-      // two knights both able to reach d2: SAN must disambiguate
-      var p = new RULES.Position("4k3/8/8/8/8/8/8/1N1K1N2 w - - 0 1");
-      var legal = p.legalMoves();
-      var out = { withList: [], without: [] };
-      legal.forEach(function (m) {
-        out.withList.push(p.sanOf(m, legal));
-        out.without.push(p.sanOf(m));
-      });
-      return { same: out.withList.join(",") === out.without.join(","),
-               sans: out.withList.join(","),
-               disambiguated: out.withList.filter(function (s) {
-                 return /^N[a-h]d2$/.test(s);
-               }).length };
-    })()
-  `, sandbox);
-  check("a passed legal list names moves identically",
-        sanSame.same === true);
-  check("and disambiguation still happens (" + sanSame.disambiguated +
-        " of the Nd2 pair)", sanSame.disambiguated === 2);
-
-  // findMoves given the list must answer as it does without
-  const findSame = vm.runInContext(`
-    (function () {
-      var p = new RULES.Position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-      var legal = p.legalMoves();
-      var req = parseTranscript("echo four");
-      var a = findMoves(p, req).map(function (m) { return p.uciOf(m); }).join(",");
-      var b = findMoves(p, req, false, legal)
-                .map(function (m) { return p.uciOf(m); }).join(",");
-      return { a: a, b: b };
-    })()
-  `, sandbox);
-  check("findMoves answers the same with the list as without (" +
-        findSame.a + ")", findSame.a === findSame.b && findSame.a.length > 0);
-
-  // applyUci names the move the same way after sharing its list
-  check("applyUci still names its move",
-        vm.runInContext(`
-          (function () {
-            var p = new RULES.Position();
-            return p.applyUci("g1f3").san;
-          })()
-        `, sandbox) === "Nf3");
-
-  // the flattened fuzzy table finds what the loop found
-  check("a near-miss still resolves (brooke -> rook)",
-        vm.runInContext('JSON.stringify(fuzzyToken("brooke"))', sandbox)
-          .indexOf('"v":"r"') >= 0);
-  check("and an ambiguous near-miss still refuses to guess",
-        vm.runInContext('fuzzyToken("zzzzzz")', sandbox) === null);
-
-  // the log panel is not repainted while it cannot be seen
-  const logPaint = vm.runInContext(`
-    (function () {
-      var before = logBody ? logBody.textContent : "";
-      logPanelVisible = false;
-      log("TST", "a line nobody can see");
-      var hidden = logBody ? logBody.textContent : "";
-      logPanelVisible = true;
-      paintLog();
-      var shown = logBody ? logBody.textContent : "";
-      logPanelVisible = false;
-      return { unchanged: hidden === before,
-               painted: shown.indexOf("a line nobody can see") >= 0 };
-    })()
-  `, sandbox);
-  check("a hidden log panel is not repainted", logPaint.unchanged === true);
-  check("and opening it paints what was missed", logPaint.painted === true);
+  check('"to" after a file is still the rank 2',
+        vm.runInContext("api.lastSan", sandbox) === "e4");
+  // w84: "delta" as "down to", directly before a rank
+  await setBoard("k7/8/8/8/8/8/3P4/K7 w - - 0 1");
+  say("down to two down to four");
+  await sleep(120); heard();
+  check('"down to" is still the d-file',
+        vm.runInContext("api.lastSan", sandbox) === "d4");
 
   // ============ w52: THE POLL FALLBACK, AT LAST ============
   // This path had no test at all, which is most of why it had
@@ -4070,102 +3007,6 @@ const sleep = ms =>
   vm.runInContext("fetch = __realFetch3; api.gameId = null; api.over = false;",
                   sandbox);
 
-  // ================= w51: THE GRAMMAR GATES ================
-  // Four ways a sentence could be taken for a different
-  // sentence. Each is a wrong-move or a lost-move.
-
-  // A SALVAGE MAY NOT CONTRADICT A SPOKEN HALF. Origin e5 and
-  // target d-file are BOTH said; the only capture that fits is
-  // none, and the square-as-target reading used to answer dxe5
-  // - mover and target swapped - with one candidate, so nothing
-  // asked and it played.
-  await setBoard("4k3/8/8/4p3/3P4/8/8/4K3 w - - 0 1");
-  say("echo five takes delta");
-  await sleep(120);
-  const salvage = heard().join(" | ");
-  // dxe5 is the move the old salvage produced, and it played
-  // unasked. Nothing may offer or play it here.
-  check("a spoken target is not overwritten by the salvage (" +
-        salvage + ")", !/delta takes echo 5/i.test(salvage));
-  check("and the refusal names both halves that were said",
-        /echo 5/.test(salvage) && /delta file/i.test(salvage));
-  check("no move was played",
-        vm.runInContext("api.moves.length", sandbox) === 0);
-  // the salvage still works when the target end is SILENT
-  await onBoard("4k3/8/8/4p3/3P4/8/8/4K3 w - - 0 1", "echo five takes",
-                /delta takes echo 5|takes echo 5/i,
-                'the salvage still fires when only the square was said');
-
-  // A MOVE IS NOT A QUESTION ABOUT A SQUARE.
-  const qMove = vm.runInContext(
-    'JSON.stringify(classifyQuery("which knight takes delta five"))', sandbox);
-  check("a capture with a question word is not a square query (" +
-        qMove + ")", qMove === "null");
-  const qPiece = vm.runInContext(
-    'JSON.stringify(classifyQuery("what knight delta five"))', sandbox);
-  check("nor is a named piece with a square", qPiece === "null");
-  const qReal = vm.runInContext(
-    'JSON.stringify(classifyQuery("what is on delta five"))', sandbox);
-  check("but the real question still asks (" + qReal + ")",
-        /"kind":"square"/.test(qReal) && /"sq":"d5"/.test(qReal));
-
-  // A PIECE ANSWER IS A WORD, NOT A SENTENCE. With a push
-  // question open, an unrelated capture must not be eaten as
-  // the answer "queen".
-  await setBoard("4k3/8/8/8/8/8/4r3/3QK3 w - - 0 1");
-  const askShape = vm.runInContext(`
-    (function () {
-      pieceAsk = { ply: api.moves.length, capture: false, sq: "e2",
-                   moves: [] };
-      var out = {};
-      out.bareQueen  = pieceAskOpen(parseTranscript("queen"));
-      out.queenTakes = pieceAskOpen(parseTranscript("queen takes rook"));
-      out.takesRook  = pieceAskOpen(parseTranscript("takes rook"));
-      pieceAsk = null;
-      return out;
-    })()
-  `, sandbox);
-  check("a bare piece still answers the question", askShape.bareQueen === true);
-  check("a whole capture sentence does not", askShape.queenTakes === false);
-  check("nor does a named victim", askShape.takesRook === false);
-
-  // THE DEDUPE KEY FOLLOWS THE PARSER'S RULES, OR IT THROWS
-  // AWAY A READING THAT MEANT SOMETHING ELSE.
-  const keyA = vm.runInContext('semanticKey("a bravo four")', sandbox);
-  const keyAlpha = vm.runInContext('semanticKey("alpha bravo four")', sandbox);
-  check('bare "a" as an article keys apart from the a-file (' +
-        keyA + " vs " + keyAlpha + ")", keyA !== keyAlpha);
-  check('and "a takes" still keys as the a-file',
-        vm.runInContext('semanticKey("a takes bravo five")', sandbox) ===
-        vm.runInContext('semanticKey("alpha takes bravo five")', sandbox));
-  check("a glued double square splits like the parser's",
-        vm.runInContext('semanticKey("e2e4")', sandbox) ===
-        vm.runInContext('semanticKey("echo two echo four")', sandbox));
-
-  // A RE-SAID MOVE REPLACES THE QUESTION (w51's surviving
-  // half - its confirmMyMove half died with that setting at
-  // w110): a unique re-said move over an open question goes
-  // by the same rules as if no question were open - which
-  // since w116 means it becomes the NEW question, the old
-  // one gone.
-  await setBoard("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1");
-  vm.runInContext(`
-    pending = { cands: [{ m: api.pos.legalMoves()[0], san: "Kd1" }], idx: 0 };
-  `, sandbox);
-  heard();
-  say("echo four");
-  await sleep(120);
-  const resaid = heard().join(" | ");
-  check("a unique re-said move replaces the question (" +
-        resaid + ")",
-        /echo 4\?/i.test(resaid) &&
-        vm.runInContext("pending.cands[0].san", sandbox) === "e4");
-  say("yes");
-  await sleep(120); heard();
-  check("and yes plays the replacement, not the old question",
-        vm.runInContext("api.lastSan", sandbox) === "e4" &&
-        vm.runInContext("pending", sandbox) === null);
-
   // ================== w50: THE LIFECYCLE ==================
   // Every check below is a state that used to outlive the game
   // it belonged to, or a path that used to end in silence.
@@ -4184,33 +3025,32 @@ const sleep = ms =>
   // v117: questionOpen left at w110 with the strip)
 
   // ---- a question does not survive into the next game ----
+  // (the move questions died at w118; the yes/no and the
+  // armed confirmation are the state left to clear)
   const survived = vm.runInContext(`
     (function () {
       dryRun = false;
       api.gameId = "OLDGAME"; api.over = false;
-      confirmAction = "resign"; pending = { cands: [], idx: 0 };
-      pieceAsk = { ply: 0, moves: [] }; partialAsk = { ply: 0 };
+      confirmAction = "resign";
       armedUci = "e2e4";
       joinGame("NEWGAME");
-      return { confirm: confirmAction, piece: pieceAsk, partial: partialAsk,
-               pending: pending, armed: armedUci };
+      return { confirm: confirmAction, armed: armedUci };
     })()
   `, sandbox);
   check("a new game clears every open question",
-        !survived.confirm && !survived.piece && !survived.partial &&
-        !survived.pending && !survived.armed);
+        !survived.confirm && !survived.armed);
 
   const afterOver = vm.runInContext(`
     (function () {
       api.gameId = "G"; api.over = false; api.myColor = "w";
       api.pos = new RULES.Position(); api.moves = [];
-      confirmAction = "drawoffer"; pending = { cands: [], idx: 0 };
+      confirmAction = "drawoffer";
       handleGameState({ moves: "", status: "mate", winner: "black" }, false);
-      return { confirm: confirmAction, pending: pending, over: api.over };
+      return { confirm: confirmAction, over: api.over };
     })()
   `, sandbox);
   check("game over clears the open question too",
-        afterOver.over === true && !afterOver.confirm && !afterOver.pending);
+        afterOver.over === true && !afterOver.confirm);
 
   // ---- an offer may take the slot, but must say it did ----
   heard();
@@ -4346,19 +3186,19 @@ const sleep = ms =>
       eventAbort = { abort: function () { __evAborted++; } };
       var realCancel = cancelSeek;
       cancelSeek = function () { __seekCancelled++; };
-      confirmAction = "resign"; pending = { cands: [], idx: 0 };
+      confirmAction = "resign";
       dryRun = true;
       dryStart();
       cancelSeek = realCancel;
       return { ev: __evAborted, seek: __seekCancelled,
-               confirm: confirmAction, pending: pending };
+               confirm: confirmAction };
     })()
   `, sandbox);
   await sleep(40); heard();
   check("practice closes the account event stream", teardown.ev === 1);
   check("practice cancels any outstanding seek", teardown.seek === 1);
   check("and clears the questions with it",
-        !teardown.confirm && !teardown.pending);
+        !teardown.confirm);
 
   // ---- a real game beats practice, out loud ----
   heard();
@@ -4528,7 +3368,7 @@ const sleep = ms =>
   const selTinted = () => getEl("mini")._paints.some(p =>
     p.fillStyle === "#809668" || p.fillStyle === "#636e40");
   vm.runInContext(`
-    dryRun = true; busy = false; pending = null; armedUci = null;
+    dryRun = true; busy = false; armedUci = null;
     dryOpponentReply = function () {};
     api.gameId = "PRACTICE"; api.over = false; api.myColor = "w";
     api.pos = new RULES.Position(); api.moves = [];
@@ -4625,7 +3465,7 @@ const sleep = ms =>
   // the real Lichess API. Driven through the real button, and
   // the network is watched the whole way.
   vm.runInContext(`
-    dryRun = true; running = true; busy = false; pending = null;
+    dryRun = true; running = true; busy = false;
     dryOpponentReply = function () {};
     api.gameId = "PRACTICE"; api.over = false; api.myColor = "w";
     api.pos = new RULES.Position(); api.moves = [];

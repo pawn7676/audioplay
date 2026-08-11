@@ -78,174 +78,41 @@
     8: "eight ate hate ait eighth"
   });
 
+  /* PIECE NAMES LEFT THE MOVE GRAMMAR AT w118 (owner's
+   * design: moves are four coordinate items, nothing else),
+   * and this table shrank from the program's largest scar
+   * tissue to one job: naming the PROMOTION piece after an
+   * "equals" keyword. Every spelling here was paid for with
+   * a real game's mishearing - the history is in git at w117
+   * - but the promotion word is spoken next to "equals",
+   * which no other sentence contains, so the risky spellings
+   * ("clean", "patient", "rug") are not carried forward:
+   * they existed to catch piece names in open sentences, and
+   * there are no open sentences left. What remains is each
+   * piece's plain name and the transcriptions Safari returns
+   * for it when spoken clearly.
+   */
   var PIECES = expand({
-    k: "king kings kin",
-    // "clean" joined at w59 from game w58-1, where "queen
-    // check" came back as "Clean check" twice running. The
-    // fuzzy matcher could never have reached it: "clean" is
-    // three edits from "queen" and two from "quean", and a
-    // five-letter word is only allowed one. Exact-only below,
-    // because it is an everyday word with everyday neighbours.
-    q: "queen queens green quean creed quinn clean",
-    // "rug" joined at w65 from game w64-1, where Safari
-    // returned it four times in one game - "Rug B8", "Rug
-    // takes Echo for", "Rug D2", "Rug takes foxtrot five" -
-    // and every one survived only because a rival reading
-    // spelled the same move "Rock". Alone it would have been
-    // a lost move. Three letters, so the fuzzy matcher cannot
-    // reach it or seed from it either way (both ends of
-    // fuzzyToken require four).
-    r: "rook rooks rock rocks brook ruck roof rooke brooke ruts rug",
-    // "patient" joined at w115 from the game of 11 Aug, where
-    // "bishop charlie four" came back as "Patient Charlie four"
-    // and "Patient of Charlie four" - BOTH readings, so there
-    // was no undamaged rival, and what played was the c-pawn.
-    // Exact-only, like "clean": it is an everyday word with an
-    // everyday neighbourhood, and a seven-letter fuzzy target
-    // gets two edits of room - enough to swallow "patients",
-    // "patience", "ancient" and "impatient", none of which is
-    // a bishop.
-    b: "bishop bishops bishoff bishup fish fisher fishop ship bish " +
-       "vision visions bitch patient",
-    // WHAT EARNS A WORD A PLACE IN THESE TABLES, stated
-    // after w113 got it wrong for a day: a spelling joins
-    // because Safari RETURNED it when a vocabulary word was
-    // SPOKEN - "note" is here because saying "knight"
-    // produced it, "clean" because saying "queen" did -
-    // never because a word merely rhymes with or resembles
-    // a piece name. "light" was added on that misreading
-    // and REVERTED at w114: the owner had said "light" ON
-    // PURPOSE, as a test, and mapping it here would have
-    // made the program mishear him by design. Every rhyme
-    // (sight, bite, kite) is the same reductio. A deliberate
-    // non-vocabulary word is DROPPED, and since w114 an
-    // ambiguous near-miss drop is at least logged - see
-    // fuzzyToken.
-    n: "knight knights night nights nite note notes",
-    // "plant" and its family joined at w48 from game w47-1,
-    // where the owner spent four minutes failing to say the
-    // word: Safari returned pawn as Plants, Plant, Plantains,
-    // Fontes, Pontes and Po across six utterances, three of
-    // which lost a move outright. They are the reason "push"
-    // exists (v120) and the reason it is still the better
-    // word to say - but the log has them, so the table has
-    // them. Exact-only, like every entry here.
-    p: "pawn pawns prawn pond palm porn ponte ponta pote potes " +
-       "pons poon paun poan ponn pot pawnd born pon pollen " +
-       "plant plants plantain plantains fontes pontes po " +
-       "paw paws pan push pushes pushed"
+    q: "queen queens quean quinn",
+    r: "rook rooks rock rocks brook rooke",
+    b: "bishop bishops bishup bish",
+    n: "knight knights night nights nite"
   });
 
-  // Safari runs a piece name into the file that follows it:
-  // "rook e one" comes back as "rookie one", where "rook
-  // e" has fused into a single word. Splitting these back
-  // into their parts is the only way to recover the move.
-  // Left in its own shape: the value is a sequence, not a
-  // single symbol, so it does not invert.
-  // w65, game w64-1: the same fusion, but onto BRAVO rather
-  // than the e-file. "Rook b8" came back as "Rugby" and
-  // "Rugby eight" - BOTH readings of one utterance, so there
-  // was no undamaged rival to fall back on and the move was
-  // simply lost ("Say again."). That, not the word, is what
-  // was new: an entry here calling rugby "an ordinary English
-  // word, unlike the rest" was wrong on sight, since rookie
-  // and politics are sitting right beside it.
-  //
-  // THE FUSION FOLLOWS THE VOWEL. Every entry below runs a
-  // piece word into a letter whose spoken name ends in the
-  // "ee" sound - e ("ee"), b ("bee") - which is exactly the
-  // sound that has nothing to separate it from the tail of
-  // "rook" or "bishop". That makes c ("cee"), d ("dee") and
-  // g ("gee") the untested rest of the same family.
+  /* A WHOLE SQUARE CAN FUSE INTO ONE WORD, and these are the
+   * recoveries. The piece+file fusions (rookie, rugby, knife,
+   * queenie...) died with the piece grammar at w118; what
+   * survives is the family the four-item grammar still needs,
+   * file+rank heard as one word. Each entry either cost a
+   * real move (aquaphor, w84: "echo four" came back as
+   * "Aquaphor" in BOTH readings and the move was lost) or
+   * came from the w85 search of that proven mechanism - the
+   * swallowed consonant and the o-becomes-w glide. Two bars,
+   * as ever: a tight rendering of the sound, and not a word
+   * said near numbers at a board.
+   */
   var COMPOUND = {
-    rookie: [["piece", "r"], ["file", "e"]],
-    rookies: [["piece", "r"], ["file", "e"]],
-    rooky: [["piece", "r"], ["file", "e"]],
-    rugby: [["piece", "r"], ["file", "b"]],
-    rugbys: [["piece", "r"], ["file", "b"]],
-    bishopy: [["piece", "b"], ["file", "e"]],
-    // KNIGHT+E WAS SPELLED THE ONE WAY SAFARI WILL NOT WRITE
-    // IT (w66). "knightie" has been the only entry for this
-    // fusion since the userscript, and PIECES three tables up
-    // records what Safari actually does with the word: it
-    // writes knight as NIGHT, silent k gone, every time. So
-    // the fused form arrives as "nightie" or "nighty" and hit
-    // neither. Not a new fusion - the same one, finally
-    // spelled the way it turns up. "knightie" stays: it costs
-    // one line and something may yet produce it.
-    knightie: [["piece", "n"], ["file", "e"]],
-    nightie: [["piece", "n"], ["file", "e"]],
-    nighty: [["piece", "n"], ["file", "e"]],
-    politics: [["piece", "p"], ["take"]],
-    pontic: [["piece", "p"], ["take"]],
-    pontics: [["piece", "p"], ["take"]],
-    pontikes: [["piece", "p"], ["take"]],
-    pontakes: [["piece", "p"], ["take"]],
-    // SEARCHED FOR, NOT STUMBLED ON (w78). Every entry above
-    // was paid for with a lost move in a real game before it
-    // earned its line. But the family was never mysterious -
-    // the fusion rule three comments up names its own untested
-    // members - so for once English was searched ahead of the
-    // log: a word list run against every piece+file fusion,
-    // and the snug fits added before some accent pays for them
-    // one game at a time. Two bars, and a word must clear
-    // both. It must be a TIGHT rendering of the fusion, and it
-    // must not be a word said near numbers at a board: "nice"
-    // and "knee" are exactly the sound of knight+c and
-    // knight+e and stayed out, because this table is consumed
-    // first and asks no questions - "nice one" must never
-    // become a knight to c1. The d-file stays empty: English
-    // offered nothing snug. Exact-only by construction, like
-    // every compound - none of these can seed the fuzzy
-    // matcher.
-    roxy: [["piece", "r"], ["file", "c"]],
-    roxie: [["piece", "r"], ["file", "c"]],
-    // "rock" has been the rook since w65, so rock+ee is the
-    // rookie fusion in that spelling.
-    rocky: [["piece", "r"], ["file", "e"]],
-    // The one the search was worth doing for: "knight f
-    // three" is Nf3, the commonest move in chess, one
-    // swallowed t away from coming back as "knife three".
-    knife: [["piece", "n"], ["file", "f"]],
-    ponzi: [["piece", "p"], ["file", "c"]],
-    pansy: [["piece", "p"], ["file", "c"]],
-    pony: [["piece", "p"], ["file", "e"]],
-    pawnee: [["piece", "p"], ["file", "e"]],
-    pontiff: [["piece", "p"], ["file", "f"]],
-    punchy: [["piece", "p"], ["file", "g"]],
-    quincy: [["piece", "q"], ["file", "c"]],
-    quincey: [["piece", "q"], ["file", "c"]],
-    queenie: [["piece", "q"], ["file", "e"]],
-    queeny: [["piece", "q"], ["file", "e"]],
-    cringy: [["piece", "q"], ["file", "g"]],
-    cringey: [["piece", "q"], ["file", "g"]],
-    kinsey: [["piece", "k"], ["file", "c"]],
-    kingie: [["piece", "k"], ["file", "e"]],
-    kingy: [["piece", "k"], ["file", "e"]],
-    clingy: [["piece", "k"], ["file", "e"]],
-    // A WHOLE SQUARE CAN FUSE TOO (w84, game of 7 Aug):
-    // "echo four" came back as "Aquaphor" - in BOTH readings
-    // of the utterance, so as with rugby there was no
-    // undamaged rival and the move was lost outright ("Say
-    // again."). The first entry to emit file+rank rather
-    // than piece+file; the parser replays any symbol
-    // sequence, so the shape costs nothing new. Both bars
-    // hold: a tight rendering of the sound, and a skin-cream
-    // brand is not a word said near numbers at a board.
     aquaphor: [["file", "e"], ["rank", "4"]],
-    // AND THE SQUARE FAMILY WAS THEN SEARCHED, AS w78
-    // SEARCHED THE PIECE+FILE ONE (w85, owner's ask). Same
-    // two bars, and the logged mechanisms as the guide: the
-    // swallowed-consonant run-on (rugby, knife) and the o
-    // that becomes w before a vowel, which is what aquaphor
-    // proved for echo. "golfer" is the tightest here - golf
-    // and four share the f outright. What the search
-    // REJECTED is in HISTORY.md at w85; two rejections are
-    // load-bearing enough to restate: "alone" (alpha+1) is
-    // an everyday word said in asides near a live mic, and
-    // "bravado", a snug bravo+2, already sits in NATO
-    // meaning bare "bravo" - a logged meaning is never
-    // traded for a guessed one.
     golfer: [["file", "g"], ["rank", "4"]],
     golfers: [["file", "g"], ["rank", "4"]],
     gopher: [["file", "g"], ["rank", "4"]],
@@ -261,18 +128,12 @@
     abbreviate: [["file", "b"], ["rank", "8"]]
   };
 
-  // "text" and "texts" are the take word with its k gone
-  // (w44, game w43-1): "Texts bravo" survived at 17:27:38
-  // only because a rival transcript got it right, and "Text
-  // Delta" at 17:31:04 lost the move outright - "- - - d -",
-  // no capture, "Say again." Exact-only like every other
-  // risky entry, v114 style: three of these are ordinary
-  // English words, and the fuzzy matcher must never reach
-  // for them. Nothing in this grammar says "text" otherwise.
-  var TAKE_WORDS = wordSet("takes take taking tates tanks tags tag " +
-    "ticks tick text texts cakes cake captures capture capturing");
-  var CASTLE_WORDS = wordSet("castle castles castling cassel cattle " +
-    "castel hassle");
+  // (TAKE_WORDS and CASTLE_WORDS died at w118 with the piece
+  // grammar: a capture is just the to-square holding their
+  // piece, and castling is the king's own two-square move -
+  // "echo one golf one". The spellings they held - "text" for
+  // takes, "cassel" - are in git at w117 with the games that
+  // earned them.)
 
   /* AND NOW ACROSS THE TABLES, NOT JUST WITHIN THEM (w54).
    *
@@ -280,10 +141,9 @@
    * single map - that is what the grouped shape above is for -
    * and nothing checked the same word appearing in two
    * DIFFERENT maps, where it is just as wrong and quieter.
-   * parseTranscript tries NATO, then NUMS, then PIECES, then
-   * the take words; a word in two of them is decided by that
-   * order, silently, and the loser's meaning simply never
-   * happens. These tables only ever grow, one real log at a
+   * readItems tries the tables in a fixed order; a word in two
+   * of them is decided by that order, silently, and the
+   * loser's meaning simply never happens. These tables only ever grow, one real log at a
    * time - "cakes" at w48, "text" at w44, the whole plant
    * family - and a homophone landing in two of them is exactly
    * the kind of thing that gets added twice by two different
@@ -299,14 +159,11 @@
   (function crossCheckVocabulary() {
     // COMPOUND joined the check at w65. The reason is
     // structural, not about any one entry: it is consumed
-    // BEFORE all four of the others in parseTranscript, so a
-    // word in both wins here and the other meaning silently
-    // never happens - the loudest version of exactly the bug
-    // this guard exists for. That the table is full of real
-    // English words (rookie, politics, rugby) is what makes
-    // the collision reachable at all.
+    // BEFORE the others in readItems, so a word in both wins
+    // here and the other meaning silently never happens - the
+    // loudest version of exactly the bug this guard exists
+    // for.
     var maps = { NATO: NATO, NUMS: NUMS, PIECES: PIECES,
-                 TAKE_WORDS: TAKE_WORDS, CASTLE_WORDS: CASTLE_WORDS,
                  COMPOUND: COMPOUND };
     var owner = {};
     Object.keys(maps).forEach(function (name) {
@@ -329,9 +186,9 @@
   // counted as a content word and refused, so the resign
   // needed saying twice. Every command classifier requires
   // no other content, so a stray article breaks all of
-  // them. parseTranscript is untouched: its own "a" branch
-  // runs BEFORE the filler check, so the a-file still
-  // reads as the a-file in "a takes bravo five".
+  // them. readItems is untouched: its own "a" branch runs
+  // BEFORE the filler check, so the a-file still reads as
+  // the a-file when a rank follows it.
   // "of" joined at w115: Safari wrote the owner's "bishop
   // charlie four" as "Patient OF Charlie four", and since
   // w115 an unaccounted word next to a bare square raises a
@@ -354,31 +211,10 @@
   var DRAW_WORDS = wordSet("draw");
   var MEMO_WORDS = wordSet("memo memos");
 
-  // Saying "check" or "mate" narrows things down: it is the
-  // difference between dxe7 and Rxe7+. Without this the
-  // wrong one gets offered first and needs a no, then a yes.
-  // Words that describe a move rather than form part of
-  // one. They narrow the candidates when spoken inside a
-  // move, and are barred from fuzzy matching: "mate" is one
-  // edit from "hate", a homophone of rank 8, which used to
-  // add a phantom from-rank and kill the match.
-  //
-  // Said on their own they need no special handling. The
-  // stray-talk rule already ignores anything with no move
-  // in it while the opponent is thinking, and on your own
-  // turn "I did not catch a move" is the right answer: it
-  // means the move itself never landed.
-  var CHECK_WORDS = wordSet("check checks checked checking mate " +
-    "checkmate checkmates check-mate mates");
-
-  // The subset that means MATE, not merely check. "mate"
-  // narrows harder than "check": among candidates that all
-  // give check, only the mating ones can be what was meant.
-  // Game20's mate took five tries (18:18) partly because
-  // Safari spells checkmate as "check me" - three times in
-  // one game - so saysMate() below also reads that pair.
-  var MATE_WORDS = wordSet("mate mates checkmate checkmates " +
-    "check-mate");
+  // (CHECK_WORDS and MATE_WORDS died at w118: check is a fact
+  // about the position after a move, and the four-item grammar
+  // carries no adjectives. The announcements still SAY check
+  // and mate - that is sanToSpeech's, on the way out.)
 
   // MATCHED AS SPELLED, NEVER USED AS A FUZZY TARGET.
   // These are spellings iOS has actually returned, not

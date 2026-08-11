@@ -33,11 +33,12 @@ node build.js           # writes index.html locally, to LOOK at
 guards what the harness structurally cannot. A hand-written test
 only ever checks the cases its author imagined, and the author is
 the person who wrote the bug. This generates instead: random
-games for positions, the whole spoken grammar for sentences, and
-rules that must hold whatever was said — a bare square is a pawn
-push, a take word means a capture, a spoken file is the mover's
-file. Seeded, so a failure reproduces. Raise the position count
-when the grammar grows.
+games for positions, every legal move spoken whole in every
+spelling, and mutilations of each that must play NOTHING — the
+w118 grammar's two promises, sound (only a whole move, heard
+whole, ever plays) and complete (a whole move always comes back
+as itself). Seeded, so a failure reproduces. Raise the position
+count when the grammar grows.
 
 `build.js` is pure concatenation: it joins the files named in
 `manifest.txt`, in order, and inlines them into

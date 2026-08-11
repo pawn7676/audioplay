@@ -249,13 +249,14 @@
    * - onend FIRES WHILE AUDIO IS STILL PLAYING, so speech
    *   gaps poll speechSynthesis.speaking before timing the
    *   pause (waitUntilQuiet).
-   * - SAFARI CLIPS THE FIRST WORD of an utterance. Readings
-   *   missing a leading piece name are demoted, never
-   *   deleted (clippedIndexes, in matching.js). The same clipping
-   *   sank bare "none" as a list answer in the deleted
-   *   silent mode: clipped, it became "one". Any future
-   *   answer vocabulary must be chosen by phonetic
-   *   distance from what it can play.
+   * - SAFARI CLIPS THE FIRST WORD of an utterance. The w118
+   *   grammar absorbs this by design - a clipped four-item
+   *   move is a three-item non-move and is refused, never
+   *   completed - and rival readings often carry the whole
+   *   thing. The same clipping sank bare "none" as a list
+   *   answer in the deleted silent mode: clipped, it became
+   *   "one". Any future answer vocabulary must be chosen by
+   *   phonetic distance from what it can play.
    * - data: URIs WERE REJECTED for audio; Blob URLs work.
    * - FULLSCREEN EXIT CORRUPTS THE LAYOUT VIEWPORT until
    *   Safari is force-quit. Closed case, three failed
