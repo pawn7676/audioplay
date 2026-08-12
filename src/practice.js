@@ -102,7 +102,7 @@
     api.moves.push(uci);
     api.lastSan = san; api.lastSanB = san;
     log("DRY", "opponent plays random legal move " + uci + " = " + san);
-    speak(sanToSpeech(san) + ".", colorWord(api.myColor === "b" ? "w" : "b"));
+    speak(sanToSpeech(san) + ".");
     if (!api.pos.legalMoves().length) {
       api.over = true;
       sayResult("Practice game over.");

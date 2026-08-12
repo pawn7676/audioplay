@@ -121,30 +121,22 @@
     return parts;
   }
 
-  // `who` is a COLOR written to the LOG ONLY, never spoken.
-  // It exists because a recapture makes the read-back and
-  // the announcement the same sentence — game18 17:12 and
-  // 17:24 are both "queen takes delta 4", differing by the
-  // trailing period alone — and the neighbouring MOV line
-  // cannot settle it, since the 200 and the gameState event
-  // arrive in either order (see acceptMove).
-  //
-  // Colors, not "me"/"opp", so the log reads in the same
-  // vocabulary as the speech it records: nothing here has
-  // said "yours" or "theirs" since the beginning, and which
-  // side you are is established once at connection time.
-  // Out loud the two lines stay identical: they describe
-  // the same move, and the color belongs to the move rather
-  // than to whoever is speaking it.
-  //
-  // BRACKETED IN THE LOG since w113, because unmarked it
-  // read as transcript: the owner saw "SAY white alpha 3"
-  // and rightly asked why the voice never said "white". A
-  // SAY line is the one place the log claims to quote what
-  // was spoken, so anything on it that was NOT spoken has
-  // to look like annotation - "[white] alpha 3" - or the
-  // log lies a little on every move.
-  function speak(text, who) {
+  // THE COLOR ANNOTATION IS GONE (w119). From w113 to w118
+  // a move announcement carried a color word, written to
+  // the log as "[black] ..." and never spoken. It earned
+  // its place when a recapture made the read-back of your
+  // own move and the announcement of the reply the same
+  // sentence - game18 17:12 and 17:24 were both "queen
+  // takes delta 4" - and the neighbouring MOV line could
+  // not settle whose it was, since the 200 and the
+  // gameState event arrive in either order. w118 ended the
+  // spoken read-back (your own move confirms with the
+  // chime, or "okay."), so the opponent is the only side
+  // whose moves are spoken now: every SAY sentence is
+  // theirs, and the MOV line beside it already names the
+  // color. The owner read a game log, asked what the
+  // bracket was still for, and the answer was nothing.
+  function speak(text) {
     if (!text) return;
     // EVERY output funnels through here, and since w110 it
     // all goes ONE way: to the voice. This point has twice
@@ -155,10 +147,8 @@
     // screen pulls the eyes off the physical board. The
     // strip and its switches were deleted at w110 (see the
     // clock.js header). If a third channel is ever
-    // proposed, this comment is its history. `who` is the
-    // color word, passed for move announcements alone and
-    // written to the LOG only - see its note below.
-    log("SAY", (who ? "[" + who + "] " : "") + text);
+    // proposed, this comment is its history.
+    log("SAY", text);
     splitForSpeech(text).forEach(function (p) { speakQueue.push(p); });
     pumpSpeech();
   }

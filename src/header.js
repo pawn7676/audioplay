@@ -396,17 +396,27 @@
    * the most likely door. The removed file's whole history
    * is in git and in HISTORY.md w63/w88/w89/w90.
    *
-   * NO SPOKEN LOW-TIME WARNING — asked for and DECLINED,
-   * v92. Game11 was lost on the clock in voice mode with
-   * the screen off, where the two overlays' red under-a-
-   * minute color cannot be seen and "clock" is the only
-   * way to know the time. A warning at thresholds was
-   * proposed on exactly that evidence and refused as too
-   * distracting, which settles it: an alert that fires
-   * while the user is thinking, and that gates the mic
-   * when it speaks, costs more than the flag it prevents.
-   * "clock" answers on demand and stays the whole answer.
-   * Do not add unprompted clock speech of any kind.
+   * NO SPOKEN CLOCK AT ALL — settled twice, in opposite
+   * winds. The low-time warning was asked for and DECLINED
+   * at v92: game11 was lost on the clock in voice mode with
+   * the screen off, where red cannot be seen and spoken
+   * "clock" was the only way to know the time - and even on
+   * that evidence a threshold alert was refused as too
+   * distracting, an interruption that fires while the user
+   * is thinking and gates the mic when it speaks. Then the
+   * on-demand side went too: bare "clock", which had SPOKEN
+   * both times, fell out in the w118 grammar rewrite, and
+   * on 12 Aug 2026 the owner CONFIRMED the deletion - said
+   * "clock" mid-game as a deliberate test that it stays
+   * silent, and ruled it stays dead. The premise that made
+   * it load-bearing is gone: screen-off play is gone
+   * (above), the screen is on for the whole game, and the
+   * owner reads his own clock in the rail and the overlay.
+   * Do not restore the spoken time, and do not add
+   * unprompted clock speech of any kind. CLOCK_WORDS stays
+   * in the vocabulary: "flip clock" still needs it, and a
+   * lone "clock" landing as known-but-ignored stray talk is
+   * the behaviour the owner tested for.
    *
    * THE SPOKEN "CLOCK MODE" IS GONE (v98), and with it
    * classifyClockMode. It could not go fullscreen — Safari
@@ -416,10 +426,9 @@
    * used again. (v108 removed fullscreen altogether, so
    * that particular asymmetry no longer exists; the phrase
    * stays deleted on the separate ground below.) What
-   * remains in the clock vocabulary is bare "clock", which
-   * SPEAKS the times, and "flip clock", which swaps the
-   * sides. Deleting the third phrase removed the only real
-   * collision risk between them. Anything that changes the
+   * remains in the clock vocabulary is "flip clock" alone,
+   * since w118 took bare "clock" with it (see the spoken-
+   * clock note above). Anything that changes the
    * SCREEN is now a tap, and anything spoken either answers
    * or rearranges — a cleaner line than the one it replaced.
    * SPOKEN "SILENT MODE" WENT THE SAME WAY one version
