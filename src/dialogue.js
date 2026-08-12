@@ -97,12 +97,10 @@
   // spoken "okay." when it cannot (rule 5 - never silence).
   // Under the w118 grammar the chime confirms a move the user
   // spoke WHOLE - all four items - so the one bit it carries
-  // is the bit that is owed: heard exactly, legal, played. The
-  // color word rides along so clock mode's message gate treats
-  // the fallback as the move confirmation it is.
+  // is the bit that is owed: heard exactly, legal, played.
   function confirmFeedback() {
     if (playConfirmChime()) return;
-    speak("okay.", colorWord(api.myColor || "w"));
+    speak("okay.");
   }
 
   // announce=false is a catch-up replay (reconnect,

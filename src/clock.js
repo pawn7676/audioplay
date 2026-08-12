@@ -76,8 +76,9 @@
   // so above a minute just the whole minutes remain,
   // changing once a minute — and under a minute the number
   // becomes the seconds and the number turns red
-  // (LOW_TIME_COLOR). The spoken "clock" still gives
-  // minutes and seconds exactly.
+  // (LOW_TIME_COLOR). Nothing SPEAKS the time since w118
+  // (see the spoken-clock note in header.js): this screen
+  // and the page rail are the whole answer.
   function clockDigits(ms) {
     if (ms == null) return "--";
     if (ms < 0) ms = 0;

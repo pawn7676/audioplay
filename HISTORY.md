@@ -3513,3 +3513,41 @@ move (rook slides, "four" for "five") plays it, and only the
 opponent's reply reveals it. It is a far smaller door than the
 one that closed, it is the door the owner chose with open eyes,
 and the log will show it if it ever opens.
+
+### w119
+
+THE FIRST GAME LOG READ BACK AFTER w118, and three things fell
+out of it, none of them the grammar - which did exactly what
+w118 promised through a full 15+10 against maia5, refusing
+every fragment and every illegal hearing and playing nothing
+wrong.
+
+The page clocks now share one width with the colons in one
+column. Each box hugged its own digits, so "15:49" sat wider
+than "0:23" and a box shrank the moment its clock crossed
+9:59 - the number moving under the eye, which is the exact
+thing the big overlay's monotonic sizing was built to prevent
+(v97) and the w70 rail never inherited. A min-width that fits
+MM:SS to 99:59 plus right-aligned digits settles both at once,
+in the stylesheet where rule 6 wants it.
+
+The "[black]" annotation is gone from SAY lines. w113 added it
+so a recapture's read-back and announcement - the same sentence
+twice - could be told apart; w118 ended the spoken read-back,
+so every spoken sentence is now the opponent's and the bracket
+marked each one with what the MOV line beside it already says.
+The owner read the log, asked what it was still for, and
+nothing was the answer.
+
+And bare "clock" staying silent is now RECORDED AS INTENDED.
+The w118 entry did not list it among the survivors but did not
+name it among the dead either, and the headers still claimed it
+spoke - a gap a later reader (this one included) would read as
+a regression, since v92's declined low-time warning leaned on
+it. The owner said "clock" mid-game as a deliberate test that
+it stays silent, and ruled it dead: screen-off play is gone,
+the screen is on all game, and the clock is read by eye.
+header.js and clock.js now say so. log.js also grew a key to
+its own tags, because the owner had to ask what PST and the
+ever-present 200 meant, and a log the owner pastes should
+carry its own reading instructions.

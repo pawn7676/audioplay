@@ -316,7 +316,20 @@
      opponent's move, just its waiting shade. And w81's
      lesson stands unchanged - the dim is the CLOCK's turn
      signal and never touches the names. */
+  /* ONE WIDTH, COLONS IN ONE COLUMN (w119). These boxes
+     hugged their digits, so "15:49" sat in a wider box than
+     "0:23", the pair never lined up, and a box visibly
+     shrank the moment its clock crossed 9:59 - the number
+     moving under the eye mid-game, which the big overlay
+     solved long ago (clockDigitsSeen, clock.js) and this
+     rail never did. min-width fits MM:SS up to 99:59, which
+     covers every playable control; right-alignment does the
+     rest, because the ":SS" tail is the same width in both
+     boxes under tabular-nums, so the colons stack. Past 99
+     minutes the box grows and the pair can disagree again -
+     accepted, the presets top out at 30. */
   .sideClock .cbox { display: inline-block; padding: 2px 16px;
+                     min-width: 5.5ch; text-align: right;
                      border-radius: 6px; color: var(--bright);
                      background: #252420; }
   .sideClock .cbox.turn { background: #374528; }

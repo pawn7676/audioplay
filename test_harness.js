@@ -267,9 +267,13 @@ const wholeSrc = order
 vm.runInContext(wholeSrc, sandbox, { filename: "concat(manifest)" });
 console.log("loaded", order.length, "files as one script");
 
-// capture speech after load (they are globals now)
+// capture speech after load (they are globals now) - keeping
+// a handle on the real speak first, because the SAY log line
+// is its work and w119's claim about that line can only be
+// asked of the real function
 vm.runInContext(`
   var __spoken = [];
+  var __realSpeak = speak;
   speak = function (t) { __spoken.push(t); };
   speakWhenAudioSettled = function (t) { __spoken.push(t); };
 `, sandbox);
@@ -333,6 +337,31 @@ const sleep = ms =>
   await sleep(150); heard();     // the practice random reply
   await expect("repeat", /./);
   await expect("memo testing the port", /memo recorded/i);
+
+  // ---- w119: a SAY line quotes the sentence bare ----
+  // w113 bracketed a color onto move announcements ("[black]
+  // knight charlie 6.") so a recapture's read-back and
+  // announcement - the same sentence twice - could be told
+  // apart; w118 ended the spoken read-back and w119 removed
+  // the annotation. Asked of the REAL speak, captured before
+  // the stub above, because the SAY line is its work: the log
+  // carries exactly what the voice said and nothing else.
+  // read only the lines this call adds - the boot lines
+  // already in LOG are another test's evidence (line 706)
+  const sayLine = vm.runInContext(`
+    (function () {
+      var n = LOG.length;
+      __realSpeak("knight charlie 6.");
+      return LOG.slice(n).filter(function (l) {
+        return l.indexOf("SAY") >= 0;
+      }).join("|");
+    })()
+  `, sandbox);
+  check("a SAY line is the spoken sentence, unannotated (" +
+        sayLine + ")",
+        /SAY {2}knight charlie 6\.$/.test(sayLine) &&
+        sayLine.indexOf("[") < 0);
+  await sleep(1400);        // the real speech chain settles (450ms gap)
 
   // the four-item property, spot-checked on a fresh practice
   // game: less than the whole move never plays
@@ -838,6 +867,15 @@ const sleep = ms =>
   check("the stylesheet gives both names one colour",
         /\.sideName \{[^}]*color:\s*var\(--bright\)/.test(tmplBoard) &&
         !/\.sideName \.mine/.test(tmplBoard));
+  // w119: the two boxes share one width and the colons stack.
+  // The boxes hugged their digits, so "15:49" outgrew "0:23"
+  // and a box resized crossing 9:59. A CSS claim, so read from
+  // the rule's own text like the w81/w103 checks beside it:
+  // min-width holds the box still, right-alignment pins the
+  // constant-width ":SS" tail (tabular-nums) to one column.
+  check("the clock boxes hold one width, digits right-aligned",
+        /\.sideClock \.cbox \{[^}]*min-width/.test(tmplBoard) &&
+        /\.sideClock \.cbox \{[^}]*text-align:\s*right/.test(tmplBoard));
   // w104: and the title is a different KIND of fact, not a
   // lesser one - coloured and bold at full strength, the way
   // lichess.org shows IM/GM/BOT, rather than the .65 fade it

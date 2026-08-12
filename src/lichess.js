@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w118";
+  VERSION = "w119";
 
   var RULES = makeRules();
 
@@ -394,7 +394,7 @@
       log("MOV", colorWord(res.move.color) + " " + list[i] + " = " + res.san +
           (announce ? "" : " (catch-up)"));
       if (announce && !moverIsMine) {
-        speak(sanToSpeech(res.san) + ".", colorWord(res.move.color));
+        speak(sanToSpeech(res.san) + ".");
       }
       // OUR OWN MOVE, CONFIRMED BY THE STREAM (v134). This
       // is the earlier of the two confirmations whenever
@@ -1008,7 +1008,7 @@
           if (res.move.color === "w") api.lastSanW = res.san;
           else api.lastSanB = res.san;
           if (res.move.color !== api.myColor) {
-            speak(sanToSpeech(res.san) + ".", colorWord(res.move.color));
+            speak(sanToSpeech(res.san) + ".");
           }
           /* the stream's rule, kept identical here (v134) */
           if (res.move.color === api.myColor)
