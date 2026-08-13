@@ -187,6 +187,15 @@
     border-color: var(--button-on);
   }
   .panel { background: var(--surface); border-radius: 8px; padding: 12px; margin-top: 12px; }
+  /* THE FIRST PANEL SITS FLUSH UNDER THE BODY PADDING (w121).
+     Every .panel carries margin-top to space it from the one
+     above; on the board panel, first on the page since w120,
+     that margin separated it from nothing and stacked on the
+     body's own 12px top padding - 24px of dead space above
+     the board where the sides get 12 (owner's screenshot,
+     13 Aug). The board is what the page opens FOR; the
+     spare margin goes. */
+  #panelBoard { margin-top: 0; }
   .panel h2, .panel > details > summary {
     font-size: .8rem; font-weight: 600; letter-spacing: .12em;
     text-transform: uppercase; color: var(--text); margin-bottom: 8px;

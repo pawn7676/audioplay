@@ -3627,3 +3627,11 @@ voice gets "lee chess", "brahvo", and the chess letters'
 names (ay, bee, see...). If a voice still mangles one of
 those, the fix is a line in that table - not a respelled
 sentence.
+
+And the first screenshot of w120 showed dead space above the
+board: every .panel carries margin-top to space it from the
+panel above, and on the board panel - first on the page now -
+that margin separated it from nothing and stacked on the
+body's 12px top padding, 24px where the sides get 12. The
+first panel now sits flush under the body padding; the board
+starts 12px sooner.

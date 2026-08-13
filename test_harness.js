@@ -1095,6 +1095,10 @@ const sleep = ms =>
   // panel memory knew it by name, and renaming buys nothing
   check("the merged panel keeps the panelLichess id",
         tmpl.includes('id="panelLichess"'));
+  // w121: the first panel drops its top margin, which stacked
+  // on the body padding as 24px of dead space above the board
+  check("the board panel sits flush under the body padding",
+        /#panelBoard \{ margin-top: 0; \}/.test(tmpl));
   check("and the template carries no separate sign-out button",
         !tmpl.includes("btnSignOut"));
   // ASK THE BUILT TREE (w54). This grepped ui.js for the
