@@ -396,6 +396,30 @@
    * the most likely door. The removed file's whole history
    * is in git and in HISTORY.md w63/w88/w89/w90.
    *
+   * THE FIRST SCREEN-OFF GAME SINCE THE REMOVAL (13 Aug
+   * 2026, w119, game xvfAwTl4): a full 30+20 against maia5,
+   * screen off from the first minutes on, one AirPod as
+   * both speaker and mic. Nothing held the session but the
+   * mic itself, declared play-and-record (w91) - and it
+   * held: one recognizer cycle unbroken for 36 minutes, no
+   * LAG lines, no holder churn, every announcement spoken
+   * and every move heard with the page hidden. The
+   * wake-lock retake seconds after mate is the proof the
+   * page really was backgrounded the whole while: iOS drops
+   * the lock silently on hide, and the visibilitychange
+   * listener could only retake it when the owner woke the
+   * screen. So the door the paragraph above points at may
+   * already be open WHEN THE MIC IS LIVE END TO END - the
+   * always-on recognizer is itself the session holder, and
+   * unlike the silent element it coexists with the
+   * synthesizer. What one game does not prove: what happens
+   * when the AirPod drops mid-game (battery, case opened,
+   * Siri, an incoming call). The live mic is then the ONLY
+   * thing keeping the hidden page from suspending, its loss
+   * is silent, and the lost-game shape above - the move
+   * arriving unannounced, the clock burning - is still the
+   * price. One datum, not a mode.
+   *
    * NO SPOKEN CLOCK AT ALL — settled twice, in opposite
    * winds. The low-time warning was asked for and DECLINED
    * at v92: game11 was lost on the clock in voice mode with
