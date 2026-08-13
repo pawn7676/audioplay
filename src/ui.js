@@ -471,17 +471,25 @@
   }
 
   function fmtClock(ms) {
-    // "--:--" for a clock that does not exist (w128). w127
-    // said "-:--", one character short of MM:SS, and
-    // right-aligned in the rail box that left the colon off
-    // centre - the owner saw it at a glance. The placeholder
-    // wears the time's own shape, so the colon lands exactly
-    // where a real clock's colon does.
-    if (ms == null) return "--:--";
+    // ALWAYS FIVE DIGITS' WORTH, COLON DEAD CENTRE (w129,
+    // owner's rule): minutes are zero-padded - 09:50, 00:23
+    // - so every time this box can show is the same five
+    // tabular characters and the colon NEVER moves, ticking
+    // or not. Two placeholders came before it: w127's
+    // "-:--" was a character short, and w128's "--:--" was
+    // five characters that still sat off centre, because a
+    // HYPHEN IS NOT A FIGURE - tabular-nums makes every
+    // digit one width and says nothing about dashes, which
+    // render narrower. So the placeholder is "00:00", real
+    // digits in the real geometry, told apart from a
+    // flagged clock the way this rail already tells
+    // everything: colour. Unset is the waiting grey,
+    // dimmed; a flag is red.
+    if (ms == null) return "00:00";
     if (ms < 0) ms = 0;
     var total = Math.floor(ms / 1000);
     var m = Math.floor(total / 60), s = total % 60;
-    return m + ":" + (s < 10 ? "0" : "") + s;
+    return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
   }
 
   /* THE BOARD'S OWN SHAPE (w70). Two clocks and two names in
@@ -592,10 +600,12 @@
     // unclocked game - the boxes went blank, which left the
     // space beside the board looking like dead space rather
     // than a place where clocks will be. Now they hold
-    // fmtClock's dashes in the waiting grey, dimmed: the
-    // same statement the big overlay has always made with
-    // "--" for an unset half. Grey and dim on purpose -
-    // nothing is running, nobody is to move.
+    // fmtClock's "00:00" in the waiting grey, dimmed (the
+    // dashes of w127-w128 could not centre their colon -
+    // see fmtClock). Grey and dim on purpose - nothing is
+    // running, nobody is to move - and colour is what tells
+    // an unset clock from a flagged one, as everywhere in
+    // this rail.
     if (!live) {
       var ph = '<span class="cbox idle">' + fmtClock(null) + "</span>";
       clockTop.innerHTML = ph;

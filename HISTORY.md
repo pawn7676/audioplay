@@ -3799,3 +3799,19 @@ asked for them equal. The min-width is gone; the rail's
 width IS its content now (a flex item's min-content keeps
 the wrap threshold at nearly the same place), so the edge
 flex centres is the edge the eye sees.
+
+### w129
+
+THE COLON NEVER MOVES, the owner's rule after three
+placeholders in three versions told the whole story: w127's
+"-:--" was a character short, w128's "--:--" was five
+characters that still sat off centre, and the reason is
+typographic, not arithmetic - tabular-nums makes every
+DIGIT one width and promises nothing about a hyphen, which
+renders narrower. Only digits hold the colon still. So the
+minutes zero-pad ("09:50", the screenshot that settled it)
+and the placeholder is "00:00": every string this box can
+show is the same five tabular characters, ticking or not,
+set or not. What tells an unset clock from a flagged one is
+what tells everything in this rail - colour. Unset is the
+waiting grey, dimmed; a flag is red.
