@@ -1004,10 +1004,13 @@ const sleep = ms =>
   // BRO-vo, and the chess style's file letters - "A 5" came
   // back as the article and "G 6" as the unit, so the voice
   // gets the letter's NAME, disambiguator included
+  // brawvo on the second try: "brahvo" came back BRE-vo, and
+  // aw is English's stable spelling of the vowel the owner
+  // specified (the o of octopus)
   check("bravo is respelled for the voice only",
-        vm.runInContext('forTheEar("bravo 4.")', sandbox) === "brahvo 4." &&
+        vm.runInContext('forTheEar("bravo 4.")', sandbox) === "brawvo 4." &&
         vm.runInContext('forTheEar("bravo 7, bravo 5.")', sandbox) ===
-          "brahvo 7, brahvo 5.");
+          "brawvo 7, brawvo 5.");
   // the a-file is "eh", the recognizer's own transcription
   // of the spoken letter - "ay" came back as "aye"/"I"
   check("the chess letters speak their names (" +
@@ -1017,6 +1020,11 @@ const sleep = ms =>
         vm.runInContext('forTheEar("G 6.")', sandbox) === "gee 6." &&
         vm.runInContext('forTheEar("knight B D 2.")', sandbox) ===
           "knight bee dee 2.");
+  // E passes bare - "ee" came back as two e-sounds, and a
+  // letter is respelled only after its bare form fails
+  check("E has no respelling, by the fourth listen's rule",
+        vm.runInContext('forTheEar("E 4.")', sandbox) === "E 4." &&
+        vm.runInContext('forTheEar("rook E 8.")', sandbox) === "rook E 8.");
   check("and NATO words pass through untouched",
         vm.runInContext('forTheEar("delta 7, delta 5.")', sandbox) ===
           "delta 7, delta 5.");
