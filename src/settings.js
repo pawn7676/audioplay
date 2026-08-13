@@ -197,6 +197,13 @@
   // still runs together, lower them if it feels slow.
   var GAP_SENTENCE_MS = 450;   // after . ; :
   var GAP_CLAUSE_MS = 220;     // after ,
+  // THE CHESS STYLE'S ITEM GAP (w123, owner's number). Its
+  // commas separate single short tokens - "rook, D, 7" - and
+  // the full clause pause between each read as staccato on
+  // the device; half of it still stops the run-on. Only move
+  // announcements use it (moveGapMs, speech-out.js): every
+  // other comma on the page keeps the clause gap.
+  var GAP_ITEM_MS = 110;
 
   // Logs the real duration of every spoken chunk to the log
   // panel. Set false once the pacing sounds right.
