@@ -1011,12 +1011,12 @@ const sleep = ms =>
   // the a-file is "eh", the recognizer's own transcription
   // of the spoken letter - "ay" came back as "aye"/"I"
   check("the chess letters speak their names (" +
-        vm.runInContext('forTheEar("bishop, A, 5.")', sandbox) + ")",
-        vm.runInContext('forTheEar("bishop, A, 5.")', sandbox) ===
-          "bishop, eh, 5." &&
-        vm.runInContext('forTheEar("G, 6.")', sandbox) === "gee, 6." &&
-        vm.runInContext('forTheEar("knight, B, D, 2.")', sandbox) ===
-          "knight, bee, dee, 2.");
+        vm.runInContext('forTheEar("bishop A 5.")', sandbox) + ")",
+        vm.runInContext('forTheEar("bishop A 5.")', sandbox) ===
+          "bishop eh 5." &&
+        vm.runInContext('forTheEar("G 6.")', sandbox) === "gee 6." &&
+        vm.runInContext('forTheEar("knight B D 2.")', sandbox) ===
+          "knight bee dee 2.");
   check("and NATO words pass through untouched",
         vm.runInContext('forTheEar("delta 7, delta 5.")', sandbox) ===
           "delta 7, delta 5.");
@@ -1812,39 +1812,21 @@ const sleep = ms =>
   check("hybrid is the shipped voice, untouched (" +
         spoken("Bc4", "f1c4") + ")",
         spoken("Bc4", "f1c4") === "bishop charlie 4");
-  // the commas are w122's pause between every chess item -
-  // the style's short tokens ran on spoken flat
-  check("chess speaks the bare file letter, an item at a " +
-        "time (" + speakStyle("chess") + ": " +
-        spoken("Bc4", "f1c4") + ")",
-        spoken("Bc4", "f1c4") === "bishop, C, 4" &&
-        spoken("Nbd2", "b1d2") === "knight, B, D, 2" &&
-        spoken("Bxa3", "c1a3") === "bishop, takes, A, 3");
-  // w123: the chess items take the SHORT gap - the full
-  // clause pause per item read as staccato - and the real
-  // speak queues it, asked with the pump held so the queue
-  // can be read
-  check("its item gap is the short one (" +
-        vm.runInContext("moveGapMs()", sandbox) + "ms)",
-        vm.runInContext("moveGapMs() === GAP_ITEM_MS", sandbox) &&
-        vm.runInContext("GAP_ITEM_MS < GAP_CLAUSE_MS", sandbox));
-  const queuedGaps = vm.runInContext(`
-    (function () {
-      var save = speaking;
-      speaking = true;
-      var n = speakQueue.length;
-      __realSpeak("rook, D, 7.", moveGapMs());
-      var gaps = speakQueue.slice(n).map(function (p) { return p.gap; });
-      speakQueue.length = n;
-      speaking = save;
-      return gaps.join(",");
-    })()
-  `, sandbox);
-  check("and the queue carries it between the items (" +
-        queuedGaps + ")",
-        queuedGaps === vm.runInContext(
-          "[GAP_ITEM_MS, GAP_ITEM_MS, GAP_SENTENCE_MS].join()",
-          sandbox));
+  // FLAT, ON PURPOSE (w124): the item commas of w122 and the
+  // halved gap of w123 were both ruled out on the device -
+  // staccato, and the chunking changed how the words
+  // themselves were voiced. The chess announcement is one
+  // phrase; the run-on is the accepted cost (the tombstone
+  // is at sanToSpeech).
+  check("chess speaks the bare file letter, one flat phrase (" +
+        speakStyle("chess") + ": " + spoken("Bc4", "f1c4") + ")",
+        spoken("Bc4", "f1c4") === "bishop C 4" &&
+        spoken("Nbd2", "b1d2") === "knight B D 2" &&
+        spoken("Bxa3", "c1a3") === "bishop takes A 3");
+  check("the item-gap machinery is gone whole",
+        vm.runInContext(
+          'typeof GAP_ITEM_MS === "undefined" && ' +
+          'typeof moveGapMs === "undefined"', sandbox));
   // the comma is the w121 breath between from and to - it
   // buys GAP_CLAUSE_MS through splitForSpeech, because the
   // flat pair ran on ("delta 7 delta 5", owner's report)
@@ -1852,9 +1834,6 @@ const sleep = ms =>
         "breath between (" + speakStyle("nato") + ": " +
         spoken("Bc4", "f1c4") + ")",
         spoken("Bc4", "f1c4") === "foxtrot 1, charlie 4");
-  check("nato keeps the clause gap - its comma is a breath, " +
-        "not an item join",
-        vm.runInContext("moveGapMs() === GAP_CLAUSE_MS", sandbox));
   check("nato castling is the king's own move, as it is " +
         "spoken in (" + spoken("O-O", "e1g1") + ")",
         spoken("O-O", "e1g1") === "echo 1, golf 1");

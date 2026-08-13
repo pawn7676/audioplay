@@ -102,17 +102,13 @@
   // One long utterance comes out as a run-on sentence, because
   // the browser voice barely pauses at punctuation. So split on
   // punctuation and put real silence between the pieces.
-  // commaGapMs (w123) is an optional override for what a comma
-  // buys - the chess style's item commas take GAP_ITEM_MS
-  // through it; left out, a comma is the clause gap as ever.
-  function splitForSpeech(text, commaGapMs) {
+  function splitForSpeech(text) {
     var parts = [], buf = "", i, c, gap;
     for (i = 0; i < text.length; i++) {
       c = text[i];
       buf += c;
       if (c === "." || c === "," || c === ";" || c === ":") {
-        gap = (c === ",") ? (commaGapMs || GAP_CLAUSE_MS)
-                          : GAP_SENTENCE_MS;
+        gap = (c === ",") ? GAP_CLAUSE_MS : GAP_SENTENCE_MS;
         if (buf.replace(/[.,;:\s]/g, "")) {
           parts.push({ text: buf.trim(), gap: gap });
         }
@@ -140,7 +136,7 @@
   // theirs, and the MOV line beside it already names the
   // color. The owner read a game log, asked what the
   // bracket was still for, and the answer was nothing.
-  function speak(text, commaGapMs) {
+  function speak(text) {
     if (!text) return;
     // EVERY output funnels through here, and since w110 it
     // all goes ONE way: to the voice. This point has twice
@@ -153,21 +149,8 @@
     // clock.js header). If a third channel is ever
     // proposed, this comment is its history.
     log("SAY", text);
-    splitForSpeech(text, commaGapMs).forEach(function (p) {
-      speakQueue.push(p);
-    });
+    splitForSpeech(text).forEach(function (p) { speakQueue.push(p); });
     pumpSpeech();
-  }
-
-  // Which comma gap a move announcement carries (w123): the
-  // chess style's commas separate single items and take the
-  // short gap; the other styles' commas are clause commas -
-  // NATO's from-then-to breath, "promotes to queen, check" -
-  // and keep the standard pause. Every announcement call
-  // site passes this, so the style's pacing travels with the
-  // style.
-  function moveGapMs() {
-    return MOVE_SPEECH === "chess" ? GAP_ITEM_MS : GAP_CLAUSE_MS;
   }
 
   /* SPOKEN FOR THE EAR, LOGGED FOR THE EYE (w121). Three
@@ -192,9 +175,9 @@
    * to the synthesizer and nowhere else (pumpSpeech).
    *
    * The letter row matches a capital heading toward a digit
-   * - "C, 4", with an optional second square letter between
-   * for the disambiguated "knight, B, D, 2" - a shape only
-   * the chess style's squares produce in spoken text.
+   * - "C 4", with an optional second square letter between
+   * for the disambiguated "knight B D 2" - a shape only the
+   * chess style's squares produce in spoken text.
    *
    * WHY RESPELLING AND NOT PROPER PHONETICS: the standard
    * for saying a pronunciation precisely EXISTS - SSML's
@@ -220,7 +203,7 @@
     return String(text)
       .replace(/lichess/gi, "lee chess")
       .replace(/\bbravo\b/gi, "brahvo")
-      .replace(/\b([A-H])(?=,? (?:[A-H],? )?\d)/g, function (_, l) {
+      .replace(/\b([A-H])(?= (?:[A-H] )?\d)/g, function (_, l) {
         return EAR_LETTER[l];
       });
   }
@@ -444,13 +427,23 @@
     if (san.indexOf("O-O") === 0) return "castles kingside" + checkWord(san);
     var text = san.replace(/[+#]$/, "").replace(/=([QRBN])/, "");
     var promoted = /=([QRBN])/.exec(san);
-    // BUILT AS ITEMS, JOINED BY STYLE (w122): the chess
-    // style puts a comma between every item - GAP_CLAUSE_MS
-    // of real silence, via splitForSpeech - because "rook
-    // D 7" spoken flat ran on (owner's second listen, the
-    // same run-on NATO's squares had). hybrid keeps the flat
-    // join it has always had; its NATO words carry their own
-    // syllables.
+    // THE CHESS ITEM GAP IS A CLOSED CASE (w122-w124, two
+    // tries, owner's verdict both ways). "rook D 7" spoken
+    // flat ran on, so w122 put a comma between every item -
+    // the full clause gap read as staccato. w123 halved it
+    // to a dedicated 110ms and it was STILL choppy, and the
+    // chunking had a second cost the number could not fix:
+    // splitting hands the synthesizer each item as its own
+    // utterance, which changes how the words themselves are
+    // voiced - "queen" and "takes" stopped sounding like
+    // words in a sentence. The owner called it: no gap in
+    // the chess style, the run-on is the accepted cost, and
+    // GAP_ITEM_MS, the comma-gap override on speak and
+    // moveGapMs are all deleted with it. Do not re-propose
+    // comma-pacing inside a move announcement; a future fix
+    // has to change what the synthesizer is HANDED (the
+    // respelling table above is that lever), not how the
+    // sentence is chopped.
     var items = [];
     var piece = SPOKEN_PIECE[text[0]];
     if (piece) { items.push(piece); text = text.slice(1); }
@@ -464,7 +457,7 @@
     }
     if (takes) items.push("takes");
     items.push(fileWord(target[0]), target[1]);
-    var words = items.join(MOVE_SPEECH === "chess" ? ", " : " ");
+    var words = items.join(" ");
     if (promoted) words += ", promotes to " + SPOKEN_PIECE[promoted[1]];
     words += checkWord(san);
     return words;
