@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w120";
+  VERSION = "w121";
 
   var RULES = makeRules();
 
@@ -804,7 +804,7 @@
     authGone = true;
     log("ERR", "lichess refused the token - signed out");
     uiStatus("Lichess refused the sign-in. Sign in again.");
-    speak("lee chess signed you out. sign in again.");
+    speak("Lichess signed you out. sign in again.");
     return true;
   }
 
