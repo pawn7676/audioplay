@@ -3654,3 +3654,24 @@ real silence between them. The announcement builds as a
 list and the style picks the join; hybrid keeps its flat
 join, whose NATO words carry their own syllables and never
 ran on.
+
+### w123
+
+THE THIRD LISTEN: w122's per-item pause worked and was too
+much of it - the full clause gap between every chess item
+read as staccato. The style's commas now buy GAP_ITEM_MS,
+110 (the owner's number, half the clause gap), through an
+optional comma-gap override on speak; every OTHER comma on
+the page - NATO's from-then-to breath, "promotes to queen,
+check", the ordinary sentences - keeps the clause gap it
+always had. moveGapMs picks per style at each announcement
+call site, so the pacing travels with the style.
+
+And the owner asked the right question - is there no
+standard pronunciation notation, a-macron for the long a? -
+so the answer is now written where the respellings live:
+there is (SSML's phoneme tag carries IPA, which is what the
+dictionary macron means), and Safari's speechSynthesis does
+not support it - plain text only, no lexicon hook, markup
+read out or stripped. Respelling is the one lever the
+platform offers; forTheEar is that lever with a name.

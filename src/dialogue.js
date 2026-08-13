@@ -238,8 +238,10 @@
   }
 
   function repeatLast() {
-    speak(api.lastSan ? "Last move: " + moveToSpeech(api.lastSan, api.lastUci)
-                      : "No move to repeat yet.");
+    speak(api.lastSan
+            ? "Last move: " + moveToSpeech(api.lastSan, api.lastUci)
+            : "No move to repeat yet.",
+          moveGapMs());
   }
 
   function handleTranscripts(rawList) {

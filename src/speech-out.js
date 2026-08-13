@@ -102,13 +102,17 @@
   // One long utterance comes out as a run-on sentence, because
   // the browser voice barely pauses at punctuation. So split on
   // punctuation and put real silence between the pieces.
-  function splitForSpeech(text) {
+  // commaGapMs (w123) is an optional override for what a comma
+  // buys - the chess style's item commas take GAP_ITEM_MS
+  // through it; left out, a comma is the clause gap as ever.
+  function splitForSpeech(text, commaGapMs) {
     var parts = [], buf = "", i, c, gap;
     for (i = 0; i < text.length; i++) {
       c = text[i];
       buf += c;
       if (c === "." || c === "," || c === ";" || c === ":") {
-        gap = (c === ",") ? GAP_CLAUSE_MS : GAP_SENTENCE_MS;
+        gap = (c === ",") ? (commaGapMs || GAP_CLAUSE_MS)
+                          : GAP_SENTENCE_MS;
         if (buf.replace(/[.,;:\s]/g, "")) {
           parts.push({ text: buf.trim(), gap: gap });
         }
@@ -136,7 +140,7 @@
   // theirs, and the MOV line beside it already names the
   // color. The owner read a game log, asked what the
   // bracket was still for, and the answer was nothing.
-  function speak(text) {
+  function speak(text, commaGapMs) {
     if (!text) return;
     // EVERY output funnels through here, and since w110 it
     // all goes ONE way: to the voice. This point has twice
@@ -149,8 +153,21 @@
     // clock.js header). If a third channel is ever
     // proposed, this comment is its history.
     log("SAY", text);
-    splitForSpeech(text).forEach(function (p) { speakQueue.push(p); });
+    splitForSpeech(text, commaGapMs).forEach(function (p) {
+      speakQueue.push(p);
+    });
     pumpSpeech();
+  }
+
+  // Which comma gap a move announcement carries (w123): the
+  // chess style's commas separate single items and take the
+  // short gap; the other styles' commas are clause commas -
+  // NATO's from-then-to breath, "promotes to queen, check" -
+  // and keep the standard pause. Every announcement call
+  // site passes this, so the style's pacing travels with the
+  // style.
+  function moveGapMs() {
+    return MOVE_SPEECH === "chess" ? GAP_ITEM_MS : GAP_CLAUSE_MS;
   }
 
   /* SPOKEN FOR THE EAR, LOGGED FOR THE EYE (w121). Three
@@ -178,6 +195,17 @@
    * - "C, 4", with an optional second square letter between
    * for the disambiguated "knight, B, D, 2" - a shape only
    * the chess style's squares produce in spoken text.
+   *
+   * WHY RESPELLING AND NOT PROPER PHONETICS: the standard
+   * for saying a pronunciation precisely EXISTS - SSML's
+   * <phoneme> tag carries IPA, and dictionary notation like
+   * a-macron means the same thing - but Safari's
+   * speechSynthesis takes plain text only: SSML is read out
+   * as markup or stripped, and there is no lexicon hook.
+   * (The W3C spec permits SSML input; no iOS Safari has
+   * shipped it.) Respelling in ordinary spelling-to-sound
+   * English is the one lever this platform offers, which is
+   * why this table exists instead of a phoneme field.
    *
    * A IS "eh", NOT "ay" (second listen, 13 Aug): "ay" came
    * back from Ava as "aye"/"I", the wrong vowel entirely.
