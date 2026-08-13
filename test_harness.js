@@ -1008,13 +1008,15 @@ const sleep = ms =>
         vm.runInContext('forTheEar("bravo 4.")', sandbox) === "brahvo 4." &&
         vm.runInContext('forTheEar("bravo 7, bravo 5.")', sandbox) ===
           "brahvo 7, brahvo 5.");
+  // the a-file is "eh", the recognizer's own transcription
+  // of the spoken letter - "ay" came back as "aye"/"I"
   check("the chess letters speak their names (" +
-        vm.runInContext('forTheEar("bishop A 5.")', sandbox) + ")",
-        vm.runInContext('forTheEar("bishop A 5.")', sandbox) ===
-          "bishop ay 5." &&
-        vm.runInContext('forTheEar("G 6.")', sandbox) === "gee 6." &&
-        vm.runInContext('forTheEar("knight B D 2.")', sandbox) ===
-          "knight bee dee 2.");
+        vm.runInContext('forTheEar("bishop, A, 5.")', sandbox) + ")",
+        vm.runInContext('forTheEar("bishop, A, 5.")', sandbox) ===
+          "bishop, eh, 5." &&
+        vm.runInContext('forTheEar("G, 6.")', sandbox) === "gee, 6." &&
+        vm.runInContext('forTheEar("knight, B, D, 2.")', sandbox) ===
+          "knight, bee, dee, 2.");
   check("and NATO words pass through untouched",
         vm.runInContext('forTheEar("delta 7, delta 5.")', sandbox) ===
           "delta 7, delta 5.");
@@ -1810,10 +1812,14 @@ const sleep = ms =>
   check("hybrid is the shipped voice, untouched (" +
         spoken("Bc4", "f1c4") + ")",
         spoken("Bc4", "f1c4") === "bishop charlie 4");
-  check("chess speaks the bare file letter (" +
-        speakStyle("chess") + ": " + spoken("Bc4", "f1c4") + ")",
-        spoken("Bc4", "f1c4") === "bishop C 4" &&
-        spoken("Nbd2", "b1d2") === "knight B D 2");
+  // the commas are w122's pause between every chess item -
+  // the style's short tokens ran on spoken flat
+  check("chess speaks the bare file letter, an item at a " +
+        "time (" + speakStyle("chess") + ": " +
+        spoken("Bc4", "f1c4") + ")",
+        spoken("Bc4", "f1c4") === "bishop, C, 4" &&
+        spoken("Nbd2", "b1d2") === "knight, B, D, 2" &&
+        spoken("Bxa3", "c1a3") === "bishop, takes, A, 3");
   // the comma is the w121 breath between from and to - it
   // buys GAP_CLAUSE_MS through splitForSpeech, because the
   // flat pair ran on ("delta 7 delta 5", owner's report)

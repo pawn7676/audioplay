@@ -174,17 +174,25 @@
    * table is applied at the LAST moment, on the text handed
    * to the synthesizer and nowhere else (pumpSpeech).
    *
-   * The letter row matches capital-then-digit - "C 4",
-   * with an optional second square letter between for the
-   * disambiguated "knight B D 2" - a shape only the chess
-   * style's squares produce in spoken text. */
-  var EAR_LETTER = { A: "ay", B: "bee", C: "see", D: "dee",
+   * The letter row matches a capital heading toward a digit
+   * - "C, 4", with an optional second square letter between
+   * for the disambiguated "knight, B, D, 2" - a shape only
+   * the chess style's squares produce in spoken text.
+   *
+   * A IS "eh", NOT "ay" (second listen, 13 Aug): "ay" came
+   * back from Ava as "aye"/"I", the wrong vowel entirely.
+   * "eh" is the spelling this platform already equates with
+   * the letter's sound - it is what Safari's own recognizer
+   * writes for a spoken a (vocabulary.js lists it under the
+   * a-file) - so the voice is being handed the recognizer's
+   * own transcription back. */
+  var EAR_LETTER = { A: "eh", B: "bee", C: "see", D: "dee",
                      E: "ee", F: "eff", G: "gee", H: "aitch" };
   function forTheEar(text) {
     return String(text)
       .replace(/lichess/gi, "lee chess")
       .replace(/\bbravo\b/gi, "brahvo")
-      .replace(/\b([A-H])(?= (?:[A-H] )?\d)/g, function (_, l) {
+      .replace(/\b([A-H])(?=,? (?:[A-H],? )?\d)/g, function (_, l) {
         return EAR_LETTER[l];
       });
   }
@@ -383,10 +391,6 @@
     return SPOKEN_FILE[letter] || letter;
   }
 
-  function spokenSquare(square) {
-    return fileWord(square[0]) + " " + square[1];
-  }
-
   // A square in NATO regardless of the style: the nato
   // style speaks squares even when chess is not picked
   // anywhere near it, so it cannot ride fileWord.
@@ -412,19 +416,27 @@
     if (san.indexOf("O-O") === 0) return "castles kingside" + checkWord(san);
     var text = san.replace(/[+#]$/, "").replace(/=([QRBN])/, "");
     var promoted = /=([QRBN])/.exec(san);
-    var words = "";
+    // BUILT AS ITEMS, JOINED BY STYLE (w122): the chess
+    // style puts a comma between every item - GAP_CLAUSE_MS
+    // of real silence, via splitForSpeech - because "rook
+    // D 7" spoken flat ran on (owner's second listen, the
+    // same run-on NATO's squares had). hybrid keeps the flat
+    // join it has always had; its NATO words carry their own
+    // syllables.
+    var items = [];
     var piece = SPOKEN_PIECE[text[0]];
-    if (piece) { words = piece + " "; text = text.slice(1); }
+    if (piece) { items.push(piece); text = text.slice(1); }
     var takes = text.indexOf("x") >= 0;
     var parts = text.split("x");
     var target = parts[parts.length - 1].slice(-2);
     var from = parts[0].slice(0, parts[0].length - (takes ? 0 : 2));
     if (from) {
-      words += fileWord(from[0]) + " ";
-      if (from.length > 1) words += from[1] + " ";
+      items.push(fileWord(from[0]));
+      if (from.length > 1) items.push(from[1]);
     }
-    if (takes) words += "takes ";
-    words += spokenSquare(target);
+    if (takes) items.push("takes");
+    items.push(fileWord(target[0]), target[1]);
+    var words = items.join(MOVE_SPEECH === "chess" ? ", " : " ");
     if (promoted) words += ", promotes to " + SPOKEN_PIECE[promoted[1]];
     words += checkWord(san);
     return words;
