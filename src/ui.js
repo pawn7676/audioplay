@@ -852,8 +852,7 @@
       renderPlayers();
     });
     speech.addEventListener("change", function () {
-      if (speech.value === "chess" || speech.value === "hybrid" ||
-          speech.value === "nato") {
+      if (speech.value === "pieces" || speech.value === "squares") {
         MOVE_SPEECH = speech.value;
       }
       try { localStorage.setItem(MOVE_SPEECH_KEY, MOVE_SPEECH); }

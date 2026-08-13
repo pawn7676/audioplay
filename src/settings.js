@@ -91,18 +91,27 @@
   var SHOW_RATINGS = false;
   var RATINGS_KEY = "audioplay.ratings";
 
-  // HOW A MOVE IS ANNOUNCED (w120, owner's design) - the
-  // Settings row's other choice. Three styles:
-  //   chess    "bishop C 4"       - plain file letters
-  //   hybrid   "bishop charlie 4" - what every game before
-  //                                 w120 spoke; the default
-  //   nato     "foxtrot 1 charlie 4" - the move's own two
+  // HOW A MOVE IS ANNOUNCED (w120, owner's design; two-way
+  // since w126) - the Settings row's other choice. Named for
+  // WHAT IS ANNOUNCED, because both styles speak NATO files:
+  //   pieces   "bishop charlie 4" - the piece and where it
+  //            landed; what every game before w120 spoke,
+  //            and the default
+  //   squares  "foxtrot 1, charlie 4" - the move's own two
   //            squares, from then to: exactly the four-item
   //            shape the grammar asks the USER to speak
   //            (parsing.js), so the page and the player use
   //            one language
+  // A third style, chess ("bishop C 4"), lived w120-w125 and
+  // was DELETED at w126: the owner could not hear bare file
+  // letters clearly from any spelling - four listens chased
+  // A, G, and E through the respelling table (see forTheEar,
+  // speech-out.js) - and a style whose letters cannot be
+  // heard is not a style. The old stored values (hybrid,
+  // nato, chess) read as junk below and fall back to the
+  // default: one re-pick, no migration shim, the w111 way.
   // moveToSpeech in speech-out.js is the one consumer.
-  var MOVE_SPEECH = "hybrid";
+  var MOVE_SPEECH = "pieces";
   var MOVE_SPEECH_KEY = "audioplay.movespeech";
 
   // Loaded on boot, before the page builds, so the selects
@@ -115,11 +124,11 @@
     // contract is stored-or-default whatever the variables
     // held before it ran, so calling it IS a settings reload
     SHOW_RATINGS = false;
-    MOVE_SPEECH = "hybrid";
+    MOVE_SPEECH = "pieces";
     try {
       SHOW_RATINGS = localStorage.getItem(RATINGS_KEY) === "on";
       var s = localStorage.getItem(MOVE_SPEECH_KEY);
-      if (s === "chess" || s === "hybrid" || s === "nato") {
+      if (s === "pieces" || s === "squares") {
         MOVE_SPEECH = s;
       }
     } catch (e) { /* private mode; the defaults stand */ }

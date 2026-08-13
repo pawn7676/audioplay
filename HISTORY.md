@@ -3714,3 +3714,35 @@ example - the o of obvious, of octopus - and English's
 stable spelling of that sound is aw, so the voice now gets
 "brawvo". If it bends again, the next candidate changes
 this one row; the mechanism is doing its job.
+
+### w126
+
+THE CHESS STYLE IS DELETED, owner's verdict after four
+listens: he could not hear the bare file letters clearly,
+whatever spelling the respelling table fed the voice - "A 5"
+was the article, "G 6" the unit, "ay" was "aye", "ee" was
+two e-sounds - and a style whose letters cannot be heard is
+not a style. Letter names are one mouth-moment long; there
+is nothing for spelling-to-sound rules to grip, and the
+NATO alphabet exists precisely because bare letters fail
+this way. EAR_LETTER, its capital-before-digit matcher and
+fileWord left with the style; forTheEar keeps its two word
+rows (Lichess, bravo).
+
+The two survivors are RENAMED FOR WHAT THEY ANNOUNCE,
+because "hybrid" contrasted with a style that no longer
+exists and both speak NATO: pieces ("bishop charlie 4", the
+piece and where it landed - the default and the page's old
+voice) and squares ("foxtrot 1, charlie 4", the move's own
+two, the shape the user speaks in). The stored values
+renamed with them, no shim: an old hybrid/nato/chess value
+reads as junk and falls back to pieces, one re-pick on a
+device that had chosen squares - the w111 way.
+
+Two smaller owner's notes in the same pass: "Ratings"
+became "Show ratings", because beside a Rated/Casual
+control the bare word read as being about the game; and
+the instructions now read in the body's own --text instead
+of --dim - whole paragraphs at furniture-grey were hard to
+read, and dim is for furniture, not for prose someone is
+sent to read.
