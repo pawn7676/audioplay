@@ -3675,3 +3675,23 @@ dictionary macron means), and Safari's speechSynthesis does
 not support it - plain text only, no lexicon hook, markup
 read out or stripped. Respelling is the one lever the
 platform offers; forTheEar is that lever with a name.
+
+### w124
+
+THE CHESS ITEM GAP IS CLOSED, both tries, owner's verdict.
+w122 put a comma between every chess item because the flat
+phrase ran on; the full clause gap read as staccato. w123
+halved it to a dedicated 110ms and it was still choppy -
+and the chunking had a cost no number could tune away:
+handing the synthesizer each item as its own utterance
+changes how the words themselves are VOICED, so "queen" and
+"takes" stopped sounding like words in a sentence. The
+owner ended the tuning: no gap in the chess style, the
+run-on is the accepted cost. GAP_ITEM_MS, the comma-gap
+override on speak and moveGapMs all left with it, one
+version after they arrived; the tombstone at sanToSpeech
+says what a future fix must do instead - change what the
+synthesizer is handed (the forTheEar respelling lever), not
+how the sentence is chopped. NATO's single between-squares
+comma stays: one breath between two three-syllable words
+was the fix that worked, and it was never the complaint.
