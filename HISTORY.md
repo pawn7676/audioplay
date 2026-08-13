@@ -3635,3 +3635,22 @@ that margin separated it from nothing and stacked on the
 body's 12px top padding, 24px where the sides get 12. The
 first panel now sits flush under the body padding; the board
 starts 12px sooner.
+
+### w122
+
+THE SECOND LISTEN, both notes on the chess style. "ay" for
+the a-file came back from Ava as "aye"/"I" - the wrong vowel
+- so the table now hands her "eh", which is not a guess: it
+is what Safari's own recognizer WRITES when the letter a is
+spoken to it (vocabulary.js has carried "eh" under the
+a-file since the userscript era). The voice gets the
+recognizer's transcription played back at it.
+
+And the style's short tokens ran on - "rook D 7" as one
+breathless phrase, the same complaint NATO's squares earned
+at w121 and the same cure: a comma between every item, so
+"rook, D, 7" lands as three things with GAP_CLAUSE_MS of
+real silence between them. The announcement builds as a
+list and the style picks the join; hybrid keeps its flat
+join, whose NATO words carry their own syllables and never
+ran on.
