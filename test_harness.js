@@ -2762,8 +2762,38 @@ const sleep = ms =>
   await sleep(40); heard();
   check("practice clears the clock anchor",
         vm.runInContext("api.clockAt", sandbox) === null);
-  check("so the practice clock is frozen at 10 minutes, not ticking",
-        vm.runInContext('remainingMs("w")', sandbox) === 600000);
+  // w127: and the clock itself. From w60 to w126 practice
+  // held a frozen 600000 as placeholder-in-data; on the
+  // w120 page that read as a timer that should be running
+  // (the owner asked why it never went down). Practice has
+  // no time control, so the truth is null...
+  check("and the practice clock is null - no time control",
+        vm.runInContext('remainingMs("w")', sandbox) === null &&
+        vm.runInContext('remainingMs("b")', sandbox) === null);
+  // ...and the placeholder is the RAIL'S job: dashes in the
+  // waiting grey, dimmed, in both boxes. Asked of the built
+  // cells.
+  vm.runInContext("uiGameChanged();", sandbox);
+  const phCell = (id) => vm.runInContext(
+    'document.getElementById("' + id + '").innerHTML', sandbox);
+  check("the rail shows dash placeholders in practice (" +
+        phCell("clockTop").replace(/</g, "[") + ")",
+        /class="cbox idle"/.test(phCell("clockTop")) &&
+        /-:--/.test(phCell("clockTop")) &&
+        /-:--/.test(phCell("clockBottom")));
+  // and on a page with no game at all - the fresh-load rail
+  // is a shape, not a blank
+  vm.runInContext(`
+    dryRun = false;
+    api.gameId = null; api.pos = null;
+    api.wtime = null; api.btime = null;
+    uiGameChanged();
+  `, sandbox);
+  check("and on a fresh page with no game",
+        /-:--/.test(phCell("clockTop")) &&
+        /-:--/.test(phCell("clockBottom")));
+  vm.runInContext("dryRun = true; dryStart();", sandbox);
+  await sleep(40); heard();
 
   // 127: the opponent's spoken clock is extrapolated too.
   // (Three plies in since w83, because one ply is a state

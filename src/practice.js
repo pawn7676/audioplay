@@ -60,18 +60,27 @@
     api.over = false; api.overText = "";
     api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
     api.lastUci = "";
-    api.wtime = 600000;
-    api.btime = 600000;
+    // NO CLOCK AT ALL (w127). From w60 to w126 these held a
+    // frozen 600000 - "both halves show a frozen 10, which
+    // is what a practice clock is" - a placeholder baked
+    // into the DATA, and on the w120 page it sat beside the
+    // board looking like a timer that ought to be running;
+    // the owner asked why it never went down, which is the
+    // whole verdict. Practice has no time control, so the
+    // truth is null, and the placeholder is the RENDERER'S
+    // job now: the rail boxes and the overlay both draw
+    // their dashes for an unset clock (renderPageClocks in
+    // ui.js, "--" in clock.js).
+    api.wtime = null;
+    api.btime = null;
     // AND NO TICKING (w60). remainingMs extrapolates for the
     // side to move whenever clockAt is set - and clockAt is set
     // by every real-game clock event and was cleared by
     // NOTHING. Play a real game, practice later, enter clock
-    // mode: white's "10:00" had minutes-or-hours of elapsed
+    // mode: white's clock had minutes-or-hours of elapsed
     // time subtracted and clamped to a red 0:00 - a flagged
     // clock in a mode that has no clock. Never seen only
     // because practice has always been a fresh signed-out page.
-    // Null here, both halves show a frozen 10, which is what a
-    // practice clock is.
     api.clockAt = null;
     // AND NOBODY IS PLAYING (w68). Exactly the w60 hazard one
     // field over: play a real game, then practice, and the
