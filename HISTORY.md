@@ -3695,3 +3695,22 @@ synthesizer is handed (the forTheEar respelling lever), not
 how the sentence is chopped. NATO's single between-squares
 comma stays: one breath between two three-syllable words
 was the fix that worked, and it was never the complaint.
+
+### w125
+
+THE FOURTH LISTEN, two rows of the respelling table. "ee"
+for the e-file came back from Ava spelled out - two
+e-sounds - so E now has NO row and the bare capital passes
+through: the capital-before-digit failures that built the
+table were A (the article) and G (the unit gram), E has no
+such second reading, and its row was only ever there on
+symmetry. That is now the table's admission rule, written
+at the table: a letter is respelled only after its bare
+form has failed on the device.
+
+And bravo took a second try: "brahvo", the fix for w121's
+BRO-vo, came back BRE-vo. The owner specified the vowel by
+example - the o of obvious, of octopus - and English's
+stable spelling of that sound is aw, so the voice now gets
+"brawvo". If it bends again, the next candidate changes
+this one row; the mechanism is doing its job.

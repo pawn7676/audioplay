@@ -196,15 +196,28 @@
    * the letter's sound - it is what Safari's own recognizer
    * writes for a spoken a (vocabulary.js lists it under the
    * a-file) - so the voice is being handed the recognizer's
-   * own transcription back. */
+   * own transcription back.
+   *
+   * E HAS NO ROW, ON PURPOSE (fourth listen): "ee" came back
+   * from Ava spelled out, two e-sounds. The bare capital
+   * passes through instead - the capital-before-digit
+   * failures were A (the article) and G (the unit gram), and
+   * E has no such second reading. A letter is respelled here
+   * only after its bare form has FAILED on the device; a row
+   * added on symmetry is how "ee" got in.
+   *
+   * BRAVO took two tries: "brahvo" for the w121 BRO-vo came
+   * back "BRE-vo". The vowel the owner specified is the o of
+   * octopus, and English spells that sound most reliably as
+   * aw - so "brawvo". */
   var EAR_LETTER = { A: "eh", B: "bee", C: "see", D: "dee",
-                     E: "ee", F: "eff", G: "gee", H: "aitch" };
+                     F: "eff", G: "gee", H: "aitch" };
   function forTheEar(text) {
     return String(text)
       .replace(/lichess/gi, "lee chess")
-      .replace(/\bbravo\b/gi, "brahvo")
+      .replace(/\bbravo\b/gi, "brawvo")
       .replace(/\b([A-H])(?= (?:[A-H] )?\d)/g, function (_, l) {
-        return EAR_LETTER[l];
+        return EAR_LETTER[l] || l;
       });
   }
 
