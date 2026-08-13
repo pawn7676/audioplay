@@ -17,12 +17,16 @@
    *  moves between server events. */
 
   // The boot line still says what this build has switched on,
-  // so a pasted log names its configuration - but since w117
-  // these are code constants, not a stored panel (the panel's
-  // tombstone is in settings.js). If a constant joins that a
-  // pasted log would need, it joins HERE too.
+  // so a pasted log names its configuration. Two of these are
+  // stored choices again since w120 (the Settings row -
+  // settings.js has the story), which makes this line MORE
+  // necessary, not less: a device's behaviour now depends on
+  // what its storage says, and the log is where that gets
+  // read. If a setting joins that a pasted log would need, it
+  // joins HERE too.
   function settingsSummary() {
     return "ratings=" + (SHOW_RATINGS ? "on" : "off") +
+           " moves=" + MOVE_SPEECH +
            (VOICE_NAME ? " voice=" + VOICE_NAME : " voice=system");
   }
 
@@ -59,6 +63,8 @@
 
   function boot() {
     scrubDeadStorage();   /* the w111 audit: dead keys leave on boot */
+    loadStoredSettings(); /* before the page builds: the selects and
+                             the first announcement read these (w120) */
     buildWebUI();
     initBoard();
     initTouch();

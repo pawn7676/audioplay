@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w119";
+  VERSION = "w120";
 
   var RULES = makeRules();
 
@@ -75,6 +75,10 @@
                           // sum is the true ply count, which is
                           // what says whether the clocks run)
     lastSan: "", lastSanW: "", lastSanB: "",
+    lastUci: "",          // the same move as lastSan, in the
+                          // coordinates the nato speech style
+                          // reads (w120); cleared and resynced
+                          // wherever lastSan is
     wtime: null, btime: null,
     clockAt: null,        // when wtime/btime were last true (w60:
                           // declared here so its lifecycle is
@@ -359,6 +363,7 @@
       api.pos = new RULES.Position();
       api.moves = [];
       api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+      api.lastUci = "";
       armedUci = null;      /* it named a move in the old list */
       announce = false;
     }
@@ -375,11 +380,13 @@
          * pointing at a move in a position that no longer
          * exists, ready to read back against the wrong one. */
         api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+        api.lastUci = "";
         armedUci = null;
         for (var j = 0; j < list.length; j++) {
           var rr = api.pos.applyUci(list[j]);
           if (!rr) { log("ERR", "resync failed at " + list[j]); break; }
           api.lastSan = rr.san;
+          api.lastUci = list[j];
           if (rr.move.color === "w") api.lastSanW = rr.san;
           else api.lastSanB = rr.san;
         }
@@ -389,12 +396,13 @@
       api.moves.push(list[i]);
       var moverIsMine = (res.move.color === api.myColor);
       api.lastSan = res.san;
+      api.lastUci = list[i];
       if (res.move.color === "w") api.lastSanW = res.san;
       else api.lastSanB = res.san;
       log("MOV", colorWord(res.move.color) + " " + list[i] + " = " + res.san +
           (announce ? "" : " (catch-up)"));
       if (announce && !moverIsMine) {
-        speak(sanToSpeech(res.san) + ".");
+        speak(moveToSpeech(res.san, list[i]) + ".");
       }
       // OUR OWN MOVE, CONFIRMED BY THE STREAM (v134). This
       // is the earlier of the two confirmations whenever
@@ -1005,10 +1013,11 @@
         if (res) {
           api.moves.push(g.lastMove);
           api.lastSan = res.san;
+          api.lastUci = g.lastMove;
           if (res.move.color === "w") api.lastSanW = res.san;
           else api.lastSanB = res.san;
           if (res.move.color !== api.myColor) {
-            speak(sanToSpeech(res.san) + ".");
+            speak(moveToSpeech(res.san, g.lastMove) + ".");
           }
           /* the stream's rule, kept identical here (v134) */
           if (res.move.color === api.myColor)

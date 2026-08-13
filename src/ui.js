@@ -32,7 +32,8 @@
    *================================================================*/
 
 
-  var wrapEl, bigBtn, logPanel, logBtn, practiceBtn, clockBtn;
+  var wrapEl, bigBtn, logPanel, logBtn, practiceBtn, clockBtn,
+      settingsBtn;
 
   /* THE SHARED UI'S PAINT POTS - the stylesheet's values, in
    * the one place that cannot read the stylesheet.
@@ -86,6 +87,7 @@
     paintButton(logBtn, !!(logPanel && logPanel.style.display !== "none"),
               BLUE);
     paintButton(clockBtn, clockModeOn(), BLUE);
+    paintButton(settingsBtn, settingsRowOpen(), BLUE);
     if (!bigBtn) return;
     // WEB (delta 4): a labelled pill, not a 72px circle -
     // see paintVoiceButton with the page furniture below.
@@ -169,23 +171,30 @@
       toggleClockMode();
     });
 
-    // THE SETTINGS BUTTON AND ITS PANEL ARE GONE (w117,
-    // owner's order: "dump the settings menu. not needed").
-    // v124 built them so nothing behavioural was buried in
-    // the source; the panel then shrank for two years as
-    // choices became rules - ten rows to three at w110,
-    // three to one at w116 - until one cosmetic switch was
-    // carrying a button, a fixed-position panel, an
-    // outside-tap closer and a localStorage blob. Settings
-    // are code constants again (settings.js, beside the
-    // voice), which is where one bit that changes twice a
-    // year belongs. The w69 lesson learned here - A PANEL
-    // MUST CARRY ITS OWN EXIT - is the log panel's to keep
-    // now.
+    // THE SETTINGS BUTTON DIED AT w117 AND RETURNED AT w120,
+    // the owner's order both times. w117 ("dump the settings
+    // menu. not needed") killed a panel that had shrunk to
+    // one cosmetic switch carrying a button, a fixed-position
+    // panel, an outside-tap closer and a localStorage blob.
+    // w120 added a second choice - how moves are spoken
+    // (settings.js) - and the owner wanted both on the page,
+    // not in the source. What returned is smaller than what
+    // died: the button shows and hides a plain row in the
+    // page markup (#settingsRow, wired by wireSettings
+    // below), so the button is its own exit - the w69 lesson
+    // - and there is no panel, no anchor, no blob. It is lit
+    // while the row is open, like the log button beside it.
+    settingsBtn = document.createElement("button");
+    settingsBtn.textContent = "Settings";
+    settingsBtn.style.cssText = logBtn.style.cssText;
+    settingsBtn.addEventListener("click", function () {
+      toggleSettingsRow();
+    });
 
     if (practiceBtn) row.appendChild(practiceBtn);
     row.appendChild(logBtn);
     row.appendChild(clockBtn);
+    row.appendChild(settingsBtn);
     row.appendChild(bigBtn);
     wrapEl.appendChild(row);
     document.body.appendChild(wrapEl);
@@ -800,6 +809,58 @@
     paintTimeRow();
   }
 
+  // THE SETTINGS ROW (w120): the truth of "open" is the row's
+  // own display, asked, never mirrored in a flag a repaint
+  // could drift from. Starts closed every load - a settings
+  // row is a place you visit, not a state to remember.
+  function settingsRowOpen() {
+    var r = el("settingsRow");
+    return !!r && r.style.display !== "none";
+  }
+
+  function toggleSettingsRow() {
+    var r = el("settingsRow");
+    if (!r) return;
+    r.style.display = settingsRowOpen() ? "none" : "";
+    renderButton();
+  }
+
+  // Two stored choices, each under its own flat audioplay.*
+  // key (the w111 scheme) - NEVER the old blob, which stays
+  // dead and scrubbed (settings.js has the story). The
+  // selects show the loaded values, so a return visit is the
+  // tested second use (w37); loadStoredSettings has already
+  // run by the time this wires (boot.js). Each flip is
+  // logged, as the userscript always logged its flips, so a
+  // pasted log says what the device was set to and when it
+  // changed.
+  function wireSettings() {
+    var row = el("settingsRow");
+    var ratings = el("setRatings"), speech = el("setSpeech");
+    if (!row || !ratings || !speech) return;
+    row.style.display = "none";
+    ratings.value = SHOW_RATINGS ? "on" : "off";
+    speech.value = MOVE_SPEECH;
+    ratings.addEventListener("change", function () {
+      SHOW_RATINGS = ratings.value === "on";
+      try { localStorage.setItem(RATINGS_KEY, SHOW_RATINGS ? "on" : "off"); }
+      catch (e) { log("ERR", "could not save ratings: " + e.message); }
+      log("SET", "ratings " + (SHOW_RATINGS ? "on" : "off"));
+      // the setting's whole effect is something already on
+      // screen, so the flip repaints on the spot
+      renderPlayers();
+    });
+    speech.addEventListener("change", function () {
+      if (speech.value === "chess" || speech.value === "hybrid" ||
+          speech.value === "nato") {
+        MOVE_SPEECH = speech.value;
+      }
+      try { localStorage.setItem(MOVE_SPEECH_KEY, MOVE_SPEECH); }
+      catch (e) { log("ERR", "could not save move speech: " + e.message); }
+      log("SET", "moves spoken " + MOVE_SPEECH);
+    });
+  }
+
   // the restore half of the rated dropdown (w99), top-level
   // like wireTimeRow for the same reason: the return visit is
   // the second use, and the harness drives it by name
@@ -956,6 +1017,7 @@
       try { localStorage.setItem(RATED_KEY, el("seekRated").value); }
       catch (e) {}
     });
+    wireSettings();
     wireRated();
     wireTimeRow();
     syncOpponent();
@@ -1029,14 +1091,14 @@
       // quietly stops moves reaching Lichess, and the
       // account button (from the markup, joined at w76) is
       // the door to Sign out once signed in, at the end.
-      // (Settings held second place until its button died
-      // at w117.) appendChild moves a node that already has
-      // a parent, so re-appending in order IS the reorder -
-      // and it is also how the sign-in button leaves the
-      // markup spot it boots in.
+      // Settings is back in its old second place (held
+      // until w117, returned at w120). appendChild moves a
+      // node that already has a parent, so re-appending in
+      // order IS the reorder - and it is also how the
+      // sign-in button leaves the markup spot it boots in.
       var buttonRow = wrapEl.firstChild;
       if (buttonRow && buttonRow.appendChild) {
-        [bigBtn, clockBtn, logBtn, practiceBtn, signInBtn]
+        [bigBtn, settingsBtn, clockBtn, logBtn, practiceBtn, signInBtn]
           .forEach(function (b) {
             if (!b) return;
             if (b !== bigBtn) adoptPageButtonLook(b);
@@ -1079,7 +1141,12 @@
   // elements reset to their markup state on every load, and
   // refreshes are frequent here - a hard reload is how a new
   // build is picked up. Keyed by the PANEL id the markup
-  // already carries.
+  // already carries. (Since w120 the Instructions panel is
+  // the only <details> left - the board and the merged
+  // controls panel are always open, by the owner's redesign -
+  // but the machinery stays general: it walks whatever the
+  // markup has, and a stored id the markup no longer folds
+  // is simply never asked about.)
   var PANELS_KEY = "audioplay.panels";
 
   function panelDetails() {

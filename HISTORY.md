@@ -3551,3 +3551,50 @@ header.js and clock.js now say so. log.js also grew a key to
 its own tags, because the owner had to ask what PST and the
 ever-present 200 meant, and a log the owner pastes should
 carry its own reading instructions.
+
+### w120
+
+THE OWNER'S LAYOUT, and the return of a button he himself
+killed - which is why both halves of this entry lean on "his
+order, both times".
+
+The page order was button row, board (captioned BOARD, in a
+fold), GAMES (captioned, in a fold), Instructions. The owner
+reordered it around what a glance from across a room is FOR:
+the board now opens the page, bare - no caption, no fold -
+and everything that acts (the button row and the old GAMES
+controls) merged into one uncaptioned panel directly under
+it. The section labels were spending screen on naming things
+the things themselves already say; the fold arrows offered a
+collapse nobody wanted on sections that must be open to play.
+Instructions, long reference material at the bottom, keeps
+its caption and is now the ONLY collapsible section - a fold
+needs a name to tap on. The w19 panel memory stays, with one
+panel left to remember.
+
+The Settings button is back (killed at w117: "dump the
+settings menu. not needed"). What changed is not the verdict
+on the old apparatus - the floating panel, its anchor, the
+outside-tap closer and the stored blob stay dead, and
+audioplay.settings stays scrubbed - but the arithmetic: w117
+had one cosmetic switch left, and the owner added a second
+choice he wants on the page, not in the source. What returned
+is a plain row in the markup that the button shows and hides
+(its own exit, the w69 lesson), holding two selects, each
+stored under its own flat w111-style key: audioplay.ratings,
+the old SHOW_RATINGS bit, default still off; and
+audioplay.movespeech.
+
+That second choice is HOW A MOVE IS ANNOUNCED, three ways:
+chess ("bishop C 4"), hybrid ("bishop charlie 4" - the page's
+only voice until now, and the default), and NATO ("foxtrot 1
+charlie 4") - the move's own two squares, from then to, which
+is exactly the four-item shape the w118 grammar asks the USER
+to speak. A player who picks it hears the page speaking the
+same language it listens for. The uci is the truth for those
+squares (castling comes out as the king's own move, as it
+goes in); promotion and check still read off the san, the
+only place they are written. Output only - the mic's
+vocabulary does not move with this. The boot line grew
+moves=, because behaviour now depends on what a device's
+storage says, and a pasted log must name it.
