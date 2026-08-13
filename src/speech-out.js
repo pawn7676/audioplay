@@ -153,31 +153,22 @@
     pumpSpeech();
   }
 
-  /* SPOKEN FOR THE EAR, LOGGED FOR THE EYE (w121). Three
-   * pronunciation problems share one shape: every English
-   * voice reads "lichess" as "LITCH-ess" (the w39 finding);
-   * Ava reads "bravo" as "BRO-vo" (the owner's 13 Aug
-   * report); and the chess announcement style's bare file
-   * letters only sometimes carry the letter - "A 5" came
-   * back "a five", the article, and "G 6" came back
-   * "gram 6", the unit, while "rook G 6" was fine. The
-   * capital was supposed to force the letter's name and
-   * does not.
+  /* SPOKEN FOR THE EAR, LOGGED FOR THE EYE (w121). Every
+   * English voice reads "lichess" as "LITCH-ess" (the w39
+   * finding), and Ava reads "bravo" with the wrong first
+   * vowel (13 Aug: "BRO-vo", and the first fix "brahvo"
+   * came back "BRE-vo" - the vowel the owner specified is
+   * the o of octopus, whose stable English spelling is aw).
    *
    * The old fix respelled the SENTENCES: "lee chess" was
    * written into the source strings, so every SAY line
    * carried the phonetic form into the log this project
    * asks users to paste. The owner asked for the log to
    * read normally - Lichess and bravo, not their phonetic
-   * forms. So the sentences are now written with the real
+   * forms. So the sentences are written with the real
    * words, log("SAY") records them as written, and this
    * table is applied at the LAST moment, on the text handed
    * to the synthesizer and nowhere else (pumpSpeech).
-   *
-   * The letter row matches a capital heading toward a digit
-   * - "C 4", with an optional second square letter between
-   * for the disambiguated "knight B D 2" - a shape only the
-   * chess style's squares produce in spoken text.
    *
    * WHY RESPELLING AND NOT PROPER PHONETICS: the standard
    * for saying a pronunciation precisely EXISTS - SSML's
@@ -190,35 +181,23 @@
    * English is the one lever this platform offers, which is
    * why this table exists instead of a phoneme field.
    *
-   * A IS "eh", NOT "ay" (second listen, 13 Aug): "ay" came
-   * back from Ava as "aye"/"I", the wrong vowel entirely.
-   * "eh" is the spelling this platform already equates with
-   * the letter's sound - it is what Safari's own recognizer
-   * writes for a spoken a (vocabulary.js lists it under the
-   * a-file) - so the voice is being handed the recognizer's
-   * own transcription back.
-   *
-   * E HAS NO ROW, ON PURPOSE (fourth listen): "ee" came back
-   * from Ava spelled out, two e-sounds. The bare capital
-   * passes through instead - the capital-before-digit
-   * failures were A (the article) and G (the unit gram), and
-   * E has no such second reading. A letter is respelled here
-   * only after its bare form has FAILED on the device; a row
-   * added on symmetry is how "ee" got in.
-   *
-   * BRAVO took two tries: "brahvo" for the w121 BRO-vo came
-   * back "BRE-vo". The vowel the owner specified is the o of
-   * octopus, and English spells that sound most reliably as
-   * aw - so "brawvo". */
-  var EAR_LETTER = { A: "eh", B: "bee", C: "see", D: "dee",
-                     F: "eff", G: "gee", H: "aitch" };
+   * AND ITS LIMIT IS WHY THE "CHESS" STYLE DIED (w126).
+   * That style spoke bare file letters, and three listens
+   * chased them through the table: "A 5" was the article,
+   * "G 6" the unit gram, "ay" came back "aye", "ee" came
+   * back as two e-sounds. Letter names are one mouth-moment
+   * long - there is nothing for spelling-to-sound rules to
+   * grip - and the owner ended it: he could not hear the
+   * letters clearly, whatever they were fed as. The
+   * EAR_LETTER table and its capital-before-digit matcher
+   * are deleted with the style. Do not reintroduce spoken
+   * bare letters; the NATO words exist precisely because
+   * single letters fail this way in both directions, ear
+   * and mouth alike. */
   function forTheEar(text) {
     return String(text)
       .replace(/lichess/gi, "lee chess")
-      .replace(/\bbravo\b/gi, "brawvo")
-      .replace(/\b([A-H])(?= (?:[A-H] )?\d)/g, function (_, l) {
-        return EAR_LETTER[l] || l;
-      });
+      .replace(/\bbravo\b/gi, "brawvo");
   }
 
   // iOS fires onend while the audio is still playing. If the
@@ -404,21 +383,9 @@
     })();
   }
 
-  // The file letter as the chosen style speaks it (w120):
-  // the NATO word for hybrid and nato, the bare letter for
-  // chess - upper-cased, which nudges a synthesizer toward
-  // the letter's NAME ("bee four", not the article in
-  // "a 4"). Output only: what the MIC accepts is
-  // vocabulary.js's business and does not move with this.
-  function fileWord(letter) {
-    if (MOVE_SPEECH === "chess") return letter.toUpperCase();
-    return SPOKEN_FILE[letter] || letter;
-  }
-
-  // A square in NATO regardless of the style: the nato
-  // style speaks squares even when chess is not picked
-  // anywhere near it, so it cannot ride fileWord.
-  function natoSquare(square) {
+  // Both surviving styles speak NATO files (w126, chess
+  // deleted): a square is its NATO word and its rank.
+  function spokenSquare(square) {
     return (SPOKEN_FILE[square[0]] || square[0]) + " " + square[1];
   }
 
@@ -440,46 +407,39 @@
     if (san.indexOf("O-O") === 0) return "castles kingside" + checkWord(san);
     var text = san.replace(/[+#]$/, "").replace(/=([QRBN])/, "");
     var promoted = /=([QRBN])/.exec(san);
-    // THE CHESS ITEM GAP IS A CLOSED CASE (w122-w124, two
-    // tries, owner's verdict both ways). "rook D 7" spoken
-    // flat ran on, so w122 put a comma between every item -
-    // the full clause gap read as staccato. w123 halved it
-    // to a dedicated 110ms and it was STILL choppy, and the
-    // chunking had a second cost the number could not fix:
-    // splitting hands the synthesizer each item as its own
-    // utterance, which changes how the words themselves are
-    // voiced - "queen" and "takes" stopped sounding like
-    // words in a sentence. The owner called it: no gap in
-    // the chess style, the run-on is the accepted cost, and
-    // GAP_ITEM_MS, the comma-gap override on speak and
-    // moveGapMs are all deleted with it. Do not re-propose
-    // comma-pacing inside a move announcement; a future fix
-    // has to change what the synthesizer is HANDED (the
-    // respelling table above is that lever), not how the
-    // sentence is chopped.
-    var items = [];
+    // ONE FLAT PHRASE, AND THAT IS A CLOSED CASE (w122-w124,
+    // two tries, owner's verdict both ways). A comma between
+    // every item was tried at the full clause gap (staccato)
+    // and at a dedicated 110ms (still choppy) - and the
+    // chunking had a cost no number could fix: splitting
+    // hands the synthesizer each item as its own utterance,
+    // which changes how the words themselves are voiced.
+    // "queen" and "takes" stopped sounding like words in a
+    // sentence. Do not re-propose comma-pacing inside a move
+    // announcement; a future fix has to change what the
+    // synthesizer is HANDED (forTheEar above is that lever),
+    // not how the sentence is chopped.
+    var words = "";
     var piece = SPOKEN_PIECE[text[0]];
-    if (piece) { items.push(piece); text = text.slice(1); }
+    if (piece) { words = piece + " "; text = text.slice(1); }
     var takes = text.indexOf("x") >= 0;
     var parts = text.split("x");
     var target = parts[parts.length - 1].slice(-2);
     var from = parts[0].slice(0, parts[0].length - (takes ? 0 : 2));
     if (from) {
-      items.push(fileWord(from[0]));
-      if (from.length > 1) items.push(from[1]);
+      words += (SPOKEN_FILE[from[0]] || from[0]) + " ";
+      if (from.length > 1) words += from[1] + " ";
     }
-    if (takes) items.push("takes");
-    items.push(fileWord(target[0]), target[1]);
-    var words = items.join(" ");
+    if (takes) words += "takes ";
+    words += spokenSquare(target);
     if (promoted) words += ", promotes to " + SPOKEN_PIECE[promoted[1]];
     words += checkWord(san);
     return words;
   }
 
-  /* HOW A MOVE IS SPOKEN IS THE MOVE_SPEECH SETTING (w120,
-   * the owner's three-way switch - settings.js has the
-   * table). chess and hybrid are sanToSpeech in two
-   * spellings of the file letter (fileWord above). nato
+  /* HOW A MOVE IS SPOKEN IS THE MOVE_SPEECH SETTING (w120;
+   * two-way since w126 - settings.js has the table). pieces
+   * is sanToSpeech: the piece and where it landed. squares
    * drops the piece talk entirely and speaks the move's own
    * two squares, from then to - the same four items the
    * grammar asks the user to SAY, so what the page announces
@@ -493,15 +453,15 @@
    * called directly only where no uci exists to offer.
    */
   function moveToSpeech(san, uci) {
-    if (MOVE_SPEECH === "nato" && uci && uci.length >= 4) {
+    if (MOVE_SPEECH === "squares" && uci && uci.length >= 4) {
       // A COMMA BETWEEN THE SQUARES (w121): spoken flat,
       // "delta 7 delta 5" ran on as one breathless phrase
       // (owner's report, first game on the style). The comma
       // buys the same GAP_CLAUSE_MS pause every spoken comma
       // gets (splitForSpeech), so the two squares land as
       // two things - from, then to.
-      var words = natoSquare(uci.slice(0, 2)) + ", " +
-                  natoSquare(uci.slice(2, 4));
+      var words = spokenSquare(uci.slice(0, 2)) + ", " +
+                  spokenSquare(uci.slice(2, 4));
       if (uci.length > 4 && SPOKEN_PIECE[uci[4].toUpperCase()]) {
         words += ", promotes to " + SPOKEN_PIECE[uci[4].toUpperCase()];
       }

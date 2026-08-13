@@ -225,7 +225,13 @@
     border: 1px solid var(--border); border-radius: 4px;
     margin: 0 auto; touch-action: manipulation;
   }
-  .hint { color: var(--dim); font-size: .82rem; margin-top: 8px; line-height: 1.4; }
+  /* --text since w126, not --dim: the instructions are the
+     only .hint text left on the page, and at #6b6b6b whole
+     paragraphs were hard to read (owner's report) - dim is
+     for furniture, not for prose someone is sent to READ.
+     Same colour as the body text, smaller size carrying the
+     "aside" register on its own. */
+  .hint { color: var(--text); font-size: .82rem; margin-top: 8px; line-height: 1.4; }
   /* THE STATUS LINE IS PROSE, AND READS AS PROSE (w107). It
      wore Menlo through a class called .stats, inherited whole
      from reference/'s w19 page - where that class styled
@@ -523,21 +529,24 @@
        wears the lit green while the row is open. Two choices,
        wired by wireSettings in ui.js, each stored under its
        own flat key (the w111 scheme):
-       Ratings shows the numbers beside the players' names;
-       Moves spoken is the three-way announcement style -
-       chess "bishop C 4", hybrid "bishop charlie 4", NATO
-       "foxtrot 1 charlie 4" (moveToSpeech, speech-out.js).
-       display:none inline like #challengeOther below: the
-       markup state is closed, code owns the toggle. -->
+       Show ratings ("Ratings" until w126: beside a
+       Rated/Casual control, the short label read as being
+       about the GAME) shows the numbers beside the players'
+       names; Moves spoken is the announcement style, named
+       for WHAT is announced since both speak NATO - Pieces
+       "bishop charlie 4", Squares "foxtrot 1, charlie 4"
+       (moveToSpeech, speech-out.js; the deleted third
+       style's story is in settings.js). display:none inline
+       like #challengeOther below: the markup state is
+       closed, code owns the toggle. -->
   <div class="row" id="settingsRow" style="display:none">
-    <label>Ratings <select id="setRatings">
+    <label>Show ratings <select id="setRatings">
       <option value="off">Off</option>
       <option value="on">On</option>
     </select></label>
     <label>Moves spoken <select id="setSpeech">
-      <option value="chess">Chess</option>
-      <option value="hybrid">Hybrid</option>
-      <option value="nato">NATO</option>
+      <option value="pieces">Pieces</option>
+      <option value="squares">Squares</option>
     </select></label>
   </div>
   <div id="lichessLine">Sign in to play.</div>
@@ -628,12 +637,12 @@
   else spoken; tap it to come back. "practice" plays moves
   against a random legal reply, sending nothing.</p>
   <p class="hint">The Settings button holds two choices, both
-  remembered on this device. Ratings shows or hides the number
-  beside each player's name. Moves spoken is how an opponent's
-  move is announced: chess is "bishop c4", hybrid is "bishop
-  charlie four", and NATO is the move's own two squares —
-  "foxtrot one charlie four" — the same shape you speak your
-  own moves in.</p>
+  remembered on this device. Show ratings shows or hides the
+  number beside each player's name. Moves spoken is how an
+  opponent's move is announced: Pieces is the piece and where
+  it landed — "bishop charlie four" — and Squares is the
+  move's own two squares — "foxtrot one, charlie four" — the
+  same shape you speak your own moves in.</p>
   <p class="hint">The page speaks with the SYSTEM voice. On
   an iPhone or iPad a much better one is free: Settings
   &rarr; Accessibility &rarr; Spoken Content &rarr; Voices

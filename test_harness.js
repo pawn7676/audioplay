@@ -443,7 +443,7 @@ const sleep = ms =>
   const scrubbed = vm.runInContext(`
     localStorage.setItem("audioplay.token", "CURRENT");
     localStorage.setItem("audioplay.ratings", "on");
-    localStorage.setItem("audioplay.movespeech", "nato");
+    localStorage.setItem("audioplay.movespeech", "squares");
     localStorage.setItem("audioplay_lichess_token", "OLD");
     localStorage.setItem("audioplay.lichess.token", "OLDER");
     localStorage.setItem("audioplay.lichess.verifier", "x");
@@ -468,7 +468,7 @@ const sleep = ms =>
   check("the scrub removes every dead key and keeps the live " +
         "ones - w120's two flat keys included (" + scrubbed + ")",
         scrubbed[0] === 0 && scrubbed[1] === "CURRENT" &&
-        scrubbed[2] === "on" && scrubbed[3] === "nato");
+        scrubbed[2] === "on" && scrubbed[3] === "squares");
 
   // ---- w10/w12/w76/w77: one account button; the sign-out ----
   // is a question first. At rest the signed-in button is the
@@ -727,7 +727,7 @@ const sleep = ms =>
         /ratings=(on|off)/.test(bootLine) &&
         // w120: the announcement style is a stored choice, so
         // a pasted log must say which one the device speaks
-        /moves=(chess|hybrid|nato)/.test(bootLine) &&
+        /moves=(pieces|squares)/.test(bootLine) &&
         // the dead switch names must NOT be in the boot line:
         // a name reappearing here means a setting crept back
         !/confirmMine|guardPawnPushes/.test(bootLine) &&
@@ -735,10 +735,10 @@ const sleep = ms =>
   check("and ratings default off (w117, owner's order)",
         /ratings=off/.test(bootLine) &&
         vm.runInContext("SHOW_RATINGS", sandbox) === false);
-  check("and moves default hybrid - what every game before " +
+  check("and moves default pieces - what every game before " +
         "w120 spoke",
-        /moves=hybrid/.test(bootLine) &&
-        vm.runInContext("MOVE_SPEECH", sandbox) === "hybrid");
+        /moves=pieces/.test(bootLine) &&
+        vm.runInContext("MOVE_SPEECH", sandbox) === "pieces");
 
   // ---- w70/w71: the rail follows the board; the CLOCK BOX
   // is the turn indicator ----
@@ -1000,32 +1000,17 @@ const sleep = ms =>
         /lee chess/.test(earSplit.utt) && !/Lichess/.test(earSplit.utt));
   check("while the SAY line reads Lichess (" + earSplit.say + ")",
         /Lichess/.test(earSplit.say) && !/lee chess/.test(earSplit.say));
-  // the rest of the table, asked of the built function: Ava's
-  // BRO-vo, and the chess style's file letters - "A 5" came
-  // back as the article and "G 6" as the unit, so the voice
-  // gets the letter's NAME, disambiguator included
-  // brawvo on the second try: "brahvo" came back BRE-vo, and
+  // the rest of the table, asked of the built function.
+  // brawvo took two tries: "brahvo" came back BRE-vo, and
   // aw is English's stable spelling of the vowel the owner
-  // specified (the o of octopus)
+  // specified (the o of octopus). The letter rows are GONE
+  // (w126, with the chess style whose letters they served) -
+  // asserted with the style's own machinery further down.
   check("bravo is respelled for the voice only",
         vm.runInContext('forTheEar("bravo 4.")', sandbox) === "brawvo 4." &&
         vm.runInContext('forTheEar("bravo 7, bravo 5.")', sandbox) ===
           "brawvo 7, brawvo 5.");
-  // the a-file is "eh", the recognizer's own transcription
-  // of the spoken letter - "ay" came back as "aye"/"I"
-  check("the chess letters speak their names (" +
-        vm.runInContext('forTheEar("bishop A 5.")', sandbox) + ")",
-        vm.runInContext('forTheEar("bishop A 5.")', sandbox) ===
-          "bishop eh 5." &&
-        vm.runInContext('forTheEar("G 6.")', sandbox) === "gee 6." &&
-        vm.runInContext('forTheEar("knight B D 2.")', sandbox) ===
-          "knight bee dee 2.");
-  // E passes bare - "ee" came back as two e-sounds, and a
-  // letter is respelled only after its bare form fails
-  check("E has no respelling, by the fourth listen's rule",
-        vm.runInContext('forTheEar("E 4.")', sandbox) === "E 4." &&
-        vm.runInContext('forTheEar("rook E 8.")', sandbox) === "rook E 8.");
-  check("and NATO words pass through untouched",
+  check("and the other NATO words pass through untouched",
         vm.runInContext('forTheEar("delta 7, delta 5.")', sandbox) ===
           "delta 7, delta 5.");
   // ---- w57: the manifest names every source, and only sources ----
@@ -1304,14 +1289,23 @@ const sleep = ms =>
           'settingsBtn.style.background === BUTTON_OFF', sandbox));
 
   // the row carries the two choices, showing the loaded
-  // values - hybrid and off are the shipped defaults
+  // values - pieces and off are the shipped defaults
   check("the row holds the two selects at their defaults (" +
         vm.runInContext('document.getElementById("setSpeech").value',
                         sandbox) + ")",
         vm.runInContext('document.getElementById("setRatings").value',
                         sandbox) === "off" &&
         vm.runInContext('document.getElementById("setSpeech").value',
-                        sandbox) === "hybrid");
+                        sandbox) === "pieces");
+  // w126: the ratings label says what it toggles - beside a
+  // Rated/Casual control, bare "Ratings" read as being about
+  // the game - and the instructions read in the body's own
+  // colour, not the furniture dim (owner's report: whole
+  // paragraphs at --dim were hard to read)
+  check("the ratings label says Show ratings",
+        /<label>Show ratings <select id="setRatings">/.test(tmpl));
+  check("the instructions text is body-coloured",
+        /\.hint \{ color: var\(--text\)/.test(tmpl));
 
   // ---- w33: time controls are presets ----
   // w34: the row is clean at load. Checked FIRST, before any
@@ -1802,13 +1796,17 @@ const sleep = ms =>
   check('a stray promotion word is "Say again."',
         heard().join(" | ") === "Say again.");
 
-  // ====== w120: HOW A MOVE IS SPOKEN IS A SETTING ======
-  // The owner's three-way switch: chess "bishop C 4", hybrid
-  // "bishop charlie 4" (the old voice, the default), nato
-  // "foxtrot 1 charlie 4" - the move's own squares, the same
-  // four items the user speaks IN. Asked of the built
-  // moveToSpeech, and the style flipped through the built
-  // select, whose handler owns the variable and the storage.
+  // ====== w120/w126: HOW A MOVE IS SPOKEN IS A SETTING ======
+  // Two-way since w126, named for WHAT is announced (both
+  // styles speak NATO): pieces "bishop charlie 4" (the old
+  // voice, the default), squares "foxtrot 1, charlie 4" -
+  // the move's own squares, the same four items the user
+  // speaks IN. Asked of the built moveToSpeech, and the
+  // style flipped through the built select, whose handler
+  // owns the variable and the storage. (The third style,
+  // chess, lived w120-w125 and died with its unhearable
+  // bare letters - the tombstones are at forTheEar and in
+  // settings.js. Its EAR_LETTER table must stay gone.)
   const speakStyle = (v) => vm.runInContext(`
     var sel = document.getElementById("setSpeech");
     sel.value = ${JSON.stringify(v)}; sel.on_change();
@@ -1817,43 +1815,46 @@ const sleep = ms =>
   const spoken = (san, uci) => vm.runInContext(
     "moveToSpeech(" + JSON.stringify(san) + ", " +
     JSON.stringify(uci) + ")", sandbox);
-  check("hybrid is the shipped voice, untouched (" +
+  check("pieces is the shipped voice, untouched (" +
         spoken("Bc4", "f1c4") + ")",
-        spoken("Bc4", "f1c4") === "bishop charlie 4");
-  // FLAT, ON PURPOSE (w124): the item commas of w122 and the
-  // halved gap of w123 were both ruled out on the device -
-  // staccato, and the chunking changed how the words
-  // themselves were voiced. The chess announcement is one
-  // phrase; the run-on is the accepted cost (the tombstone
-  // is at sanToSpeech).
-  check("chess speaks the bare file letter, one flat phrase (" +
-        speakStyle("chess") + ": " + spoken("Bc4", "f1c4") + ")",
-        spoken("Bc4", "f1c4") === "bishop C 4" &&
-        spoken("Nbd2", "b1d2") === "knight B D 2" &&
-        spoken("Bxa3", "c1a3") === "bishop takes A 3");
-  check("the item-gap machinery is gone whole",
+        spoken("Bc4", "f1c4") === "bishop charlie 4" &&
+        spoken("Nbd2", "b1d2") === "knight bravo delta 2" &&
+        spoken("Bxa3", "c1a3") === "bishop takes alpha 3");
+  check("the chess style is gone whole - letters, gap " +
+        "machinery and all",
         vm.runInContext(
+          'typeof EAR_LETTER === "undefined" && ' +
+          'typeof fileWord === "undefined" && ' +
           'typeof GAP_ITEM_MS === "undefined" && ' +
-          'typeof moveGapMs === "undefined"', sandbox));
+          'typeof moveGapMs === "undefined"', sandbox) &&
+        vm.runInContext(`
+          document.getElementById("setSpeech")._listeners.change &&
+          (function () {
+            var sel = document.getElementById("setSpeech");
+            sel.value = "chess"; sel.on_change();
+            return MOVE_SPEECH;
+          })()
+        `, sandbox) === "pieces");
   // the comma is the w121 breath between from and to - it
   // buys GAP_CLAUSE_MS through splitForSpeech, because the
   // flat pair ran on ("delta 7 delta 5", owner's report)
-  check("nato speaks the move's own two squares, with a " +
-        "breath between (" + speakStyle("nato") + ": " +
+  check("squares speaks the move's own two, with a breath " +
+        "between (" + speakStyle("squares") + ": " +
         spoken("Bc4", "f1c4") + ")",
         spoken("Bc4", "f1c4") === "foxtrot 1, charlie 4");
-  check("nato castling is the king's own move, as it is " +
+  check("squares castling is the king's own move, as it is " +
         "spoken in (" + spoken("O-O", "e1g1") + ")",
         spoken("O-O", "e1g1") === "echo 1, golf 1");
-  check("nato keeps promotion and check, off the san (" +
+  check("squares keeps promotion and check, off the san (" +
         spoken("e8=Q+", "e7e8q") + ")",
         spoken("e8=Q+", "e7e8q") ===
           "echo 7, echo 8, promotes to queen, check");
-  check("a takes says nothing extra in nato - the squares " +
-        "are the whole sentence",
+  check("a takes says nothing extra in squares - they are " +
+        "the whole sentence",
         spoken("Bxc4", "f1c4") === "foxtrot 1, charlie 4");
   check("and the choice is remembered under its flat key",
-        sandbox.localStorage.getItem("audioplay.movespeech") === "nato");
+        sandbox.localStorage.getItem("audioplay.movespeech") ===
+          "squares");
   // through the page, not the unit: "repeat" re-speaks the
   // last move - still the e8=N underpromotion played above,
   // which also proves lastUci rode along the dry path
@@ -1863,26 +1864,29 @@ const sleep = ms =>
   check('"repeat" re-speaks the last move in the picked ' +
         "style (" + repeated + ")",
         /echo 7, echo 8, promotes to knight/.test(repeated));
-  // junk in storage reads as the default (the w99 rule)
-  vm.runInContext(`
-    localStorage.setItem("audioplay.movespeech", "greek");
-    loadStoredSettings();
-  `, sandbox);
-  check("junk in storage reads as hybrid",
-        vm.runInContext("MOVE_SPEECH", sandbox) === "hybrid");
+  // junk in storage reads as the default (the w99 rule) -
+  // and the RETIRED values are junk now, which is the whole
+  // migration story: a device that had nato or hybrid saved
+  // re-picks once (the w111 way, no shim)
   vm.runInContext(`
     localStorage.setItem("audioplay.movespeech", "nato");
     loadStoredSettings();
   `, sandbox);
+  check("a retired stored value reads as the default",
+        vm.runInContext("MOVE_SPEECH", sandbox) === "pieces");
+  vm.runInContext(`
+    localStorage.setItem("audioplay.movespeech", "squares");
+    loadStoredSettings();
+  `, sandbox);
   check("a later visit restores the stored style",
-        vm.runInContext("MOVE_SPEECH", sandbox) === "nato");
+        vm.runInContext("MOVE_SPEECH", sandbox) === "squares");
   vm.runInContext(`
     localStorage.removeItem("audioplay.movespeech");
     loadStoredSettings();
   `, sandbox);
-  check("back to hybrid with the key gone",
-        speakStyle("hybrid") === "hybrid" &&
-        vm.runInContext("MOVE_SPEECH", sandbox) === "hybrid");
+  check("back to pieces with the key gone",
+        speakStyle("pieces") === "pieces" &&
+        vm.runInContext("MOVE_SPEECH", sandbox) === "pieces");
 
   // ====== w118: THE CHIME CONFIRMS THE MOVE ======
   // (w108's trial, w116's post-yes answer, and now the whole
