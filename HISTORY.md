@@ -3746,3 +3746,25 @@ the instructions now read in the body's own --text instead
 of --dim - whole paragraphs at furniture-grey were hard to
 read, and dim is for furniture, not for prose someone is
 sent to read.
+
+### w127
+
+TWO CLOCK TRUTHS FROM ONE SCREENSHOT. The rail beside the
+board stood empty until a clocked game began, which on the
+w120 page - board first, rail beside it - read as dead
+space. Now an unset clock shows its shape: fmtClock's
+dashes in the waiting grey, dimmed, in both boxes - the
+same statement the big overlay has always made by drawing
+"--" for a half with no time.
+
+And practice showed a 10:00 that never moved, because from
+w60 to w126 dryStart wrote a frozen 600000 into the clock
+fields - "a frozen 10, which is what a practice clock is" -
+a placeholder baked into the DATA, from an era when the
+only clock on screen was the overlay a user had to opt
+into. Beside the board it looked like a timer that ought to
+be running, and the owner asked why it never went down.
+That question is the verdict: practice has no time control,
+the truth is null, and the placeholder is the renderer's
+job - the same dashes as everywhere else a clock is not
+set. One decision, both surfaces, no fake numbers.

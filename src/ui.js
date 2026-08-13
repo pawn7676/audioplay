@@ -581,8 +581,23 @@
   function renderPageClocks() {
     if (!clockTop || !clockBottom) return;
     var live = api.pos && api.wtime != null;
-    clockTop.innerHTML = live ? clockCell(sideOf(true)) : "";
-    clockBottom.innerHTML = live ? clockCell(sideOf(false)) : "";
+    // THE EMPTY RAIL SHOWS ITS SHAPE (w127, owner's ask).
+    // Before a clock exists - a fresh page, practice, an
+    // unclocked game - the boxes went blank, which left the
+    // space beside the board looking like dead space rather
+    // than a place where clocks will be. Now they hold
+    // fmtClock's dashes in the waiting grey, dimmed: the
+    // same statement the big overlay has always made with
+    // "--" for an unset half. Grey and dim on purpose -
+    // nothing is running, nobody is to move.
+    if (!live) {
+      var ph = '<span class="cbox idle">' + fmtClock(null) + "</span>";
+      clockTop.innerHTML = ph;
+      clockBottom.innerHTML = ph;
+      return;
+    }
+    clockTop.innerHTML = clockCell(sideOf(true));
+    clockBottom.innerHTML = clockCell(sideOf(false));
   }
 
   function renderPlayers() {
