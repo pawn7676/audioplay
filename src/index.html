@@ -353,7 +353,12 @@
      rest, because the ":SS" tail is the same width in both
      boxes under tabular-nums, so the colons stack. Past 99
      minutes the box grows and the pair can disagree again -
-     accepted, the presets top out at 30. */
+     accepted, the presets top out at 30.
+     (Since w129 fmtClock zero-pads the minutes too - every
+     string is the same five tabular characters, so the
+     colon holds still WITHIN a box as well, not only
+     across the pair. min-width and right-align stay as the
+     backstop for the 100-minute case.) */
   .sideClock .cbox { display: inline-block; padding: 2px 16px;
                      min-width: 5.5ch; text-align: right;
                      border-radius: 6px; color: var(--bright);

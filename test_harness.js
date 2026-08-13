@@ -764,7 +764,7 @@ const sleep = ms =>
   const asBlack = rail();
   check("bare digits, no colour captions, no you-and-them (" +
         (asBlack.top + " / " + asBlack.bottom).replace(/<[^>]+>/g, "") + ")",
-        /1:05/.test(asBlack.top) && /0:30/.test(asBlack.bottom) &&
+        /01:05/.test(asBlack.top) && /00:30/.test(asBlack.bottom) &&
         !/White|Black|you|them/i.test(asBlack.top + asBlack.bottom));
   // MY clock is LOW while THEIR side moves. w71 turned the red
   // off here and the owner overruled it with Lichess as the
@@ -786,7 +786,7 @@ const sleep = ms =>
   const asWhite = rail();
   check("playing white, the rail turns over (" +
         (asWhite.top + " / " + asWhite.bottom).replace(/<[^>]+>/g, "") + ")",
-        /0:30/.test(asWhite.top) && /1:05/.test(asWhite.bottom));
+        /00:30/.test(asWhite.top) && /01:05/.test(asWhite.bottom));
   check("and the green follows the turn to the bottom",
         /cbox turn/.test(asWhite.bottom) && /low idle/.test(asWhite.top));
   // a finished game: full brightness, nobody waiting - but a
@@ -2809,20 +2809,31 @@ const sleep = ms =>
         banked.w + ")",
         banked.w <= 597100 && banked.w >= 595000 &&
         banked.anchorAge < 1000);
-  // the no-game rail still shows its shape: full-width
-  // dashes, the time's own MM:SS silhouette (w128; w127's
-  // "-:--" sat off-centre in the box)
+  // the no-game rail still shows its shape (w129, third
+  // placeholder and the keeper: w127's "-:--" was short,
+  // w128's "--:--" still sat off centre because a hyphen is
+  // not a tabular figure - only DIGITS hold the colon
+  // still, so the placeholder is 00:00 and colour tells it
+  // from a flag)
   vm.runInContext(`
     dryRun = false;
     api.gameId = null; api.pos = null;
     api.wtime = null; api.btime = null;
     uiGameChanged();
   `, sandbox);
-  check("a fresh page shows --:-- placeholders",
-        /--:--/.test(phCell("clockTop")) &&
-        /--:--/.test(phCell("clockBottom")) &&
+  check("a fresh page shows 00:00 placeholders, grey and dim",
+        /00:00/.test(phCell("clockTop")) &&
+        /00:00/.test(phCell("clockBottom")) &&
         /class="cbox idle"/.test(phCell("clockTop")) &&
-        vm.runInContext("fmtClock(null)", sandbox) === "--:--");
+        vm.runInContext("fmtClock(null)", sandbox) === "00:00");
+  // w129, the owner's rule: minutes zero-pad so every time
+  // is five tabular characters and the colon NEVER moves -
+  // 9:50 was the one that drifted on the device
+  check("single-digit minutes are padded (09:50, 00:23)",
+        vm.runInContext("fmtClock(590000)", sandbox) === "09:50" &&
+        vm.runInContext("fmtClock(23000)", sandbox) === "00:23" &&
+        vm.runInContext("fmtClock(0)", sandbox) === "00:00" &&
+        vm.runInContext("fmtClock(915000)", sandbox) === "15:15");
   vm.runInContext("dryRun = true; dryStart();", sandbox);
   await sleep(40); heard();
 
