@@ -144,6 +144,7 @@
     var uci = api.pos.uciOf(c.m);
 
     if (dryRun) {
+      bankPracticeClock();   /* w128: your think drained your clock */
       api.pos.apply(c.m);
       api.moves.push(uci);
       api.lastSan = c.san; api.lastSanW = c.san;

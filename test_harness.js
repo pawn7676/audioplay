@@ -936,6 +936,11 @@ const sleep = ms =>
   check("the row centres a rail no wider than its content",
         /#boardRow\s*\{[^}]*justify-content:\s*center/.test(tmplBoard) &&
         /#boardSide\s*\{[^}]*flex:\s*0 1 auto/.test(tmplBoard));
+  // w128: and no min-width padding the rail past its content -
+  // 150px was wider than the clock boxes, so the "centred" row
+  // sat visibly left of centre (the owner measured the gaps)
+  check("and carries no min-width dead space",
+        !/#boardSide\s*\{[^}]*min-width/.test(tmplBoard));
   check("and it wraps under the board rather than squeezing it",
         /#boardRow\s*\{[^}]*flex-wrap:\s*wrap/.test(tmplBoard));
   // w73: on a narrow screen the clocks SPLIT around the board,
@@ -2753,45 +2758,71 @@ const sleep = ms =>
         /still signed out/i.test(auth2));
   vm.runInContext("postAction = __realPA; authGone = false;", sandbox);
 
-  // 124: practice never inherits a real game's clock anchor
+  // 124/w128: practice never inherits a real game's clock
+  // anchor - it RE-anchors. A stale anchor used to arrive
+  // minutes old and flag white on entry; now dryStart plants
+  // a fresh one, because the practice clock is REAL since
+  // w128 (w60 froze it at 10:00, w127 nulled it to dashes,
+  // and the owner wanted what a game has: a clock that runs).
   vm.runInContext(`
     api.clockAt = Date.now() - 300000;   // a real game, 5 min ago
     dryRun = true; running = true;
     dryStart();
   `, sandbox);
   await sleep(40); heard();
-  check("practice clears the clock anchor",
-        vm.runInContext("api.clockAt", sandbox) === null);
-  // w127: and the clock itself. From w60 to w126 practice
-  // held a frozen 600000 as placeholder-in-data; on the
-  // w120 page that read as a timer that should be running
-  // (the owner asked why it never went down). Practice has
-  // no time control, so the truth is null...
-  check("and the practice clock is null - no time control",
-        vm.runInContext('remainingMs("w")', sandbox) === null &&
-        vm.runInContext('remainingMs("b")', sandbox) === null);
-  // ...and the placeholder is the RAIL'S job: dashes in the
-  // waiting grey, dimmed, in both boxes. Asked of the built
-  // cells.
+  check("practice re-anchors the clock, dropping the stale one",
+        vm.runInContext("Date.now() - api.clockAt", sandbox) < 2000);
+  check("and starts at ten minutes each, not draining before " +
+        "both have moved (the live game's own ply gate)",
+        vm.runInContext('remainingMs("w")', sandbox) === 600000 &&
+        vm.runInContext('remainingMs("b")', sandbox) === 600000);
   vm.runInContext("uiGameChanged();", sandbox);
   const phCell = (id) => vm.runInContext(
     'document.getElementById("' + id + '").innerHTML', sandbox);
-  check("the rail shows dash placeholders in practice (" +
-        phCell("clockTop").replace(/</g, "[") + ")",
-        /class="cbox idle"/.test(phCell("clockTop")) &&
-        /-:--/.test(phCell("clockTop")) &&
-        /-:--/.test(phCell("clockBottom")));
-  // and on a page with no game at all - the fresh-load rail
-  // is a shape, not a blank
+  check("the rail shows the practice clocks, turn colour and " +
+        "all (" + phCell("clockBottom").replace(/</g, "[") + ")",
+        /10:00/.test(phCell("clockTop")) &&
+        /10:00/.test(phCell("clockBottom")) &&
+        // white to move at the start, and yours is the bottom
+        /cbox turn/.test(phCell("clockBottom")) &&
+        /idle/.test(phCell("clockTop")));
+  // two plies in, the mover's think drains through the same
+  // remainingMs a live game uses, and the banking writes it
+  // back the way the server does for a real game
+  const banked = vm.runInContext(`
+    (function () {
+      api.moves = ["e2e4", "e7e5"];
+      api.clockAt = Date.now() - 3000;     // white thinking 3s
+      var draining = remainingMs("w");
+      bankPracticeClock();                 // white's move applies
+      var after = { w: api.wtime, anchorAge: Date.now() - api.clockAt };
+      api.moves = []; api.wtime = 600000; api.btime = 600000;
+      api.clockAt = Date.now();
+      return { draining: draining, w: after.w,
+               anchorAge: after.anchorAge };
+    })()
+  `, sandbox);
+  check("the practice clock drains while thinking (" +
+        banked.draining + ")",
+        banked.draining <= 597100 && banked.draining >= 595000);
+  check("and the move banks it and resets the anchor (" +
+        banked.w + ")",
+        banked.w <= 597100 && banked.w >= 595000 &&
+        banked.anchorAge < 1000);
+  // the no-game rail still shows its shape: full-width
+  // dashes, the time's own MM:SS silhouette (w128; w127's
+  // "-:--" sat off-centre in the box)
   vm.runInContext(`
     dryRun = false;
     api.gameId = null; api.pos = null;
     api.wtime = null; api.btime = null;
     uiGameChanged();
   `, sandbox);
-  check("and on a fresh page with no game",
-        /-:--/.test(phCell("clockTop")) &&
-        /-:--/.test(phCell("clockBottom")));
+  check("a fresh page shows --:-- placeholders",
+        /--:--/.test(phCell("clockTop")) &&
+        /--:--/.test(phCell("clockBottom")) &&
+        /class="cbox idle"/.test(phCell("clockTop")) &&
+        vm.runInContext("fmtClock(null)", sandbox) === "--:--");
   vm.runInContext("dryRun = true; dryStart();", sandbox);
   await sleep(40); heard();
 

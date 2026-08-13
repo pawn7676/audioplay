@@ -276,9 +276,20 @@
      sees, so the board's left edge and the clocks' right edge
      sit about the same distance in from the panel's sides.
      The cap stays, so a marathon username cannot squeeze the
-     board; min-width keeps the wrap threshold where the 600px
-     media query below expects it. */
-  #boardSide { flex: 0 1 auto; min-width: 150px; max-width: 260px;
+     board.
+
+     THE min-width IS GONE (w128). 150px was wider than the
+     clock boxes, so an empty rail carried dead width on its
+     right and the centred row sat visibly LEFT of centre -
+     the owner measured the two gaps and asked for them
+     equal. Without it the rail is exactly as wide as its
+     widest content (a flex item's automatic minimum is its
+     min-content, which here IS the clock box), so the edge
+     the eye sees is the edge flex centres. The wrap
+     threshold the old comment credited to min-width is
+     carried by that same min-content, at nearly the same
+     number. */
+  #boardSide { flex: 0 1 auto; max-width: 260px;
                display: flex; flex-direction: column;
                justify-content: center; }
   .sideBlock { display: flex; flex-direction: column; }

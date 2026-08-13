@@ -471,7 +471,13 @@
   }
 
   function fmtClock(ms) {
-    if (ms == null) return "-:--";
+    // "--:--" for a clock that does not exist (w128). w127
+    // said "-:--", one character short of MM:SS, and
+    // right-aligned in the rail box that left the colon off
+    // centre - the owner saw it at a glance. The placeholder
+    // wears the time's own shape, so the colon lands exactly
+    // where a real clock's colon does.
+    if (ms == null) return "--:--";
     if (ms < 0) ms = 0;
     var total = Math.floor(ms / 1000);
     var m = Math.floor(total / 60), s = total % 60;
