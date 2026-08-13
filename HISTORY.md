@@ -3768,3 +3768,34 @@ That question is the verdict: practice has no time control,
 the truth is null, and the placeholder is the renderer's
 job - the same dashes as everywhere else a clock is not
 set. One decision, both surfaces, no fake numbers.
+
+### w128
+
+w127 MISREAD THE 10:00 QUESTION and the owner corrected all
+three of its edges in one screenshot. "Why does practice get
+a timer that never goes down" was not "delete the timer" -
+it was "make it go down". So the practice clock is REAL now:
+ten minutes each, drained by the same remainingMs that
+drains a live game - same ply gate, same turn colours, same
+red - with the server's half of the job done locally:
+bankPracticeClock writes the mover's drained value back as
+their move applies and resets the anchor, in both the spoken
+and tapped paths and the random reply. The one difference
+left is honest and stated: nothing ends a practice game on
+time; a flag sits at red 0:00 while play continues, because
+practice has no referee and losing on time is not what it is
+for.
+
+The placeholder dashes were also one character short:
+"-:--", right-aligned, put the colon off centre. "--:--"
+wears MM:SS's own silhouette, so the colon sits exactly
+where a running clock's does.
+
+And the rail's min-width (150px, w82-era) was wider than
+the clock boxes, so the flex-centred row sat visibly left
+of centre - the owner measured the gap from panel edge to
+board against the gap from clock box to panel edge and
+asked for them equal. The min-width is gone; the rail's
+width IS its content now (a flex item's min-content keeps
+the wrap threshold at nearly the same place), so the edge
+flex centres is the edge the eye sees.
