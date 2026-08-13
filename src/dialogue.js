@@ -147,6 +147,7 @@
       api.pos.apply(c.m);
       api.moves.push(uci);
       api.lastSan = c.san; api.lastSanW = c.san;
+      api.lastUci = uci;
       busy = false;
       log("DRY", "you play " + uci + " = " + c.san + " (not sent)");
       // same one-bit feedback as the live path, so practice
@@ -237,7 +238,7 @@
   }
 
   function repeatLast() {
-    speak(api.lastSan ? "Last move: " + sanToSpeech(api.lastSan)
+    speak(api.lastSan ? "Last move: " + moveToSpeech(api.lastSan, api.lastUci)
                       : "No move to repeat yet.");
   }
 

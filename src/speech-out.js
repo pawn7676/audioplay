@@ -333,7 +333,25 @@
     })();
   }
 
+  // The file letter as the chosen style speaks it (w120):
+  // the NATO word for hybrid and nato, the bare letter for
+  // chess - upper-cased, which nudges a synthesizer toward
+  // the letter's NAME ("bee four", not the article in
+  // "a 4"). Output only: what the MIC accepts is
+  // vocabulary.js's business and does not move with this.
+  function fileWord(letter) {
+    if (MOVE_SPEECH === "chess") return letter.toUpperCase();
+    return SPOKEN_FILE[letter] || letter;
+  }
+
   function spokenSquare(square) {
+    return fileWord(square[0]) + " " + square[1];
+  }
+
+  // A square in NATO regardless of the style: the nato
+  // style speaks squares even when chess is not picked
+  // anywhere near it, so it cannot ride fileWord.
+  function natoSquare(square) {
     return (SPOKEN_FILE[square[0]] || square[0]) + " " + square[1];
   }
 
@@ -363,7 +381,7 @@
     var target = parts[parts.length - 1].slice(-2);
     var from = parts[0].slice(0, parts[0].length - (takes ? 0 : 2));
     if (from) {
-      words += (SPOKEN_FILE[from[0]] || from[0]) + " ";
+      words += fileWord(from[0]) + " ";
       if (from.length > 1) words += from[1] + " ";
     }
     if (takes) words += "takes ";
@@ -371,5 +389,34 @@
     if (promoted) words += ", promotes to " + SPOKEN_PIECE[promoted[1]];
     words += checkWord(san);
     return words;
+  }
+
+  /* HOW A MOVE IS SPOKEN IS THE MOVE_SPEECH SETTING (w120,
+   * the owner's three-way switch - settings.js has the
+   * table). chess and hybrid are sanToSpeech in two
+   * spellings of the file letter (fileWord above). nato
+   * drops the piece talk entirely and speaks the move's own
+   * two squares, from then to - the same four items the
+   * grammar asks the user to SAY, so what the page announces
+   * is exactly what could be spoken back at it. The uci is
+   * the truth for those squares: castling in uci is the
+   * king's own move ("echo 1 golf 1"), which is also how it
+   * is spoken IN. Promotion and the check suffix still come
+   * off the san, the only place they are written.
+   *
+   * Every announcement funnels through here; sanToSpeech is
+   * called directly only where no uci exists to offer.
+   */
+  function moveToSpeech(san, uci) {
+    if (MOVE_SPEECH === "nato" && uci && uci.length >= 4) {
+      var words = natoSquare(uci.slice(0, 2)) + " " +
+                  natoSquare(uci.slice(2, 4));
+      if (uci.length > 4 && SPOKEN_PIECE[uci[4].toUpperCase()]) {
+        words += ", promotes to " + SPOKEN_PIECE[uci[4].toUpperCase()];
+      }
+      words += checkWord(san || "");
+      return words;
+    }
+    return sanToSpeech(san);
   }
 

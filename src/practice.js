@@ -59,6 +59,7 @@
     api.moves = [];
     api.over = false; api.overText = "";
     api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+    api.lastUci = "";
     api.wtime = 600000;
     api.btime = 600000;
     // AND NO TICKING (w60). remainingMs extrapolates for the
@@ -101,8 +102,9 @@
     api.pos.apply(m);
     api.moves.push(uci);
     api.lastSan = san; api.lastSanB = san;
+    api.lastUci = uci;
     log("DRY", "opponent plays random legal move " + uci + " = " + san);
-    speak(sanToSpeech(san) + ".");
+    speak(moveToSpeech(san, uci) + ".");
     if (!api.pos.legalMoves().length) {
       api.over = true;
       sayResult("Practice game over.");

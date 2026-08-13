@@ -159,11 +159,13 @@ function element(id) {
   el.id = id || "";
   return el;
 }
-// two collapsible panels, as the w20 page has (the log panel
-// is the shared UI's floating one now, not a page panel)
-const fakePanels = ["panelBoard", "panelLichess",
-                    "panelInstructions"].map(id => ({
-  open: true,
+// ONE collapsible panel since w120: the owner's redesign made
+// the board and the merged controls panel always-open, so
+// Instructions is the only <details> left on the page (the
+// log panel is the shared UI's floating one, not a page
+// panel). Its markup default is CLOSED (w32).
+const fakePanels = ["panelInstructions"].map(id => ({
+  open: false,
   parentNode: { id: id },
   addEventListener(n, fn) { this["on_" + n] = fn; }
 }));
@@ -440,6 +442,8 @@ const sleep = ms =>
   // current keys are untouched.
   const scrubbed = vm.runInContext(`
     localStorage.setItem("audioplay.token", "CURRENT");
+    localStorage.setItem("audioplay.ratings", "on");
+    localStorage.setItem("audioplay.movespeech", "nato");
     localStorage.setItem("audioplay_lichess_token", "OLD");
     localStorage.setItem("audioplay.lichess.token", "OLDER");
     localStorage.setItem("audioplay.lichess.verifier", "x");
@@ -453,13 +457,18 @@ const sleep = ms =>
                 "audioplay.web.rated", "audioplay.web.timecontrol",
                 "audioplay.settings"]
       .filter(function (k) { return localStorage.getItem(k) !== null; });
-    var kept = localStorage.getItem("audioplay.token");
+    var kept = [localStorage.getItem("audioplay.token"),
+                localStorage.getItem("audioplay.ratings"),
+                localStorage.getItem("audioplay.movespeech")];
     localStorage.removeItem("audioplay.token");
-    [left.length, kept];
+    localStorage.removeItem("audioplay.ratings");
+    localStorage.removeItem("audioplay.movespeech");
+    [left.length].concat(kept);
   `, sandbox);
-  check("the scrub removes every dead key and keeps the live one (" +
-        scrubbed + ")",
-        scrubbed[0] === 0 && scrubbed[1] === "CURRENT");
+  check("the scrub removes every dead key and keeps the live " +
+        "ones - w120's two flat keys included (" + scrubbed + ")",
+        scrubbed[0] === 0 && scrubbed[1] === "CURRENT" &&
+        scrubbed[2] === "on" && scrubbed[3] === "nato");
 
   // ---- w10/w12/w76/w77: one account button; the sign-out ----
   // is a question first. At rest the signed-in button is the
@@ -716,6 +725,9 @@ const sleep = ms =>
         bootLine.slice(bootLine.indexOf("loaded:")).slice(0, 40) + "...)",
         /loaded:/.test(bootLine) &&
         /ratings=(on|off)/.test(bootLine) &&
+        // w120: the announcement style is a stored choice, so
+        // a pasted log must say which one the device speaks
+        /moves=(chess|hybrid|nato)/.test(bootLine) &&
         // the dead switch names must NOT be in the boot line:
         // a name reappearing here means a setting crept back
         !/confirmMine|guardPawnPushes/.test(bootLine) &&
@@ -723,6 +735,10 @@ const sleep = ms =>
   check("and ratings default off (w117, owner's order)",
         /ratings=off/.test(bootLine) &&
         vm.runInContext("SHOW_RATINGS", sandbox) === false);
+  check("and moves default hybrid - what every game before " +
+        "w120 spoke",
+        /moves=hybrid/.test(bootLine) &&
+        vm.runInContext("MOVE_SPEECH", sandbox) === "hybrid");
 
   // ---- w70/w71: the rail follows the board; the CLOCK BOX
   // is the turn indicator ----
@@ -1000,14 +1016,36 @@ const sleep = ms =>
         /^<!doctype html>/i.test(tmpl.split("\n")[0].trim()));
   check("page button CSS is scoped to .panel",
         !/\n  button \{/.test(tmpl) && /\.panel button \{/.test(tmpl));
-  check("the top panel hosts the buttons",
-        tmpl.includes('id="panelControls"'));
-  // w76: the account is one button in the top panel; the games
-  // panel is named for what is left in it, under its OLD id -
-  // the panel memory (w19) is keyed by id, and renaming it
-  // would forget every device's saved open/closed choice.
-  check("the games panel is named Games, keeping its id",
-        /<summary>Games<\/summary>/.test(tmpl) &&
+  // ---- w120: the owner's layout ----
+  // The board panel opens the page, bare - then ONE merged
+  // panel of everything that acts (the button row and the
+  // seek/challenge controls, the old GAMES), then
+  // Instructions. Order is asked of the template by position.
+  const atBoard = tmpl.indexOf('id="panelBoard"');
+  const atLichess = tmpl.indexOf('id="panelLichess"');
+  const atControls = tmpl.indexOf('id="panelControls"');
+  const atInstructions = tmpl.indexOf('id="panelInstructions"');
+  check("the board panel is first, above the merged panel",
+        atBoard >= 0 && atBoard < atLichess &&
+        atLichess < atInstructions);
+  check("the controls host sits INSIDE the merged panel",
+        atLichess < atControls && atControls < atInstructions);
+  // No BOARD caption, no GAMES caption: section labels were
+  // spending screen the board needs. Instructions keeps its
+  // summary - a fold needs a name to tap on.
+  check("no Board or Games caption survives",
+        !/<summary>Board<\/summary>/.test(tmpl) &&
+        !/<summary>Games<\/summary>/.test(tmpl) &&
+        !/<h2>/.test(tmpl));
+  // counted by <summary> - a fold needs its tappable name, and
+  // the word <details> also appears in the comments explaining
+  // why the other panels lost theirs
+  check("Instructions is the only collapsible section",
+        (tmpl.match(/<summary>/g) || []).length === 1 &&
+        tmpl.slice(atInstructions).indexOf("<summary>Instructions") >= 0);
+  // the merged panel keeps its OLD id: the harness and the
+  // panel memory knew it by name, and renaming buys nothing
+  check("the merged panel keeps the panelLichess id",
         tmpl.includes('id="panelLichess"'));
   check("and the template carries no separate sign-out button",
         !tmpl.includes("btnSignOut"));
@@ -1024,15 +1062,18 @@ const sleep = ms =>
         `, sandbox) === true);
 
   // ---- w19: panel open/closed survives a reload ----
+  // One panel left to remember since w120 (Instructions),
+  // and the memory is driven in the direction its markup
+  // does NOT default to: opened by the user, closed by a
+  // reload, restored open.
+  fakePanels[0].open = true;           // user opens Instructions
   vm.runInContext("savePanels();", sandbox);
-  fakePanels[1].open = false;          // user collapses Lichess
-  vm.runInContext("savePanels();", sandbox);
-  fakePanels[1].open = true;           // markup default on reload
+  fakePanels[0].open = false;          // markup default on reload
   vm.runInContext("restorePanels();", sandbox);
-  check("a collapsed panel stays collapsed after reload",
-        fakePanels[1].open === false);
-  check("the other panels keep their state",
-        fakePanels[0].open === true && fakePanels[2].open === true);
+  check("an opened Instructions panel stays open after reload",
+        fakePanels[0].open === true);
+  fakePanels[0].open = false;
+  vm.runInContext("savePanels();", sandbox);
 
   // ---- w25: no double-tap zoom on the overlays ----
   // The built panel, not the source (w54). The old grep
@@ -1146,9 +1187,10 @@ const sleep = ms =>
       };
     })()
   `, sandbox);
-  // six until w117, when the Settings button died with its panel
-  check("the row holding the buttons has all five " +
-        "(" + styled.innerKids + " children)", styled.innerKids === 5);
+  // six again since w120: Settings is back (it made six until
+  // w117, five from w117 to w119)
+  check("the row holding the buttons has all six " +
+        "(" + styled.innerKids + " children)", styled.innerKids === 6);
   // w31: order is DOM order, so it survives wrapping
   const rowOrder = vm.runInContext(`
     wrapEl.firstChild.children.map(function (c) { return c.textContent; })
@@ -1169,22 +1211,45 @@ const sleep = ms =>
   check("with Practice beside it (" +
         rowOrder[rowOrder.length - 2] + ")",
         /Practice/.test(rowOrder[rowOrder.length - 2]));
+  // w120: Settings back in its historical second place,
+  // right of the voice button
+  check("Settings sits second, beside the voice button (" +
+        rowOrder[1] + ")", /Settings/.test(rowOrder[1]));
 
-  // ---- w117: the settings button and panel are GONE ----
-  // (owner's order: "dump the settings menu. not needed").
-  // The w24 anchoring tests, the w69 exit tests and the pill
-  // tests all died with the DOM they drove. What is left to
-  // assert is the absence, of the built page - a re-added
-  // button or panel fails loudly here.
-  check("no settings button on the built page",
-        vm.runInContext(`
-          typeof settingsBtn === "undefined" &&
-          wrapEl.firstChild.children.every(function (c) {
-            return !/settings/i.test(c.textContent || "");
-          })
-        `, sandbox));
-  check("and no settings panel behind it",
-        vm.runInContext('typeof setPanel === "undefined"', sandbox));
+  // ---- w117/w120: the settings button died and returned ----
+  // (owner's order both times). What died stays dead: the
+  // floating panel, its anchor, the outside-tap closer and
+  // the stored blob - the persistence check above and the
+  // scrub test keep those graves closed. What returned is a
+  // row IN the page that the button shows and hides, so the
+  // button is its own exit (the w69 lesson) and lit while
+  // open, like the log button. Driven through the built
+  // button, twice - a feature used twice is a different
+  // feature (w37).
+  const setRowOpen = () => vm.runInContext(
+    'settingsRowOpen()', sandbox);
+  const setBtnClick = () => vm.runInContext(
+    'settingsBtn.on_click(); 0', sandbox);
+  check("the settings row starts closed", setRowOpen() === false);
+  setBtnClick();
+  check("the Settings button opens it", setRowOpen() === true);
+  check("and wears the lit green while it is open",
+        vm.runInContext(
+          'settingsBtn.style.background === BUTTON_ON', sandbox));
+  setBtnClick();
+  check("a second tap is the exit (w69)", setRowOpen() === false &&
+        vm.runInContext(
+          'settingsBtn.style.background === BUTTON_OFF', sandbox));
+
+  // the row carries the two choices, showing the loaded
+  // values - hybrid and off are the shipped defaults
+  check("the row holds the two selects at their defaults (" +
+        vm.runInContext('document.getElementById("setSpeech").value',
+                        sandbox) + ")",
+        vm.runInContext('document.getElementById("setRatings").value',
+                        sandbox) === "off" &&
+        vm.runInContext('document.getElementById("setSpeech").value',
+                        sandbox) === "hybrid");
 
   // ---- w33: time controls are presets ----
   // w34: the row is clean at load. Checked FIRST, before any
@@ -1674,6 +1739,73 @@ const sleep = ms =>
   await sleep(120);
   check('a stray promotion word is "Say again."',
         heard().join(" | ") === "Say again.");
+
+  // ====== w120: HOW A MOVE IS SPOKEN IS A SETTING ======
+  // The owner's three-way switch: chess "bishop C 4", hybrid
+  // "bishop charlie 4" (the old voice, the default), nato
+  // "foxtrot 1 charlie 4" - the move's own squares, the same
+  // four items the user speaks IN. Asked of the built
+  // moveToSpeech, and the style flipped through the built
+  // select, whose handler owns the variable and the storage.
+  const speakStyle = (v) => vm.runInContext(`
+    var sel = document.getElementById("setSpeech");
+    sel.value = ${JSON.stringify(v)}; sel.on_change();
+    MOVE_SPEECH;
+  `, sandbox);
+  const spoken = (san, uci) => vm.runInContext(
+    "moveToSpeech(" + JSON.stringify(san) + ", " +
+    JSON.stringify(uci) + ")", sandbox);
+  check("hybrid is the shipped voice, untouched (" +
+        spoken("Bc4", "f1c4") + ")",
+        spoken("Bc4", "f1c4") === "bishop charlie 4");
+  check("chess speaks the bare file letter (" +
+        speakStyle("chess") + ": " + spoken("Bc4", "f1c4") + ")",
+        spoken("Bc4", "f1c4") === "bishop C 4" &&
+        spoken("Nbd2", "b1d2") === "knight B D 2");
+  check("nato speaks the move's own two squares (" +
+        speakStyle("nato") + ": " + spoken("Bc4", "f1c4") + ")",
+        spoken("Bc4", "f1c4") === "foxtrot 1 charlie 4");
+  check("nato castling is the king's own move, as it is " +
+        "spoken in (" + spoken("O-O", "e1g1") + ")",
+        spoken("O-O", "e1g1") === "echo 1 golf 1");
+  check("nato keeps promotion and check, off the san (" +
+        spoken("e8=Q+", "e7e8q") + ")",
+        spoken("e8=Q+", "e7e8q") ===
+          "echo 7 echo 8, promotes to queen, check");
+  check("a takes says nothing extra in nato - the squares " +
+        "are the whole sentence",
+        spoken("Bxc4", "f1c4") === "foxtrot 1 charlie 4");
+  check("and the choice is remembered under its flat key",
+        sandbox.localStorage.getItem("audioplay.movespeech") === "nato");
+  // through the page, not the unit: "repeat" re-speaks the
+  // last move - still the e8=N underpromotion played above,
+  // which also proves lastUci rode along the dry path
+  say("repeat");
+  await sleep(120);
+  const repeated = heard().join(" | ");
+  check('"repeat" re-speaks the last move in the picked ' +
+        "style (" + repeated + ")",
+        /echo 7 echo 8, promotes to knight/.test(repeated));
+  // junk in storage reads as the default (the w99 rule)
+  vm.runInContext(`
+    localStorage.setItem("audioplay.movespeech", "greek");
+    loadStoredSettings();
+  `, sandbox);
+  check("junk in storage reads as hybrid",
+        vm.runInContext("MOVE_SPEECH", sandbox) === "hybrid");
+  vm.runInContext(`
+    localStorage.setItem("audioplay.movespeech", "nato");
+    loadStoredSettings();
+  `, sandbox);
+  check("a later visit restores the stored style",
+        vm.runInContext("MOVE_SPEECH", sandbox) === "nato");
+  vm.runInContext(`
+    localStorage.removeItem("audioplay.movespeech");
+    loadStoredSettings();
+  `, sandbox);
+  check("back to hybrid with the key gone",
+        speakStyle("hybrid") === "hybrid" &&
+        vm.runInContext("MOVE_SPEECH", sandbox) === "hybrid");
 
   // ====== w118: THE CHIME CONFIRMS THE MOVE ======
   // (w108's trial, w116's post-yes answer, and now the whole
@@ -2404,13 +2536,14 @@ const sleep = ms =>
         (playersHtml() || "empty") + ")", playersHtml() === "");
   vm.runInContext("dryRun = false;", sandbox);
 
-  // ---- w69/w75/w117: the rating's long walk to a constant ----
+  // ---- w69/w75/w117/w120: the rating's long walk ----
   // w69 split ratings off but nested, w71 freed them, w72
-  // chained them to showPlayers, w75 deleted the chain, and
-  // w117 deleted the panel around the one switch left:
-  // SHOW_RATINGS is a code constant now, owner's default OFF.
-  // The render is still driven both ways, and the shipped
-  // default is left in force at the end.
+  // chained them to showPlayers, w75 deleted the chain, w117
+  // deleted the panel around the one switch left, and w120
+  // made it a stored choice again on the Settings row -
+  // owner's default still OFF. The render is driven both
+  // ways, and the shipped default is left in force at the
+  // end.
   vm.runInContext(`
     api.gameId = "P3"; api.over = false;
     SHOW_RATINGS = false;
@@ -2428,10 +2561,43 @@ const sleep = ms =>
         !/1500/.test(noRatings) && !/1900/.test(noRatings));
   check("but not the title - a BOT is not a rating",
         /BOT/.test(noRatings));
-  vm.runInContext("SHOW_RATINGS = true; renderPlayers();", sandbox);
-  check("flipping the constant in code brings the numbers back",
+  // THE FLIP IS THE SELECT'S NOW (w120), driven through the
+  // built control: the change handler owns the variable, the
+  // storage write, and the repaint - so the numbers appear
+  // with no render call from here.
+  vm.runInContext(`
+    var sel = document.getElementById("setRatings");
+    sel.value = "on"; sel.on_change();
+  `, sandbox);
+  check("flipping the Ratings select brings the numbers back",
         /1500/.test(playersHtml()) && /1900/.test(playersHtml()));
-  vm.runInContext("SHOW_RATINGS = false; renderPlayers();", sandbox);
+  check("and remembers the choice under its flat key",
+        sandbox.localStorage.getItem("audioplay.ratings") === "on");
+  vm.runInContext(`
+    var sel = document.getElementById("setRatings");
+    sel.value = "off"; sel.on_change();
+  `, sandbox);
+  check("and off again, off the same select",
+        !/1500/.test(playersHtml()) &&
+        sandbox.localStorage.getItem("audioplay.ratings") === "off");
+  // a return visit reads the stored choice; junk reads as
+  // the default (the rated dropdown's rule, w99)
+  vm.runInContext(`
+    localStorage.setItem("audioplay.ratings", "on");
+    loadStoredSettings();
+  `, sandbox);
+  check("a later visit restores ratings from storage",
+        vm.runInContext("SHOW_RATINGS", sandbox) === true);
+  vm.runInContext(`
+    localStorage.setItem("audioplay.ratings", "junk");
+    loadStoredSettings();
+  `, sandbox);
+  check("junk in storage reads as ratings off",
+        vm.runInContext("SHOW_RATINGS", sandbox) === false);
+  vm.runInContext(`
+    localStorage.removeItem("audioplay.ratings");
+    loadStoredSettings(); renderPlayers();
+  `, sandbox);
 
   // ---- w69: the game id is for the log, not the panel ----
   heard();

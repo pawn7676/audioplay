@@ -67,19 +67,68 @@
    *   the chime           chimes.js (three acts)
    *   clock-mode text     w110 HISTORY entry; strip in git
    *                       at w109
+   *
+   * AND A SETTINGS BUTTON RETURNED AT w120 - the owner's
+   * order, both times. w117 killed a panel that had shrunk
+   * to one cosmetic switch; w120 added a second choice (how
+   * moves are spoken, below) and the owner wanted both on
+   * the page, not in the source. What returned is smaller
+   * than what died: a plain row in the page (#settingsRow,
+   * wired by wireSettings in ui.js) and one flat
+   * audioplay.* key per choice, the w111 naming scheme.
+   * The blob stays dead: audioplay.settings is still
+   * scrubbed on boot, and the four barred switch names
+   * above stay barred.
    *------------------------------------------------------*/
 
   // The opponent's rating, shown beside their name. OFF is
   // the owner's default (w117): a rating is a fact about a
   // person, not the position - never a fair-play question
   // (constraint 1 is about MOVE CHOICE) - but it is also a
-  // number he stopped wanting to see. Flip in code, like
-  // the voice.
+  // number he stopped wanting to see. A code constant from
+  // w117 to w119; a stored choice again since w120, flipped
+  // from the Settings row.
   var SHOW_RATINGS = false;
+  var RATINGS_KEY = "audioplay.ratings";
+
+  // HOW A MOVE IS ANNOUNCED (w120, owner's design) - the
+  // Settings row's other choice. Three styles:
+  //   chess    "bishop C 4"       - plain file letters
+  //   hybrid   "bishop charlie 4" - what every game before
+  //                                 w120 spoke; the default
+  //   nato     "foxtrot 1 charlie 4" - the move's own two
+  //            squares, from then to: exactly the four-item
+  //            shape the grammar asks the USER to speak
+  //            (parsing.js), so the page and the player use
+  //            one language
+  // moveToSpeech in speech-out.js is the one consumer.
+  var MOVE_SPEECH = "hybrid";
+  var MOVE_SPEECH_KEY = "audioplay.movespeech";
+
+  // Loaded on boot, before the page builds, so the selects
+  // and the first announcement both agree with storage. Junk
+  // or a missing key reads as the default - the rated
+  // dropdown's rule (w99): storage must never quietly change
+  // behaviour.
+  function loadStoredSettings() {
+    // the defaults are RESTATED, not assumed: this function's
+    // contract is stored-or-default whatever the variables
+    // held before it ran, so calling it IS a settings reload
+    SHOW_RATINGS = false;
+    MOVE_SPEECH = "hybrid";
+    try {
+      SHOW_RATINGS = localStorage.getItem(RATINGS_KEY) === "on";
+      var s = localStorage.getItem(MOVE_SPEECH_KEY);
+      if (s === "chess" || s === "hybrid" || s === "nato") {
+        MOVE_SPEECH = s;
+      }
+    } catch (e) { /* private mode; the defaults stand */ }
+  }
 
   /* THE STORAGE AUDIT (w111, owner's request): every key
    * this program keeps is named audioplay.<what it is> -
-   * token, verifier, panels, opponent, rated, timecontrol -
+   * token, verifier, panels, opponent, rated, timecontrol,
+   * and since w120 ratings and movespeech -
    * and storage holds NOTHING else of ours. This list is
    * every name a previous era wrote on this origin, removed
    * on boot so no dead key sits behind the program to

@@ -442,22 +442,17 @@
   <g id="black-pawn"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" stroke="#000" stroke-width="1.5" stroke-linecap="round"/></g>
 </defs></svg>
 
-<div class="panel" id="panelControls">
-  <!-- NO HEADING since w76: the account button joined the row,
-       so VOICE stopped naming what the panel holds, and the
-       noun moved into the voice button's own label instead
-       (see paintVoiceButton). The shared UI's button row is
-       re-parented in here by buildWebUI (w21); the sign-in
-       button below is moved to the END of that row - the
-       far-from-the-voice-button reasoning that placed
-       Practice (w31), because signed in, this is where
-       Sign out lives (asked first - w77, in ui.js). -->
-  <button id="btnSignIn" class="primary">Sign in with Lichess</button>
-</div>
-
+<!-- THE BOARD OPENS THE PAGE (w120, owner's redesign), bare:
+     no BOARD caption, no <details> to fold it away. It sat
+     third, behind the button row, behind a summary line - and
+     the board is what a glance at this page is FOR, from
+     across a room. A section that must always be open has
+     nothing for a <details> to do, and the caption said what
+     the picture already says. The Instructions panel at the
+     bottom is the ONLY collapsible section left - it is long
+     reference material; everything above it is playing
+     surface and stays put. -->
 <div class="panel" id="panelBoard">
-  <details open>
-  <summary>Board</summary>
   <!-- THE LICHESS SHAPE (w70): board left, a rail on the
        right carrying the far player's clock and name at the
        top and yours at the bottom. Ordered by the BOARD, not
@@ -485,18 +480,57 @@
       </div>
     </div>
   </div>
-  </details>
 </div>
 
+<!-- ONE PANEL FOR EVERYTHING THAT ACTS (w120): the button row
+     and the seek/challenge controls, merged directly under
+     the board, no caption, never collapsed. They were two
+     sections - the buttons alone at the top of the page,
+     GAMES below the board with its own summary - and the
+     captions and fold arrows were spending screen the board
+     above now uses. The id stays panelLichess: the harness
+     and the panel memory knew it by name, and renaming an id
+     buys nothing (the w76 reasoning, one panel over).
+
+     NO HEADING has been the rule here since w76: the voice
+     button's own label names the mode (see paintVoiceButton).
+     The shared UI's button row is re-parented into
+     #panelControls by buildWebUI (w21); the sign-in button
+     below is moved to the END of that row - the
+     far-from-the-voice-button reasoning that placed Practice
+     (w31), because signed in, this is where Sign out lives
+     (asked first - w77, in ui.js). -->
 <div class="panel" id="panelLichess">
-  <!-- GAMES since w76, named for what is left in it: the
-       account moved into the top row as ONE button that is
-       sign-in and sign-out both. The id stays panelLichess -
-       the open/closed state is remembered under it (w19), and
-       renaming the id would silently forget every device's
-       saved choice. -->
-  <details open>
-  <summary>Games</summary>
+  <div id="panelControls">
+    <button id="btnSignIn" class="primary">Sign in with Lichess</button>
+  </div>
+  <!-- THE SETTINGS ROW (w120): what returned when the owner
+       asked for the Settings button back (reversing w117's
+       "dump the settings menu" - his order both times). Not
+       the old apparatus - no floating panel, no anchor, no
+       outside-tap closer, no stored blob - just this row,
+       shown and hidden by the Settings button in the row
+       above it, which is its own exit (the w69 lesson) and
+       wears the lit green while the row is open. Two choices,
+       wired by wireSettings in ui.js, each stored under its
+       own flat key (the w111 scheme):
+       Ratings shows the numbers beside the players' names;
+       Moves spoken is the three-way announcement style -
+       chess "bishop C 4", hybrid "bishop charlie 4", NATO
+       "foxtrot 1 charlie 4" (moveToSpeech, speech-out.js).
+       display:none inline like #challengeOther below: the
+       markup state is closed, code owns the toggle. -->
+  <div class="row" id="settingsRow" style="display:none">
+    <label>Ratings <select id="setRatings">
+      <option value="off">Off</option>
+      <option value="on">On</option>
+    </select></label>
+    <label>Moves spoken <select id="setSpeech">
+      <option value="chess">Chess</option>
+      <option value="hybrid">Hybrid</option>
+      <option value="nato">NATO</option>
+    </select></label>
+  </div>
   <div id="lichessLine">Sign in to play.</div>
   <div class="row">
     <!-- Time controls as PRESETS (w33): the pairs anyone
@@ -547,13 +581,17 @@
     </select></label>
     <button id="btnChallenge" disabled>Challenge</button>
   </div>
-  </details>
 </div>
 
 <div class="panel" id="panelInstructions">
   <!-- collapsed on a first load (w32): it is the longest
        panel on the page and it is reference material, not
-       something to read past on the way to a game -->
+       something to read past on the way to a game. Since
+       w120 it is also the ONLY collapsible section, and the
+       only one with a caption - a summary needs a name to
+       tap on, and at the bottom of the page a label costs
+       nothing the board needs. -->
+
   <details>
   <summary>Instructions</summary>
   <p class="hint">Signing in happens on lichess.org, so
@@ -580,6 +618,13 @@
   the two clocks, side to move drawn heavier, everything
   else spoken; tap it to come back. "practice" plays moves
   against a random legal reply, sending nothing.</p>
+  <p class="hint">The Settings button holds two choices, both
+  remembered on this device. Ratings shows or hides the number
+  beside each player's name. Moves spoken is how an opponent's
+  move is announced: chess is "bishop c4", hybrid is "bishop
+  charlie four", and NATO is the move's own two squares —
+  "foxtrot one charlie four" — the same shape you speak your
+  own moves in.</p>
   <p class="hint">The page speaks with the SYSTEM voice. On
   an iPhone or iPad a much better one is free: Settings
   &rarr; Accessibility &rarr; Spoken Content &rarr; Voices
