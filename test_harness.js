@@ -967,9 +967,57 @@ const sleep = ms =>
     wrapEl.firstChild.children[0].on_click();
   `, sandbox);
   const startSaid = heard().join(" | ");
-  check("signed out, the voice button says it for the EAR (" + startSaid + ")",
-        /lee chess/.test(startSaid) && !/lichess/.test(startSaid));
+  // w121 flipped w39's mechanism: the sentence (and so the
+  // SAY line) carries the site's real name, and the phonetic
+  // form exists only in the synthesizer's mouth (forTheEar)
+  check("signed out, the voice button names the site for the " +
+        "EYE (" + startSaid + ")",
+        /Lichess/.test(startSaid) && !/lee chess/.test(startSaid));
   vm.runInContext("running = false; renderButton();", sandbox);
+
+  // ---- w39/w121: spoken for the ear, logged for the eye ----
+  // Driven through the REAL pipeline: the utterance handed to
+  // the synthesizer wears the phonetic forms, the SAY line
+  // written beside it does not.
+  const earSplit = vm.runInContext(`
+    (function () {
+      var got = [];
+      var real = speechSynthesis.speak;
+      speechSynthesis.speak = function (u) {
+        got.push(u.text);
+        if (u.onend) setTimeout(u.onend, 1);
+      };
+      speaking = false; speakQueue = [];
+      var n = LOG.length;
+      __realSpeak("sign in with Lichess first.");
+      speechSynthesis.speak = real;
+      return { utt: got.join("|"),
+               say: LOG.slice(n).filter(function (l) {
+                 return l.indexOf("SAY") >= 0; }).join("|") };
+    })()
+  `, sandbox);
+  check("the synthesizer hears lee chess (" + earSplit.utt + ")",
+        /lee chess/.test(earSplit.utt) && !/Lichess/.test(earSplit.utt));
+  check("while the SAY line reads Lichess (" + earSplit.say + ")",
+        /Lichess/.test(earSplit.say) && !/lee chess/.test(earSplit.say));
+  // the rest of the table, asked of the built function: Ava's
+  // BRO-vo, and the chess style's file letters - "A 5" came
+  // back as the article and "G 6" as the unit, so the voice
+  // gets the letter's NAME, disambiguator included
+  check("bravo is respelled for the voice only",
+        vm.runInContext('forTheEar("bravo 4.")', sandbox) === "brahvo 4." &&
+        vm.runInContext('forTheEar("bravo 7, bravo 5.")', sandbox) ===
+          "brahvo 7, brahvo 5.");
+  check("the chess letters speak their names (" +
+        vm.runInContext('forTheEar("bishop A 5.")', sandbox) + ")",
+        vm.runInContext('forTheEar("bishop A 5.")', sandbox) ===
+          "bishop ay 5." &&
+        vm.runInContext('forTheEar("G 6.")', sandbox) === "gee 6." &&
+        vm.runInContext('forTheEar("knight B D 2.")', sandbox) ===
+          "knight bee dee 2.");
+  check("and NATO words pass through untouched",
+        vm.runInContext('forTheEar("delta 7, delta 5.")', sandbox) ===
+          "delta 7, delta 5.");
   // ---- w57: the manifest names every source, and only sources ----
   // Splitting dialogue.js into practice.js and repairs.js made
   // this concrete: a new file in src/ that nobody adds to the
@@ -1762,19 +1810,23 @@ const sleep = ms =>
         speakStyle("chess") + ": " + spoken("Bc4", "f1c4") + ")",
         spoken("Bc4", "f1c4") === "bishop C 4" &&
         spoken("Nbd2", "b1d2") === "knight B D 2");
-  check("nato speaks the move's own two squares (" +
-        speakStyle("nato") + ": " + spoken("Bc4", "f1c4") + ")",
-        spoken("Bc4", "f1c4") === "foxtrot 1 charlie 4");
+  // the comma is the w121 breath between from and to - it
+  // buys GAP_CLAUSE_MS through splitForSpeech, because the
+  // flat pair ran on ("delta 7 delta 5", owner's report)
+  check("nato speaks the move's own two squares, with a " +
+        "breath between (" + speakStyle("nato") + ": " +
+        spoken("Bc4", "f1c4") + ")",
+        spoken("Bc4", "f1c4") === "foxtrot 1, charlie 4");
   check("nato castling is the king's own move, as it is " +
         "spoken in (" + spoken("O-O", "e1g1") + ")",
-        spoken("O-O", "e1g1") === "echo 1 golf 1");
+        spoken("O-O", "e1g1") === "echo 1, golf 1");
   check("nato keeps promotion and check, off the san (" +
         spoken("e8=Q+", "e7e8q") + ")",
         spoken("e8=Q+", "e7e8q") ===
-          "echo 7 echo 8, promotes to queen, check");
+          "echo 7, echo 8, promotes to queen, check");
   check("a takes says nothing extra in nato - the squares " +
         "are the whole sentence",
-        spoken("Bxc4", "f1c4") === "foxtrot 1 charlie 4");
+        spoken("Bxc4", "f1c4") === "foxtrot 1, charlie 4");
   check("and the choice is remembered under its flat key",
         sandbox.localStorage.getItem("audioplay.movespeech") === "nato");
   // through the page, not the unit: "repeat" re-speaks the
@@ -1785,7 +1837,7 @@ const sleep = ms =>
   const repeated = heard().join(" | ");
   check('"repeat" re-speaks the last move in the picked ' +
         "style (" + repeated + ")",
-        /echo 7 echo 8, promotes to knight/.test(repeated));
+        /echo 7, echo 8, promotes to knight/.test(repeated));
   // junk in storage reads as the default (the w99 rule)
   vm.runInContext(`
     localStorage.setItem("audioplay.movespeech", "greek");

@@ -189,7 +189,7 @@
         if (r.status === 429) {
           // the one wrong answer to a 429 is trying again at
           // once, and "rejected" invites exactly that (w63)
-          speak("lee chess asks us to slow down. " +
+          speak("Lichess asks us to slow down. " +
                 "wait a moment, then say the move again.");
           return;
         }
@@ -223,17 +223,17 @@
         return;
       }
       if (r.status === 429) {
-        speak("lee chess asks us to slow down. try that again in a moment.");
+        speak("Lichess asks us to slow down. try that again in a moment.");
         return;
       }
       var why = "";
       try { why = String(JSON.parse(r.body).error || ""); } catch (e) {}
       log("ERR", "action " + path + " refused: " + r.status +
           (why ? " " + why : ""));
-      speak("lee chess refused that." + (why ? " " + why : ""));
+      speak("Lichess refused that." + (why ? " " + why : ""));
     }).catch(function (e) {
       log("ERR", "action " + path + ": " + e.message);
-      speak("could not reach lee chess. that did not go through.");
+      speak("could not reach Lichess. that did not go through.");
     });
   }
 

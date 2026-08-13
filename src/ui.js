@@ -293,11 +293,12 @@
         // WEB (delta 2): no connect() - sign-in owns the
         // connection; the button owns the voice. The two
         // spoken hints cover the states a blind start hits.
-        // SPELLED FOR THE EAR, NOT THE EYE (w39): every
-        // English voice reads "lichess" as "LITCH-ess". It
-        // is spoken text, so it is spelled the way it
-        // should sound; the site's name is still written
-        // correctly everywhere it is READ.
+        // "LITCH-ess" was the w39 finding, and the
+        // respelling that fixes it moved into forTheEar
+        // (speech-out.js) at w121: the sentence here - and
+        // the SAY line it logs - now carries the site's
+        // real name, and only the synthesizer gets the
+        // phonetic form.
         // IN PRACTICE, THE ONLY TRUE HINT IS "VOICE ON" (w92).
         // The sign-in and waiting-for-a-game lines below assume
         // voice-on means heading into a real game; they predate
@@ -305,7 +306,7 @@
         // "sign in first" is a non-sequitur - practice needs no
         // token - and the owner heard exactly that and asked.
         if (dryRun) speak("voice on.");
-        else if (!storedToken()) speak("sign in with lee chess first.");
+        else if (!storedToken()) speak("sign in with Lichess first.");
         else if (!api.gameId) speak("voice on. waiting for a game.");
         // AND PICK THE GAME BACK UP (w50). Voice off leaves the
         // stream alone by design, but the stream can still die

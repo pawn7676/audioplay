@@ -3598,3 +3598,32 @@ only place they are written. Output only - the mic's
 vocabulary does not move with this. The boot line grew
 moves=, because behaviour now depends on what a device's
 storage says, and a pasted log must name it.
+
+### w121
+
+THE FIRST LISTEN TO w120, and all four of the owner's notes
+are about the same seam: what the synthesizer is handed
+versus what the log shows.
+
+The NATO style ran its two squares together - "delta 7 delta
+5", one breathless phrase. A comma now sits between from and
+to, which buys the same GAP_CLAUSE_MS pause every spoken
+comma already gets; no new pacing machinery, just
+punctuation the machinery was built for.
+
+The other three notes earned a rule w39 got half right.
+Ava says "bravo" as BRO-vo; the chess style's capital
+letters only sometimes carried the letter ("A 5" came back
+as the article, "G 6" as the unit gram, while "rook G 6"
+was fine - the capital was supposed to force the letter's
+name and does not); and the w39 fix for LITCH-ess had
+respelled the SENTENCES, so "lee chess" printed into every
+log this project asks users to paste. The owner asked for
+the log to read normally. So the respellings moved to the
+one place they are true: forTheEar, applied to the text
+handed to the synthesizer and nowhere else. The sentences
+now say Lichess, the SAY lines log them as written, and the
+voice gets "lee chess", "brahvo", and the chess letters'
+names (ay, bee, see...). If a voice still mangles one of
+those, the fix is a line in that table - not a respelled
+sentence.

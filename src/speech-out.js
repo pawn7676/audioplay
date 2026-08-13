@@ -153,6 +153,42 @@
     pumpSpeech();
   }
 
+  /* SPOKEN FOR THE EAR, LOGGED FOR THE EYE (w121). Three
+   * pronunciation problems share one shape: every English
+   * voice reads "lichess" as "LITCH-ess" (the w39 finding);
+   * Ava reads "bravo" as "BRO-vo" (the owner's 13 Aug
+   * report); and the chess announcement style's bare file
+   * letters only sometimes carry the letter - "A 5" came
+   * back "a five", the article, and "G 6" came back
+   * "gram 6", the unit, while "rook G 6" was fine. The
+   * capital was supposed to force the letter's name and
+   * does not.
+   *
+   * The old fix respelled the SENTENCES: "lee chess" was
+   * written into the source strings, so every SAY line
+   * carried the phonetic form into the log this project
+   * asks users to paste. The owner asked for the log to
+   * read normally - Lichess and bravo, not their phonetic
+   * forms. So the sentences are now written with the real
+   * words, log("SAY") records them as written, and this
+   * table is applied at the LAST moment, on the text handed
+   * to the synthesizer and nowhere else (pumpSpeech).
+   *
+   * The letter row matches capital-then-digit - "C 4",
+   * with an optional second square letter between for the
+   * disambiguated "knight B D 2" - a shape only the chess
+   * style's squares produce in spoken text. */
+  var EAR_LETTER = { A: "ay", B: "bee", C: "see", D: "dee",
+                     E: "ee", F: "eff", G: "gee", H: "aitch" };
+  function forTheEar(text) {
+    return String(text)
+      .replace(/lichess/gi, "lee chess")
+      .replace(/\bbravo\b/gi, "brahvo")
+      .replace(/\b([A-H])(?= (?:[A-H] )?\d)/g, function (_, l) {
+        return EAR_LETTER[l];
+      });
+  }
+
   // iOS fires onend while the audio is still playing. If the
   // next chunk is handed over then, the synthesizer queues it
   // internally and plays it back to back, so the gap elapses
@@ -261,7 +297,10 @@
     };
 
     try {
-      var u = new SpeechSynthesisUtterance(text);
+      // the one place the phonetic respellings apply (w121):
+      // the queue, the log and the debug line all carry the
+      // text as written
+      var u = new SpeechSynthesisUtterance(forTheEar(text));
       u.rate = SPEAK_RATE;
       u.pitch = SPEAK_PITCH;
       u.volume = 1;
@@ -409,7 +448,13 @@
    */
   function moveToSpeech(san, uci) {
     if (MOVE_SPEECH === "nato" && uci && uci.length >= 4) {
-      var words = natoSquare(uci.slice(0, 2)) + " " +
+      // A COMMA BETWEEN THE SQUARES (w121): spoken flat,
+      // "delta 7 delta 5" ran on as one breathless phrase
+      // (owner's report, first game on the style). The comma
+      // buys the same GAP_CLAUSE_MS pause every spoken comma
+      // gets (splitForSpeech), so the two squares land as
+      // two things - from, then to.
+      var words = natoSquare(uci.slice(0, 2)) + ", " +
                   natoSquare(uci.slice(2, 4));
       if (uci.length > 4 && SPOKEN_PIECE[uci[4].toUpperCase()]) {
         words += ", promotes to " + SPOKEN_PIECE[uci[4].toUpperCase()];
