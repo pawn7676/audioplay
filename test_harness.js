@@ -1064,6 +1064,51 @@ const sleep = ms =>
         /^<!doctype html>/i.test(tmpl.split("\n")[0].trim()));
   check("page button CSS is scoped to .panel",
         !/\n  button \{/.test(tmpl) && /\.panel button \{/.test(tmpl));
+
+  // ---- w130: the home screen icon ----
+  // ASK THE BYTES, NOT THE TAG. "the template mentions
+  // apple-touch-icon" is the kind of check that passes while
+  // the thing is broken (w27/w28): the whole icon is a base64
+  // blob, and every way it can be wrong - truncated, the wrong
+  // size, transparent, still carrying its own rounded corners
+  // - leaves the tag looking perfect. So this decodes it.
+  const iconHrefs = (tmpl.match(/<link rel="(?:apple-touch-icon|icon)" href="([^"]+)"/g) || [])
+    .map(m => m.slice(m.indexOf('href="') + 6, -1));
+  check("both icon links are there, and they are the same bytes",
+        iconHrefs.length === 2 && iconHrefs[0] === iconHrefs[1]);
+  const iconB64 = (iconHrefs[0] || "").replace("data:image/png;base64,", "");
+  const png = Buffer.from(iconB64, "base64");
+  const chunks = {};
+  for (let p = 8; p + 8 <= png.length; ) {
+    const len = png.readUInt32BE(p);
+    chunks[png.toString("ascii", p + 4, p + 8)] = png.slice(p + 8, p + 8 + len);
+    p += 12 + len;
+  }
+  const ihdr = chunks.IHDR || Buffer.alloc(13);
+  check("the icon decodes as a PNG",
+        png.slice(1, 4).toString("ascii") === "PNG" && !!chunks.IHDR && !!chunks.IDAT);
+  check("square, and the size iOS asks for",
+        ihdr.readUInt32BE(0) === 180 && ihdr.readUInt32BE(4) === 180);
+  // OPAQUE, both ways it can fail to be: an alpha channel
+  // (colour types 4 and 6), or a palette with a tRNS chunk.
+  // iOS composites transparency onto black, which is how a
+  // "transparent background" icon becomes a black smudge.
+  check("no transparency anywhere in it",
+        [0, 2, 3].includes(ihdr[9]) && !chunks.tRNS);
+  // FULL BLEED, asked of an actual pixel. iOS rounds the icon
+  // itself, so art that arrives already rounded shows pale
+  // corners inside the mask - the top left pixel is the one
+  // that says so, and it is reachable without a full decoder:
+  // on the first scanline the byte after the filter tag is
+  // literal whatever the filter, since every filter's
+  // reference bytes are zero there.
+  const first = require("zlib").inflateSync(chunks.IDAT || Buffer.alloc(0))[1];
+  const corner = ihdr[9] === 3
+    ? [chunks.PLTE[first * 3], chunks.PLTE[first * 3 + 1], chunks.PLTE[first * 3 + 2]]
+    : [first, first, first];
+  check("the corner is card, not paper - it goes to the edge",
+        Math.max.apply(null, corner) < 90);
+  check("and the icon costs the page under 3KB", iconB64.length < 3072);
   // ---- w120: the owner's layout ----
   // The board panel opens the page, bare - then ONE merged
   // panel of everything that acts (the button row and the

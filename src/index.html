@@ -55,6 +55,46 @@
      take away pinch-zoom from someone who may need it. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Audioplay</title>
+<!-- THE ICON, AND IT LIVES IN THIS FILE AS BYTES (w130).
+     Until now the page had no icon at all, so adding it to the
+     iPad home screen - which is how it is used - got iOS's
+     fallback: a shrunken screenshot of a mostly black page,
+     indistinguishable at arm's length from any other dark
+     tile. The icon is a knight, cream on near black, one shape
+     and nothing else, because the tile is read by someone
+     standing away from the device without reading glasses.
+
+     WHY A data: URI RATHER THAN A FILE. deploy.yml publishes a
+     directory holding exactly one thing - the index.html
+     build.js wrote - deliberately, so there is no second copy
+     of anything that can fall out of step (the w18 shape). An
+     icon.png beside it would have to be copied in by the
+     workflow, and then a local build would not have it while
+     the deployed page did. Inlined, the icon ships wherever
+     the page ships and cannot go missing on its own.
+
+     WHY IT IS FULL BLEED. iOS applies its own rounded mask to
+     an apple-touch-icon. Art that already has rounded corners
+     gets rounded twice, leaving pale slivers in the corners,
+     and transparency is composited onto black. So what is
+     stored here is the INSIDE of the generated art's rounded
+     card, cropped past the arc: an opaque square, 180x180, no
+     alpha. Any replacement must obey those three.
+
+     WHY IT IS SMALL. It is a palette PNG - a 64 step ramp from
+     the card's black to the piece's cream - which is all this
+     art is once the render noise is thrown away. 1.2KB,
+     against 18KB for the same image kept as noisy RGB.
+
+     WHY IT APPEARS TWICE. One rel carrying both keywords is
+     not reliably honoured, and that is not a thing that can be
+     tested from here. Two tags, the same bytes: the home
+     screen takes the first, a browser tab the second. The
+     harness asserts they are identical, so the duplication
+     cannot rot. The bytes ARE the source - base64 -d gives the
+     PNG back - so there is nothing kept anywhere else. -->
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAMAAAAKE/YAAAAAwFBMVEUaGhkdHR0hISAkJCMoKCcsKyovLi0zMjE2NTQ6OTc9PDtBQD5EQ0FIR0VLSkhPTktSUU5WVFJaWFVdW1hhX1xkYl9oZmJraWZvbWlycGx2dHB5d3N9e3aAfnmEgX2IhYCLiIOPjIeSj4qWk42ZlpGdmpSgnZekoZunpJ6rp6Guq6Syrqi1squ5ta69ubLAvLXEwLjHw7zLx7/OysLSzcbV0cnZ1Mzc2NDg29Pj39bn4tnr5t3u6eDy7eP18Of59Or+/Je6AAADsElEQVR42u2c6XLaMBCABdgDBDuTCyg0TblSbI5A0wDFBPb936oDNAeJwZLskXbb/X4kE6yZfCPL0u5KRgiGYRiGYRiGYRiGYRjDOBcEpdewLJHraACAGjFpdysNPYrSMCQlXdhLw5iiNKm+fpWGDrHZY88NRWko0RseAL+pSOffScOPco6EdAkOiYZN9KPEieAzm/AKtfQM4tm0CmidR3CcoIjTuQ0nCR2EzjVI4hs65yIk8xOb9EJCGqIzVM4DkKOByLkDsgRonOsgD5YEoQRAz3qpJI1jhNyDIgiexgtQxvrMl9+oS0e2pSeggeW18Ra0sBqHnIEmFiNsZ6MrPbInPQZtrCWPl/rOMCA021nv6nEaZwjRx3Zx2KjluCmd4c6C9GNa6ZV55xtITYXOsvKG8R2lWXpn4+OjBVlQNupcycQZ2iizwsXpesgcS330gMuE/NGgc1PW+TEpr/FQ1Rr3FEV0ukEdX1bYECKhhbE9UlchtqhhifRqCvFQ0k2ZIltXmh82Q2N5MiXdk1He+FJNF5ikp/ltyxygkU4uz8yqspXJGZK4Y9V9CYO85Dvyy9g8feT/Dwfh/d21q5SrT4xJd2Pq5Oefmz2hqq/nnj8Ga25Mq6HMJNMyFzD5Eve4KzWZmzx4eJDUxh6hacitQJ5BaXH19pAtnBR1HMNJYvVh382x1fGvks5L85WPon+kcBHIxoFdgYXck3SS4GNxdiP5bByLc2mNv66unz/iOdpZXKtI43AuK9WXpiicz9WKYihGh+pGKAZnB3t1OouKNYajs11F5zkCZ+WjKggew5yq8xpBR49UpZv2ndX35wgODiu7tR/oEOxooezctu+sfPhqg6Cjn0mdFdNcVzCM6IGqc5/iY1i27+xRXMGV544QgfSYYHwnVqrSLsXnkGBqaOOQWMpah8ltuBP4xE6p61RoTO4dZri2RAikSxRnD/VUy6E4T39BID1VlW4JhkFMvR8GQdDvByfZXf7bqB+G7YpNZeU1HMELRUL/uLq9AuS1/tHppTXpW31pe4v5DcWeFvrSFitjFYqzhxD1Xu8+liMf7y61PMH8H+QL+fcUDv88IPfSxqpwoTPXfBAnVVvO39O8TTS3Ux2bQDpsTCEBpMV8X3upnQ2entbOZzEMkCxe7TO9J+BnIW061Ktm8hal6UCJonSNorSbhfOD6dmjnYG0+cipl1Z5ZePbCvPeDn/H7vf2h+e9fvzu8lubV8h9uzbDMAzDMAzDMAzDMAzz7/AHal3uI/eEL5IAAAAASUVORK5CYII=">
+<link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAMAAAAKE/YAAAAAwFBMVEUaGhkdHR0hISAkJCMoKCcsKyovLi0zMjE2NTQ6OTc9PDtBQD5EQ0FIR0VLSkhPTktSUU5WVFJaWFVdW1hhX1xkYl9oZmJraWZvbWlycGx2dHB5d3N9e3aAfnmEgX2IhYCLiIOPjIeSj4qWk42ZlpGdmpSgnZekoZunpJ6rp6Guq6Syrqi1squ5ta69ubLAvLXEwLjHw7zLx7/OysLSzcbV0cnZ1Mzc2NDg29Pj39bn4tnr5t3u6eDy7eP18Of59Or+/Je6AAADsElEQVR42u2c6XLaMBCABdgDBDuTCyg0TblSbI5A0wDFBPb936oDNAeJwZLskXbb/X4kE6yZfCPL0u5KRgiGYRiGYRiGYRiGYRjDOBcEpdewLJHraACAGjFpdysNPYrSMCQlXdhLw5iiNKm+fpWGDrHZY88NRWko0RseAL+pSOffScOPco6EdAkOiYZN9KPEieAzm/AKtfQM4tm0CmidR3CcoIjTuQ0nCR2EzjVI4hs65yIk8xOb9EJCGqIzVM4DkKOByLkDsgRonOsgD5YEoQRAz3qpJI1jhNyDIgiexgtQxvrMl9+oS0e2pSeggeW18Ra0sBqHnIEmFiNsZ6MrPbInPQZtrCWPl/rOMCA021nv6nEaZwjRx3Zx2KjluCmd4c6C9GNa6ZV55xtITYXOsvKG8R2lWXpn4+OjBVlQNupcycQZ2iizwsXpesgcS330gMuE/NGgc1PW+TEpr/FQ1Rr3FEV0ukEdX1bYECKhhbE9UlchtqhhifRqCvFQ0k2ZIltXmh82Q2N5MiXdk1He+FJNF5ikp/ltyxygkU4uz8yqspXJGZK4Y9V9CYO85Dvyy9g8feT/Dwfh/d21q5SrT4xJd2Pq5Oefmz2hqq/nnj8Ga25Mq6HMJNMyFzD5Eve4KzWZmzx4eJDUxh6hacitQJ5BaXH19pAtnBR1HMNJYvVh382x1fGvks5L85WPon+kcBHIxoFdgYXck3SS4GNxdiP5bByLc2mNv66unz/iOdpZXKtI43AuK9WXpiicz9WKYihGh+pGKAZnB3t1OouKNYajs11F5zkCZ+WjKggew5yq8xpBR49UpZv2ndX35wgODiu7tR/oEOxooezctu+sfPhqg6Cjn0mdFdNcVzCM6IGqc5/iY1i27+xRXMGV544QgfSYYHwnVqrSLsXnkGBqaOOQWMpah8ltuBP4xE6p61RoTO4dZri2RAikSxRnD/VUy6E4T39BID1VlW4JhkFMvR8GQdDvByfZXf7bqB+G7YpNZeU1HMELRUL/uLq9AuS1/tHppTXpW31pe4v5DcWeFvrSFitjFYqzhxD1Xu8+liMf7y61PMH8H+QL+fcUDv88IPfSxqpwoTPXfBAnVVvO39O8TTS3Ux2bQDpsTCEBpMV8X3upnQ2entbOZzEMkCxe7TO9J+BnIW061Ktm8hal6UCJonSNorSbhfOD6dmjnYG0+cipl1Z5ZePbCvPeDn/H7vf2h+e9fvzu8lubV8h9uzbDMAzDMAzDMAzDMAzz7/AHal3uI/eEL5IAAAAASUVORK5CYII=">
 <style>
   :root {
     --bg:      #161512;

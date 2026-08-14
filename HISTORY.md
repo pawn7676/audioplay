@@ -3815,3 +3815,48 @@ show is the same five tabular characters, ticking or not,
 set or not. What tells an unset clock from a flagged one is
 what tells everything in this rail - colour. Unset is the
 waiting grey, dimmed; a flag is red.
+
+### w130
+
+THE PAGE HAD NO ICON, which nobody notices from a browser
+and everybody notices on a home screen: added to the iPad,
+it got iOS's fallback thumbnail - a shrunken screenshot of
+a page that is almost entirely #161512 - so the tile that
+launches this was a dark rectangle among dark rectangles,
+found by memory of its position rather than by sight. That
+is the wrong failure for a project whose whole premise is
+someone across the room without reading glasses.
+
+The icon is a knight, cream on near black. Of the three
+candidates the owner generated, it was the only one that
+survives being 60 pixels: one shape, maximum contrast,
+centred. A half-white half-black king read well large and
+went to a blob small (the black half sits on the black
+field), and a photorealistic five-piece scene went to mush.
+Its two colours land within a few points of --bg and the
+lit-text cream by accident, so the tile and the page it
+opens look like the same object.
+
+Three decisions worth the space, because each is a way this
+could have been done wrong and looked right:
+
+It ships as a data: URI in the template, not a file next to
+the page. deploy.yml publishes a directory containing
+exactly one thing, on purpose - there is no second copy to
+drift (w18). A file would have to be copied in by the
+workflow, and then a local build would differ from the
+deployed one in a way only the device shows.
+
+It is cropped to full bleed, past the arc of the generated
+art's own rounded corners. iOS masks the icon itself; art
+that arrives pre-rounded is rounded twice and shows pale
+slivers in the corners. The harness asks an actual decoded
+pixel about that, not the tag - a check that greps for
+"apple-touch-icon" passes while the icon is broken, and
+that mistake has been made here before (w27/w28).
+
+It is a palette PNG, a ramp between the two colours, which
+is all the art is once the render noise is discarded: 1.2KB
+inlined instead of 18KB. The bytes are the source; there is
+no original kept anywhere else, because base64 -d gives it
+back.
