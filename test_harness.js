@@ -1109,6 +1109,24 @@ const sleep = ms =>
   check("the corner is card, not paper - it goes to the edge",
         Math.max.apply(null, corner) < 90);
   check("and the icon costs the page under 3KB", iconB64.length < 3072);
+  // THE ORIGINAL IS THE ORIGINAL, PROVABLY. art/ holds the
+  // 1254px art the icon was cut down from, and a picture
+  // nobody can turn back into the shipped bytes is a picture
+  // someone will eventually replace without touching the page
+  // - two copies, drifting, which is the w18 shape again. So
+  // the icon is RE-CUT here and compared against the one the
+  // template carries.
+  //
+  // Compared as pixels, not as file bytes, on purpose: zlib's
+  // output may differ between versions, so a byte comparison
+  // would fail on a runner with a different zlib while saying
+  // nothing at all about the icon.
+  const mkicon = require("./art/mkicon.js");
+  const cut = mkicon.render();
+  const shipped = mkicon.decode(png);
+  check("the page's icon is the art in art/, cut down by art/mkicon.js",
+        shipped.w === cut.size && shipped.h === cut.size &&
+        shipped.palette.equals(cut.palette) && shipped.px.equals(cut.indices));
   // ---- w120: the owner's layout ----
   // The board panel opens the page, bare - then ONE merged
   // panel of everything that acts (the button row and the
