@@ -3857,6 +3857,25 @@ that mistake has been made here before (w27/w28).
 
 It is a palette PNG, a ramp between the two colours, which
 is all the art is once the render noise is discarded: 1.2KB
-inlined instead of 18KB. The bytes are the source; there is
-no original kept anywhere else, because base64 -d gives it
-back.
+inlined instead of 18KB.
+
+AMENDED THE SAME DAY. This said the inlined bytes were the
+only copy and nothing else was kept, since base64 -d gives
+the PNG back. True, and not enough: 180 flattened pixels
+cannot be cut differently or cut larger, so the next size
+this ever needs would have meant new art rather than the
+same knight. The owner offered the 1254px original and it
+is in art/ now, beside art/mkicon.js, the tool that cuts
+one down to the other.
+
+What makes that worth its 1.3MB is the check, not the file.
+A picture nobody can turn back into the shipped bytes is a
+picture someone eventually replaces without touching the
+page - two copies, drifting, which is w18 wearing a
+different hat. So the harness re-cuts the icon from the
+original on every run and compares it to the one the
+template carries, pixel by pixel and palette entry by
+palette entry. It compares PIXELS rather than file bytes on
+purpose: zlib may compress differently between versions, so
+a byte comparison would go red on a runner with a newer
+zlib while saying nothing whatever about the icon.
