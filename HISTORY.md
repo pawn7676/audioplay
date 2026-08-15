@@ -3899,3 +3899,21 @@ of rule 5 - success goes quiet, errors still speak. This
 does not reopen the sound case: WHAT is confirmed is
 unchanged, one bit, and the chime keeps its seat as the
 default; only the carrier became the player's choice.
+
+### w132
+
+THE FLIP TO CHIME NOW PRIMES THE CHIME, from w131's first
+practice run: the owner flipped Confirm from voice back to
+chime, and the very next confirm said "okay." - he chose a
+chime, got a word, and read the new setting as broken. It
+was not: the context had sat in iOS's interrupted state
+since the mic opened, nothing had woken it because no chime
+was attempted while voice held the seat, and picking chime
+on the select was not one of the gestures that call
+primeChimes (only the voice and practice taps were). But a
+tap on the select IS a gesture, and it is the one that just
+said "I want the chime" - so it primes now, and the first
+confirm after the flip chimes instead of apologising. The
+"okay." fallback itself is untouched: an interruption
+mid-game still costs one spoken confirm and is rescued on
+the next, which is rule 5 doing its job.

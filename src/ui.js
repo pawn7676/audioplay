@@ -900,6 +900,17 @@
       try { localStorage.setItem(CONFIRM_MODE_KEY, CONFIRM_MODE); }
       catch (e) { log("ERR", "could not save confirm: " + e.message); }
       log("SET", "confirm " + CONFIRM_MODE);
+      // CHOOSING THE CHIME IS ITSELF A GESTURE (w132), so it
+      // wakes the context on the spot. Without this, the tap
+      // that picked chime primed nothing - only the voice and
+      // practice taps did - and the first confirm afterwards
+      // found the context iOS had interrupted and spoke
+      // "okay." instead: the owner chose a chime, got a word,
+      // and reasonably read it as the setting being broken
+      // (15 Aug practice log). The fallback still exists for
+      // interruptions mid-game; this just stops the flip
+      // itself from manufacturing one.
+      if (CONFIRM_MODE === "chime") primeChimes();
     });
   }
 
