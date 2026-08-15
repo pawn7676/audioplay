@@ -27,6 +27,7 @@
   function settingsSummary() {
     return "ratings=" + (SHOW_RATINGS ? "on" : "off") +
            " moves=" + MOVE_SPEECH +
+           " confirm=" + CONFIRM_MODE +
            (VOICE_NAME ? " voice=" + VOICE_NAME : " voice=system");
   }
 

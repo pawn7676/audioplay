@@ -869,10 +869,12 @@
   function wireSettings() {
     var row = el("settingsRow");
     var ratings = el("setRatings"), speech = el("setSpeech");
-    if (!row || !ratings || !speech) return;
+    var confirm = el("setConfirm");
+    if (!row || !ratings || !speech || !confirm) return;
     row.style.display = "none";
     ratings.value = SHOW_RATINGS ? "on" : "off";
     speech.value = MOVE_SPEECH;
+    confirm.value = CONFIRM_MODE;
     ratings.addEventListener("change", function () {
       SHOW_RATINGS = ratings.value === "on";
       try { localStorage.setItem(RATINGS_KEY, SHOW_RATINGS ? "on" : "off"); }
@@ -889,6 +891,15 @@
       try { localStorage.setItem(MOVE_SPEECH_KEY, MOVE_SPEECH); }
       catch (e) { log("ERR", "could not save move speech: " + e.message); }
       log("SET", "moves spoken " + MOVE_SPEECH);
+    });
+    confirm.addEventListener("change", function () {
+      if (confirm.value === "chime" || confirm.value === "voice" ||
+          confirm.value === "none") {
+        CONFIRM_MODE = confirm.value;
+      }
+      try { localStorage.setItem(CONFIRM_MODE_KEY, CONFIRM_MODE); }
+      catch (e) { log("ERR", "could not save confirm: " + e.message); }
+      log("SET", "confirm " + CONFIRM_MODE);
     });
   }
 

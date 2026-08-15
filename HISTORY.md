@@ -3860,3 +3860,42 @@ is all the art is once the render noise is discarded: 1.2KB
 inlined instead of 18KB. The bytes are the source; there is
 no original kept anywhere else, because base64 -d gives it
 back.
+
+### w131
+
+TWO CHANGES FROM ONE GAME LOG (15 Aug 2026, the maia9 game
+on w130), both the owner's ask.
+
+"THAT IS NOT A LEGAL MOVE." The w118 refusal was one
+sentence for everything, and this game showed the cost:
+four tries at Nc3 with the knight's path blocked, four
+clean hearings of "bravo one charlie three", four identical
+"Say again."s - and no way for the player to learn whether
+the mic or the move was the problem. So the owner moved the
+line he drew at w118: a WHOLE four-item move, heard clean,
+whose from-to matches no legal move is now answered "That
+is not a legal move." - it confirms the hearing and states
+legality, which is all rules.js may answer, and it still
+reads nothing back, explains nothing, suggests nothing.
+Everything damaged, incomplete, or disagreed-on between
+rival readings is "Say again." exactly as before. The line
+lives at namesIllegalMove (matching.js). One accepted cost,
+stated so it is not rediscovered as a bug: a mishearing
+that lands on a complete-but-illegal move now draws the
+legality sentence for a move the player believes legal -
+the answer to either sentence is the same, look, then say
+it again.
+
+CONFIRM IS A SETTING - chime, voice, or none, chime the
+default, third row of the settings strip. The same game's
+second half is the case for it: after the screen-off
+suspension every confirm chime was scheduled and logged and
+the owner heard none of them - the exact "chimed and the
+user did not hear it" gap chimes.js has always documented
+as unanswerable. Voice is the escape it offers: the move
+read back whole, the one channel this platform has never
+lost. None is the owner's to choose and an explicit waiver
+of rule 5 - success goes quiet, errors still speak. This
+does not reopen the sound case: WHAT is confirmed is
+unchanged, one bit, and the chime keeps its seat as the
+default; only the carrier became the player's choice.

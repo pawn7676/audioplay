@@ -728,6 +728,8 @@ const sleep = ms =>
         // w120: the announcement style is a stored choice, so
         // a pasted log must say which one the device speaks
         /moves=(pieces|squares)/.test(bootLine) &&
+        // w131: how a move is confirmed is a stored choice too
+        /confirm=(chime|voice|none)/.test(bootLine) &&
         // the dead switch names must NOT be in the boot line:
         // a name reappearing here means a setting crept back
         !/confirmMine|guardPawnPushes/.test(bootLine) &&
@@ -739,6 +741,10 @@ const sleep = ms =>
         "w120 spoke",
         /moves=pieces/.test(bootLine) &&
         vm.runInContext("MOVE_SPEECH", sandbox) === "pieces");
+  check("and confirm defaults chime - what every game since " +
+        "w116 played",
+        /confirm=chime/.test(bootLine) &&
+        vm.runInContext("CONFIRM_MODE", sandbox) === "chime");
 
   // ---- w70/w71: the rail follows the board; the CLOCK BOX
   // is the turn indicator ----
@@ -1773,11 +1779,31 @@ const sleep = ms =>
             return l.indexOf('"patient" not understood') >= 0;
           })
         `, sandbox));
-  // an illegal four-item move: same three words, no lecture
+  // an illegal four-item move, heard WHOLE: named as illegal
+  // (owner's revision, w131 - through w130 it drew the same
+  // "Say again.", and four clean hearings of a blocked Nc3
+  // could not be told from four mishearings). Verbatim, and
+  // nothing more: no read-back, no reason, no suggestion.
   await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
   say("echo two golf four");
   await sleep(120);
-  check('an illegal move is the same "Say again."',
+  check('a whole illegal move is "That is not a legal move."',
+        heard().join(" | ") === "That is not a legal move." &&
+        vm.runInContext("api.moves.length", sandbox) === 0);
+  // the owner's own case: Nc3 with the c3 pawn in the way
+  await setBoard(
+    "rnbqkbnr/pp1ppppp/8/8/4P3/2Pp4/PP3PPP/RNBQKBNR w KQkq - 0 4");
+  say("bravo one charlie three");
+  await sleep(120);
+  check("the blocked knight from the 15 Aug log is named illegal",
+        heard().join(" | ") === "That is not a legal move." &&
+        vm.runInContext("api.moves.length", sandbox) === 0);
+  // but a DAMAGED hearing of illegal squares is still a
+  // hearing problem: the unknown word keeps it "Say again."
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("patient echo two golf four");
+  await sleep(120);
+  check('a damaged reading of illegal squares stays "Say again."',
         heard().join(" | ") === "Say again.");
   // the OLD grammar's sentences are foreign now: piece words
   // are unknown words
@@ -1989,14 +2015,81 @@ const sleep = ms =>
         /okay/i.test(suspendedSaid) &&
         vm.runInContext("__chimeStarts", sandbox) === 2);
   vm.runInContext('chimeCtx.state = "running";', sandbox);
-  // "Say again." is SPOKEN, never chimed: a refusal must
-  // carry its word
+  // a refusal is SPOKEN, never chimed - it must carry its
+  // word, whichever refusal it is (w131 split them in two)
   await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
   say("echo two golf four");
+  await sleep(120);
+  check("the illegal-move refusal is spoken even with the " +
+        "chime available",
+        /not a legal move/i.test(heard().join(" | ")) &&
+        vm.runInContext("__chimeStarts", sandbox) === 2);
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo two echo");
   await sleep(120);
   check('"Say again." is spoken even with the chime available',
         /say again/i.test(heard().join(" | ")) &&
         vm.runInContext("__chimeStarts", sandbox) === 2);
+
+  // ====== w131: HOW THE CONFIRM IS CARRIED IS A SETTING ======
+  // Chime (the default; everything above ran on it), Voice
+  // (the move read back whole - the channel a suspended
+  // audio route cannot silently eat, the 15 Aug log's gap),
+  // None (the owner's explicit waiver: success quiet, errors
+  // still speak). Flipped through the BUILT select, whose
+  // handler owns the variable and the storage - and asked of
+  // the move path, not the unit.
+  const confirmStyle = (v) => vm.runInContext(`
+    var sel = document.getElementById("setConfirm");
+    sel.value = ${JSON.stringify(v)}; sel.on_change();
+    CONFIRM_MODE;
+  `, sandbox);
+  check("confirm defaults to chime, and the boot line says so",
+        vm.runInContext("CONFIRM_MODE", sandbox) === "chime" &&
+        vm.runInContext("settingsSummary()", sandbox)
+          .indexOf("confirm=chime") >= 0);
+  check("junk in the select changes nothing",
+        confirmStyle("banana") === "chime");
+  confirmStyle("voice");
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo two echo four");
+  await sleep(120);
+  const voiceConf = heard().join(" | ");
+  check("confirm=voice reads the accepted move back, no chime (" +
+        voiceConf + ")",
+        voiceConf ===
+          vm.runInContext('moveToSpeech("e4", "e2e4")', sandbox) + "." &&
+        vm.runInContext("__chimeStarts", sandbox) === 2 &&
+        vm.runInContext("api.lastSan", sandbox) === "e4");
+  check("and the choice is remembered under its flat key",
+        sandbox.localStorage.getItem("audioplay.confirm") === "voice");
+  confirmStyle("none");
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo two echo four");
+  await sleep(120);
+  check("confirm=none plays the move and says NOTHING",
+        heard().length === 0 &&
+        vm.runInContext("__chimeStarts", sandbox) === 2 &&
+        vm.runInContext("api.lastSan", sandbox) === "e4");
+  // none waives the CONFIRMATION only - a refusal still talks
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  say("echo two golf four");
+  await sleep(120);
+  check("confirm=none still speaks the refusals",
+        /not a legal move/i.test(heard().join(" | ")));
+  // junk in storage reads as the default (the w99 rule)
+  vm.runInContext(`
+    localStorage.setItem("audioplay.confirm", "beep");
+    loadStoredSettings();
+  `, sandbox);
+  check("a junk stored confirm reads as chime",
+        vm.runInContext("CONFIRM_MODE", sandbox) === "chime");
+  vm.runInContext(`
+    localStorage.removeItem("audioplay.confirm");
+    loadStoredSettings();
+  `, sandbox);
+  check("back to chime with the key gone",
+        confirmStyle("chime") === "chime");
   // leave the sandbox as WebAudio-less as it started
   vm.runInContext("AudioContext = undefined; chimeCtx = null;", sandbox);
 

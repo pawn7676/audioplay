@@ -74,3 +74,28 @@
     });
     return out;
   }
+
+  /* The one distinction the refusal is allowed to make (owner's
+   * revision, w131, from a real game - four tries at a blocked
+   * Nc3, four identical "Say again."s, and no way to tell a
+   * mishearing from a bad move): did some reading reduce to a
+   * clean four-item move - nothing missing, no unknown word -
+   * whose from-to pair matches NO legal move? Then the mic
+   * heard a whole move and the move itself is the problem, and
+   * the caller says "That is not a legal move." instead. This
+   * asks about the SQUARES only: a four-square pair that is
+   * legal but fell to the promotion rule ("equals knight" on a
+   * move that does not promote) stays a mishearing, and rival
+   * readings that disagree never reach here - with a candidate
+   * on the board the mic is guessing, not the player.
+   */
+  function namesIllegalMove(pos, transcripts) {
+    var fromTo = {};
+    pos.legalMoves().forEach(function (m) {
+      fromTo[pos.uciOf(m).slice(0, 4)] = true;
+    });
+    return transcripts.some(function (raw) {
+      var pm = parseMove(raw);
+      return !!pm && !fromTo[pm.uci];
+    });
+  }
