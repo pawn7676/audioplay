@@ -2090,6 +2090,27 @@ const sleep = ms =>
   `, sandbox);
   check("back to chime with the key gone",
         confirmStyle("chime") === "chime");
+  // w132: the flip TO chime is itself a gesture and wakes the
+  // context right there. Without it the owner's first w131
+  // practice run chose chime and heard "okay." - the context
+  // had sat interrupted since the mic opened, and only the
+  // voice and practice taps primed (15 Aug log).
+  vm.runInContext(`
+    __resumed = 0;
+    chimeCtx = { state: "interrupted",
+                 resume: function () { __resumed++; } };
+  `, sandbox);
+  confirmStyle("voice");
+  check("flipping to voice leaves the chime context alone",
+        vm.runInContext("__resumed", sandbox) === 0);
+  confirmStyle("chime");
+  check("flipping to chime primes the interrupted context",
+        vm.runInContext("__resumed", sandbox) === 1);
+  // and with no context yet, the flip is a creation gesture
+  vm.runInContext("chimeCtx = null;", sandbox);
+  confirmStyle("voice"); confirmStyle("chime");
+  check("flipping to chime creates the context if none exists",
+        vm.runInContext("!!chimeCtx", sandbox));
   // leave the sandbox as WebAudio-less as it started
   vm.runInContext("AudioContext = undefined; chimeCtx = null;", sandbox);
 
