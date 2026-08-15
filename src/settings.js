@@ -114,6 +114,23 @@
   var MOVE_SPEECH = "pieces";
   var MOVE_SPEECH_KEY = "audioplay.movespeech";
 
+  // HOW AN ACCEPTED MOVE IS CONFIRMED (w131, owner's request)
+  // - the Settings row's third choice. The signal itself is
+  // one bit ("heard exactly, legal, played" - confirmFeedback,
+  // dialogue.js); this picks what carries it:
+  //   chime   two rising notes (chimes.js), the default and
+  //           what every game since w116 played; falls back
+  //           to a spoken "okay." when no chime can even be
+  //           scheduled
+  //   voice   the move read back whole (moveToSpeech), for
+  //           ears the chime has gone missing on - it is
+  //           speech, so it is never silently lost
+  //   none    nothing on success. An explicit waiver of
+  //           rule 5 by the one person it protects; errors
+  //           still speak.
+  var CONFIRM_MODE = "chime";
+  var CONFIRM_MODE_KEY = "audioplay.confirm";
+
   // Loaded on boot, before the page builds, so the selects
   // and the first announcement both agree with storage. Junk
   // or a missing key reads as the default - the rated
@@ -125,11 +142,16 @@
     // held before it ran, so calling it IS a settings reload
     SHOW_RATINGS = false;
     MOVE_SPEECH = "pieces";
+    CONFIRM_MODE = "chime";
     try {
       SHOW_RATINGS = localStorage.getItem(RATINGS_KEY) === "on";
       var s = localStorage.getItem(MOVE_SPEECH_KEY);
       if (s === "pieces" || s === "squares") {
         MOVE_SPEECH = s;
+      }
+      var c = localStorage.getItem(CONFIRM_MODE_KEY);
+      if (c === "chime" || c === "voice" || c === "none") {
+        CONFIRM_MODE = c;
       }
     } catch (e) { /* private mode; the defaults stand */ }
   }
@@ -137,7 +159,8 @@
   /* THE STORAGE AUDIT (w111, owner's request): every key
    * this program keeps is named audioplay.<what it is> -
    * token, verifier, panels, opponent, rated, timecontrol,
-   * and since w120 ratings and movespeech -
+   * since w120 ratings and movespeech, and since w131
+   * confirm -
    * and storage holds NOTHING else of ours. This list is
    * every name a previous era wrote on this origin, removed
    * on boot so no dead key sits behind the program to

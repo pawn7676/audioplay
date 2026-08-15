@@ -34,6 +34,13 @@
    *  a question hung on the answer, all talk now that nothing
    *  is ever asked. The log still carries what was heard, for
    *  afterwards; the room gets three words.
+   *
+   *  ONE CARVE-OUT SINCE w131 (owner's revision, from a real
+   *  game): a WHOLE move, heard clean, that is simply not
+   *  legal gets "That is not a legal move." instead - see
+   *  namesIllegalMove (matching.js) for the line and why it
+   *  is drawn where it is. Everything damaged, incomplete, or
+   *  disagreed-on is still the same three words.
    *================================================================*/
 
   var confirmAction = null;  // key into CONFIRMS
@@ -93,12 +100,29 @@
   var armedUci = null;
 
   // The post-move feedback (w108 shape; the whole own-move
-  // channel since w116): the chime when it can be scheduled, a
-  // spoken "okay." when it cannot (rule 5 - never silence).
-  // Under the w118 grammar the chime confirms a move the user
-  // spoke WHOLE - all four items - so the one bit it carries
-  // is the bit that is owed: heard exactly, legal, played.
-  function confirmFeedback() {
+  // channel since w116). Under the w118 grammar it confirms a
+  // move the user spoke WHOLE - all four items - so the one
+  // bit it carries is the bit that is owed: heard exactly,
+  // legal, played. HOW it is carried is the Confirm setting
+  // (w131, owner's request; settings.js has the table):
+  //   chime   the default - two notes when they can be
+  //           scheduled, a spoken "okay." when they cannot
+  //           (rule 5 - never silence by accident)
+  //   voice   the move read back whole, the same sentence an
+  //           opponent's move gets - the sound case's rule
+  //           that spoken confirmation must carry information
+  //           (header.js), and it is never lost where a chime
+  //           can go unheard
+  //   none    nothing. A DELIBERATE rule-5 exemption, like
+  //           the stray-talk one: the owner chose to waive
+  //           the confirmation, and only the confirmation -
+  //           every error path below still speaks.
+  function confirmFeedback(san, uci) {
+    if (CONFIRM_MODE === "none") return;
+    if (CONFIRM_MODE === "voice") {
+      speak(moveToSpeech(san, uci) + ".");
+      return;
+    }
     if (playConfirmChime()) return;
     speak("okay.");
   }
@@ -116,7 +140,7 @@
     // than a confirmation can. api.over alone was not enough
     // then and is not now.
     if (api.over || /#$/.test(san)) return;
-    confirmFeedback();
+    confirmFeedback(san, uci);
   }
 
   /* quiet=true is a tapped move (touch.js): no confirmation,
@@ -154,7 +178,7 @@
       // same one-bit feedback as the live path, so practice
       // is where the chime can be heard without a game at
       // stake
-      if (!quiet) confirmFeedback();
+      if (!quiet) confirmFeedback(c.san, uci);
       // CALLED BY NAME, NOT BY REFERENCE (w54): late binding
       // costs nothing and means the current definition is the
       // one that runs.
@@ -353,6 +377,18 @@
     // the completion. "If we get too fancy with using logic to
     // fix mishears, we're going down the wrong path."
     if (moveLike || cands.length > 1) {
+      // THE ONE CARVE-OUT from the single refusal (owner's
+      // revision, w131): a whole four-item move, heard clean,
+      // that is not legal is answered "That is not a legal
+      // move." - the two failures ask for different next
+      // steps (say it again, or look at the board again), and
+      // the sentence tells the user they WERE heard. Still no
+      // read-back, no reason why, and nothing suggested:
+      // legality is stated, which is all rules.js may answer.
+      if (!cands.length && namesIllegalMove(api.pos, transcripts)) {
+        speak("That is not a legal move.");
+        return;
+      }
       speak("Say again.");
       return;
     }

@@ -43,17 +43,25 @@
    *  user said all four items; the chime says they landed.
    *
    *  ANYTHING LESS IS "Say again." - all of it, on purpose
-   *  (owner's decision, w118). Not "I heard X", not "that is
-   *  not legal", no filling in a missing item by what is
-   *  legal, however unique the completion. The old grammar's
-   *  repair chain could turn half a hearing into the right
-   *  move most days, and into c4-instead-of-Bc4 once - and
-   *  once was the whole game. A system that never guesses
-   *  cannot guess wrong: the ONLY thing that plays is four
-   *  items heard whole, and the one answer to everything else
-   *  is the same three words. If several rival readings parse
-   *  to DIFFERENT legal moves, that is a mishearing by
-   *  definition, and it is "Say again." too.
+   *  (owner's decision, w118). Not "I heard X", no filling in
+   *  a missing item by what is legal, however unique the
+   *  completion. The old grammar's repair chain could turn
+   *  half a hearing into the right move most days, and into
+   *  c4-instead-of-Bc4 once - and once was the whole game. A
+   *  system that never guesses cannot guess wrong: the ONLY
+   *  thing that plays is four items heard whole. If several
+   *  rival readings parse to DIFFERENT legal moves, that is a
+   *  mishearing by definition, and it is "Say again." too.
+   *
+   *  w118 drew the line one step further - "that is not
+   *  legal" was refused as well - and the owner MOVED it at
+   *  w131, after four identical "Say again."s at a blocked
+   *  Nc3 left him unable to tell a mishearing from a bad
+   *  move. A WHOLE move, heard clean, that is not legal now
+   *  gets "That is not a legal move." - it confirms the
+   *  hearing and states legality, and it still reads nothing
+   *  back, explains nothing, suggests nothing. The line and
+   *  its reasons live at namesIllegalMove (matching.js).
    *
    *  SINGLE LETTERS work as well as NATO words ("E two E
    *  four"), and glued squares work ("e2 e4", "e2e4"), since
