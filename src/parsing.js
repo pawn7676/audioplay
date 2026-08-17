@@ -187,8 +187,9 @@
     return null;
   }
 
-  // "flip clock" (or "swap clocks", "switch the clock")
-  // swaps which side of the screen your clock is on. As
+  // "flip clock" swaps which side of the screen your clock
+  // is on - and since w134 it is literally that phrase: the
+  // flip synonyms died with the rest of the trim. As
   // strict as its neighbors: a flip word AND a clock word,
   // and any other content word disqualifies.
   function classifyFlipClock(raw) {

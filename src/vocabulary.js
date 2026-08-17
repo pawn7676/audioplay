@@ -224,7 +224,13 @@
   // by name, and "timer" with it.
   var CLOCK_WORDS = wordSet("clock clocks");
   var TIME_WORDS = wordSet("time");
-  var FLIP_WORDS = wordSet("flip flips swap swaps switch reverse mirror");
+  // "flip" alone since w134: the owner learned "swap clock"
+  // had survived the w133 trim and killed the whole synonym
+  // family ("swap swaps switch reverse mirror") - "flip
+  // clock" is the phrase, as the instructions say. The
+  // plural stays for the same reason "clocks" does: a
+  // spelling the mic plausibly returns for the word spoken.
+  var FLIP_WORDS = wordSet("flip flips");
   var RESIGN_WORDS = wordSet("resign resigns surrender");
   var DRAW_WORDS = wordSet("draw");
   var MEMO_WORDS = wordSet("memo memos");

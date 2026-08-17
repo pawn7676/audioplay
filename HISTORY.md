@@ -3956,3 +3956,28 @@ And the instructions panel itself is now the owner's text,
 verbatim - nine numbered sections, the manual of record,
 guarded by the harness through a phrase of it rather than
 the w22 wording it replaced.
+
+### w134
+
+THE OWNER READ w133 ON THE DEVICE, and this is the round of
+fixes that reading earned - all four his, from a screenshot
+of the new panel.
+
+THE INSTRUCTIONS READ AT BODY SIZE NOW. w126 fixed their
+colour on the owner's report that whole paragraphs at --dim
+were hard to read; the size was the same complaint from the
+other side, still unpaid at .82rem. The panel is the user
+manual now, not an aside, and a manual reads at text size.
+The NATO letters also sit one per line - the reader this
+section exists for is meeting the alphabet for the first
+time - and 'Voice Mode' wears the double quotes every other
+name on the page wears.
+
+AND THE FLIP SYNONYMS ARE GONE. w133 said "flip clock keeps
+its synonyms" and the owner's answer was that he did not
+know "swap clock" existed and did not want it: "flip clock"
+is sufficient. FLIP_WORDS is "flip" (and its plural, the
+same mic-spelling rule that keeps "clocks"); "swap",
+"switch", "reverse" and "mirror" are in git at w133. The
+trim's principle, now applied without remainder: one way to
+say each thing, and the instructions list all of them.
