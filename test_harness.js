@@ -3067,11 +3067,22 @@ const sleep = ms =>
   say("swap time");
   await sleep(80);
   const swapSaid = heard().join(" | ");
+  // w134: the flip synonyms went the way of the rest of the
+  // trim - "swap clock" surprised the owner by working, so
+  // now only "flip" flips
+  say("swap clock");
+  await sleep(80);
+  const swapClockSaid = heard().join(" | ");
   check('"timer" is stray talk (' + (timerSaid || "silence") + ")",
         timerSaid === "");
   check('"swap time" neither flips nor speaks (' +
         (swapSaid || "silence") + ")",
         swapSaid === "" &&
+        vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox) ===
+          sidesBefore);
+  check('"swap clock" neither flips nor speaks (' +
+        (swapClockSaid || "silence") + ")",
+        swapClockSaid === "" &&
         vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox) ===
           sidesBefore);
   // rule 5: no clock is an ANSWER, not a silence
