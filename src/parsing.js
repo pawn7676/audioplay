@@ -75,12 +75,18 @@
    *  that does not matter and let it absorb the loss:
    *  "move", "play", "please", "okay", "um" are ignored.
    *
-   *  COMMANDS: "repeat" (or "say again"), "flip clock",
+   *  COMMANDS: "repeat", "clock" or "time", "flip clock",
    *  "cancel", "memo ...", "resign", "draw" - the last two
    *  still ask their yes/no, because they end a game and are
-   *  not moves. (The position queries - "whose turn", "what
-   *  is on foxtrot three" - were deleted at w118 with the
-   *  rest: the owner never used them.)
+   *  not moves. ONE WORD EACH since w133 (owner's trim):
+   *  the synonyms - "say again", "pardon", "offer a draw",
+   *  "timer" - are gone so the accepted vocabulary is as
+   *  small as the instructions claim. (The position queries
+   *  - "whose turn", "what is on foxtrot three" - were
+   *  deleted at w118 with the rest: the owner never used
+   *  them. The spoken TIME came back at w133, reversing the
+   *  12 Aug ruling - see the spoken-clock note in
+   *  header.js.)
    *
    *  STRAY TALK. The mic is open all game, so everything said
    *  in the room reaches it. An utterance with no complete
@@ -200,7 +206,7 @@
   function classifyCommand(raw) {
     var toks = wordsOf(raw);
     var yes = 0, no = 0, cancel = 0, repeat = 0,
-        resign = 0, draw = 0, other = 0;
+        resign = 0, draw = 0, clk = 0, other = 0;
     toks.forEach(function (t) {
       if (YES_WORDS[t]) yes++;
       else if (NO_WORDS[t]) no++;
@@ -208,7 +214,11 @@
       else if (REPEAT_WORDS[t]) repeat++;
       else if (RESIGN_WORDS[t]) resign++;
       else if (DRAW_WORDS[t]) draw++;
-      else if (t === "offer" || t === "offers") { /* neutral */ }
+      // "clock" or "time", alone, asks for the remaining
+      // times (w133). A FLIP word beside a clock word counts
+      // as other content here, which is what hands "flip
+      // clock" to classifyFlipClock instead.
+      else if (CLOCK_WORDS[t] || TIME_WORDS[t]) clk++;
       else if (!FILLER[t]) other++;
     });
     if (cancel && !other) return "cancel";
@@ -217,6 +227,7 @@
     if (yes && !no && !other) return "yes";
     if (no && !yes && !other) return "no";
     if (repeat && !other) return "repeat";
+    if (clk && !other) return "clock";
     return null;
   }
 
@@ -229,8 +240,9 @@
    * hearing. */
   function knownNonMoveWord(tk) {
     return !!(YES_WORDS[tk] || NO_WORDS[tk] || CANCEL_WORDS[tk] ||
-              REPEAT_WORDS[tk] || CLOCK_WORDS[tk] || FLIP_WORDS[tk] ||
-              RESIGN_WORDS[tk] || DRAW_WORDS[tk] || MEMO_WORDS[tk]);
+              REPEAT_WORDS[tk] || CLOCK_WORDS[tk] || TIME_WORDS[tk] ||
+              FLIP_WORDS[tk] || RESIGN_WORDS[tk] || DRAW_WORDS[tk] ||
+              MEMO_WORDS[tk]);
   }
 
   // See the near-miss logging note in fuzzyToken; declared

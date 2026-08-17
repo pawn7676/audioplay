@@ -420,27 +420,33 @@
    * arriving unannounced, the clock burning - is still the
    * price. One datum, not a mode.
    *
-   * NO SPOKEN CLOCK AT ALL — settled twice, in opposite
-   * winds. The low-time warning was asked for and DECLINED
-   * at v92: game11 was lost on the clock in voice mode with
-   * the screen off, where red cannot be seen and spoken
-   * "clock" was the only way to know the time - and even on
-   * that evidence a threshold alert was refused as too
-   * distracting, an interruption that fires while the user
-   * is thinking and gates the mic when it speaks. Then the
-   * on-demand side went too: bare "clock", which had SPOKEN
-   * both times, fell out in the w118 grammar rewrite, and
-   * on 12 Aug 2026 the owner CONFIRMED the deletion - said
-   * "clock" mid-game as a deliberate test that it stays
-   * silent, and ruled it stays dead. The premise that made
-   * it load-bearing is gone: screen-off play is gone
-   * (above), the screen is on for the whole game, and the
-   * owner reads his own clock in the rail and the overlay.
-   * Do not restore the spoken time, and do not add
-   * unprompted clock speech of any kind. CLOCK_WORDS stays
-   * in the vocabulary: "flip clock" still needs it, and a
-   * lone "clock" landing as known-but-ignored stray talk is
-   * the behaviour the owner tested for.
+   * THE SPOKEN CLOCK: ON DEMAND ONLY, NEVER UNPROMPTED.
+   * This ruling has moved TWICE, both times by the owner,
+   * and the halves must be kept apart. The UNPROMPTED half
+   * is settled and stays settled: the low-time warning was
+   * asked for and DECLINED at v92 - game11 was lost on the
+   * clock in voice mode with the screen off, where red
+   * cannot be seen, and even on that evidence a threshold
+   * alert was refused as too distracting, an interruption
+   * that fires while the user is thinking and gates the mic
+   * when it speaks. Do not add unprompted clock speech of
+   * any kind; that refusal has never wavered.
+   *
+   * The ON-DEMAND half has now gone both ways. Bare
+   * "clock", which had SPOKEN both times, fell out in the
+   * w118 grammar rewrite, and on 12 Aug 2026 the owner
+   * confirmed the deletion - said "clock" mid-game as a
+   * deliberate test that it stays silent, and ruled it
+   * dead, on the premise that screen-off play was gone and
+   * the rail and overlay were the whole answer. On 17 Aug
+   * 2026, rewriting the user instructions, the owner
+   * REVERSED that (w133): "clock" or "time", said alone,
+   * answers with both remaining times, the player's own
+   * color first, in the overlay's units - floored whole
+   * minutes, seconds under a minute (speakClockTimes,
+   * clock.js). Asking is the user's own interruption at a
+   * moment of their choosing, which is exactly what the
+   * v92 alert was not.
    *
    * THE SPOKEN "CLOCK MODE" IS GONE (v98), and with it
    * classifyClockMode. It could not go fullscreen — Safari
@@ -449,10 +455,10 @@
    * then the wrong thing to look at; tried once and never
    * used again. (v108 removed fullscreen altogether, so
    * that particular asymmetry no longer exists; the phrase
-   * stays deleted on the separate ground below.) What
-   * remains in the clock vocabulary is "flip clock" alone,
-   * since w118 took bare "clock" with it (see the spoken-
-   * clock note above). Anything that changes the
+   * stays deleted on the separate ground below.) The clock
+   * vocabulary is "flip clock" and, since w133, bare
+   * "clock"/"time" asking for the remaining times (see the
+   * spoken-clock note above). Anything that changes the
    * SCREEN is now a tap, and anything spoken either answers
    * or rearranges — a cleaner line than the one it replaced.
    * SPOKEN "SILENT MODE" WENT THE SAME WAY one version

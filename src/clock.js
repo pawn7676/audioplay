@@ -76,9 +76,10 @@
   // so above a minute just the whole minutes remain,
   // changing once a minute — and under a minute the number
   // becomes the seconds and the number turns red
-  // (LOW_TIME_COLOR). Nothing SPEAKS the time since w118
-  // (see the spoken-clock note in header.js): this screen
-  // and the page rail are the whole answer.
+  // (LOW_TIME_COLOR). Since w133 the voice can say the same
+  // reading ON DEMAND — "clock" or "time", speakClockTimes
+  // below — in these same units; nothing speaks it
+  // unprompted (see the spoken-clock note in header.js).
   function clockDigits(ms) {
     if (ms == null) return "--";
     if (ms < 0) ms = 0;
@@ -205,6 +206,37 @@
     log("CLK", "my clock now on the " + side);
     renderClockMode();
     speak("your clock on the " + side + ".");
+  }
+
+  // THE SPOKEN CLOCK, back on demand at w133 (owner's
+  // reversal - the whole story is the spoken-clock note in
+  // header.js). "clock" or "time", said alone, answers with
+  // both times, the player's own color FIRST - the number
+  // the asker almost always wants - in the overlay's own
+  // units: whole minutes, floored, exactly as the screen
+  // shows them, and the seconds once a side is under a
+  // minute. ON DEMAND ONLY: nothing here fires unprompted,
+  // and the v92 refusal of a low-time alert still stands.
+  function spokenClockReading(ms) {
+    if (ms < 0) ms = 0;
+    var s = Math.floor(ms / 1000);
+    if (s < 60) return s + (s === 1 ? " second" : " seconds");
+    var m = Math.floor(s / 60);
+    return m + (m === 1 ? " minute" : " minutes");
+  }
+
+  function speakClockTimes() {
+    var mine = api.myColor || "w";
+    var theirs = mine === "w" ? "b" : "w";
+    var myMs = remainingMs(mine), oppMs = remainingMs(theirs);
+    // no game, or a game without clocks (correspondence):
+    // rule 5, the refusal is said, not implied
+    if (myMs == null || oppMs == null) {
+      speak("no clock running.");
+      return;
+    }
+    speak(colorWord(mine) + " " + spokenClockReading(myMs) + ", " +
+          colorWord(theirs) + " " + spokenClockReading(oppMs) + ".");
   }
 
   function acquireClockLock() {

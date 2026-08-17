@@ -676,43 +676,93 @@
 
   <details>
   <summary>Instructions</summary>
-  <p class="hint">Signing in happens on lichess.org, so
-  this site never sees your password. Lichess will ask you
-  to allow this site to do 3 things on your behalf: read
-  challenges, send and accept challenges, and play games.
-  You can revoke this site's access any time under
-  Preferences &rarr; Security on Lichess, or by tapping your
-  name here to sign out.</p>
-  <p class="hint">Sign in once and the page waits for a
-  game — one started here, in the Lichess app, or by a
-  friend's challenge. Nothing else to set up.</p>
-  <p class="hint">One tap on the Voice Mode button starts the
-  microphone and the speech — iOS requires the tap. Then
-  walk to your board and say the move as its two squares,
-  from then to: "echo two echo four", "golf one foxtrot
-  three". No piece names, no "takes" — the board knows.
-  Castling is the king's own move ("echo one golf one"),
-  promotion is a queen unless you add "equals knight". A
-  legal move plays at once and the chime confirms it;
-  anything half-heard gets "Say again." and plays nothing.
-  "repeat" re-speaks the last move; "resign" and "draw" ask
-  yes or no. The "clock" button is a black screen with just
-  the two clocks, side to move drawn heavier, everything
-  else spoken; tap it to come back. "practice" plays moves
-  against a random legal reply, sending nothing.</p>
-  <p class="hint">The Settings button holds two choices, both
-  remembered on this device. Show ratings shows or hides the
-  number beside each player's name. Moves spoken is how an
-  opponent's move is announced: Pieces is the piece and where
-  it landed — "bishop charlie four" — and Squares is the
-  move's own two squares — "foxtrot one, charlie four" — the
-  same shape you speak your own moves in.</p>
-  <p class="hint">The page speaks with the SYSTEM voice. On
-  an iPhone or iPad a much better one is free: Settings
-  &rarr; Accessibility &rarr; Spoken Content &rarr; Voices
-  &rarr; English, pick a Premium or Enhanced voice (Ava is
-  a good one) and let it download. Re-download it after an
-  iOS update if the sound gets worse.</p>
+  <!-- The owner's own text, handed over 17 Aug 2026 (w133)
+       and rendered here as written. Edit the WORDS only with
+       the owner; this panel is the user manual of record. -->
+  <p class="hint"><b>1. Sign in</b><br>
+  Signing in occurs on lichess.org. This site never sees
+  your password or any of your account information. Lichess
+  will ask you to allow this site to do the following things
+  on your behalf:<br>
+  - play games<br>
+  - send/read/accept challenges<br>
+  You can revoke this site's access at any time by clicking
+  your username and then signing out.</p>
+  <p class="hint"><b>2. Enable Voice Mode</b><br>
+  Tap the 'Voice Mode' button. The page will ask for
+  microphone permission the first time. This is enabled by
+  going to Page Menu &rarr; Website Settings &rarr;
+  Microphone &rarr; Allow.</p>
+  <p class="hint"><b>3. Start a game</b><br>
+  Choose your desired time control, and rated/casual. To
+  start a game against a random opponent, click "Find an
+  opponent". You can also enter the "Opponent" menu to
+  select one of the maia bots, or choose "Someone else" and
+  enter a Lichess username to issue a challenge.</p>
+  <p class="hint"><b>4. Speak your move</b><br>
+  Speak your move by saying the starting and ending squares.
+  Moves should be spoken using the NATO alphabet:<br>
+  A = alpha, B = bravo, C = charlie, D = delta,<br>
+  E = echo, F = foxtrot, G = golf, H = hotel<br>
+  Examples:<br>
+  - "echo 2 echo 4"<br>
+  - "bravo 8 charlie 6"<br>
+  - "echo 1 golf 1" (castle short)<br>
+  - "echo 8 charlie 8" (castle long)<br>
+  - "hotel 7 hotel 8" (automatic promotion of pawn to a
+  queen)<br>
+  - "alpha 2 alpha 1 equals knight" (underpromotion to a
+  knight)<br>
+  Do not say any piece names. Do not say "takes" or
+  "captures". Do not say "check" or "checkmate". Do not say
+  "castles kingside/short" or "castles queenside/long".
+  None of these words are accepted.</p>
+  <p class="hint"><b>5. Verbal commands</b><br>
+  "repeat" &mdash; Say the last move again.<br>
+  "resign" &mdash; Resign the game? Player is asked for
+  yes/no confirmation.<br>
+  "draw" &mdash; Offer a draw? Player is asked for yes/no
+  confirmation.<br>
+  "cancel" &mdash; Drops an open yes/no question.<br>
+  "clock" or "time" &mdash; Say the time remaining for each
+  player.<br>
+  "flip clock" &mdash; Flip which side of the screen your
+  clock is on (in "Clock Mode").<br>
+  "memo" &mdash; Transcribe a memo into the log. Useful for
+  reporting problems. A pause stops the memo
+  transcription.</p>
+  <p class="hint"><b>6. The buttons</b><br>
+  Voice Mode &mdash; Microphone and speech on or off.<br>
+  Settings &mdash; Described below.<br>
+  Clock &mdash; Enters full-screen "Clock Mode": a black
+  screen showing just the two clocks, with the side to move
+  shown in bolder font. Tap screen anywhere to exit.<br>
+  Log &mdash; Everything heard and done. "Copy" puts the
+  full text on the clipboard.<br>
+  Practice &mdash; Understands moves and answers and gives a
+  random legal reply, sending nothing to Lichess. Useful for
+  practicing phrasings.</p>
+  <p class="hint"><b>7. Settings</b><br>
+  Show ratings &mdash; Display the player and opponent
+  ratings.<br>
+  Moves spoken &mdash; Choose how the opponent's moves are
+  spoken to you: Piece ("knight charlie 6", "queen takes
+  delta 5 check") or Squares ("bravo 8 charlie 6", "delta 8
+  delta 5").<br>
+  Confirm &mdash; Choose how your move is confirmed: Chime,
+  Voice, or None.</p>
+  <p class="hint"><b>8. Tap to move</b><br>
+  In addition to voice input, you can also input your move
+  by tapping the starting and ending squares on the board.
+  Do not drag the piece, only tapping is acceptable. This is
+  useful for making quick moves if you get low on time,
+  since entering moves by voice is much slower.</p>
+  <p class="hint"><b>9. Select a better voice</b><br>
+  The page speaks using your device's system voice. If you
+  are using an iPhone or iPad, you can get a better voice by
+  going to: Settings &rarr; Accessibility &rarr; Spoken
+  Content &rarr; Voices &rarr; English. Choose a Premium or
+  Enhanced voice (Ava is a good voice).</p>
   </details>
 </div>
 

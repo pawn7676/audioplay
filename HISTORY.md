@@ -3917,3 +3917,42 @@ confirm after the flip chimes instead of apologising. The
 "okay." fallback itself is untouched: an interruption
 mid-game still costs one spoken confirm and is rescued on
 the next, which is rule 5 doing its job.
+
+### w133
+
+THE INSTRUCTIONS BECAME THE SPEC, and auditing the program
+against them changed the program (17 Aug 2026, all of it
+the owner's ask). The owner rewrote the user instructions
+from scratch, asked what the commands actually were, and
+the differences ran in both directions.
+
+THE SPOKEN CLOCK IS BACK, on demand: "clock" or "time",
+said alone, answers with both remaining times, the
+player's own color first, in the overlay's units - floored
+whole minutes, bare seconds under a minute, "no clock
+running." when there is none. This REVERSES the 12 Aug
+ruling recorded in header.js, and the reversal was put to
+the owner with that ruling quoted before a line was
+written; the answer was to reverse it. What has NOT moved:
+the v92 refusal of the low-time alert stands, and nothing
+speaks the clock unprompted - asking is the user's own
+interruption at a moment of his choosing, which is exactly
+what the declined alert was not. The header's spoken-clock
+note now tells the whole two-way story.
+
+ONE WORD PER COMMAND. The owner's trim, so the accepted
+vocabulary is as small as the instructions claim: "repeat"
+lost "say again", "pardon", "what"; "draw" lost "offer a
+draw"; "timer" and "swap time" never join; and the
+query-era filler ("whose", "how much ... left", and their
+family) went with the queries it served, dead since w118.
+"i" stays filler - "I resign" is natural speech in front
+of a game-ending command. "flip clock" keeps its synonyms
+and keeps working: it needs a CLOCK word specifically, so
+killing "swap time" cost a separate TIME_WORDS set, not
+the phrase.
+
+And the instructions panel itself is now the owner's text,
+verbatim - nine numbered sections, the manual of record,
+guarded by the harness through a phrase of it rather than
+the w22 wording it replaced.
