@@ -3981,3 +3981,11 @@ same mic-spelling rule that keeps "clocks"); "swap",
 "switch", "reverse" and "mirror" are in git at w133. The
 trim's principle, now applied without remainder: one way to
 say each thing, and the instructions list all of them.
+
+### w135
+
+TITLE CASE FOR THE SECTION HEADERS (owner's rule, from the
+same device reading as w134): every word in an instructions
+header capitalizes except "a" - "Sign In", "Speak Your
+Move", "Select a Better Voice". A one-look change; the
+words themselves are untouched.
