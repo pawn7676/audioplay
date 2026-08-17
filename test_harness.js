@@ -340,6 +340,17 @@ const sleep = ms =>
   await expect("repeat", /./);
   await expect("memo testing the port", /memo recorded/i);
 
+  // ---- w133: one word per command ----
+  // The owner's vocabulary trim: the synonyms that used to
+  // repeat ("say again", "pardon") or open the draw question
+  // ("offer a draw") are stray talk now and must land SILENT
+  // - and the one word each command kept still works.
+  await expect("pardon", /^$/);
+  await expect("say again", /^$/);
+  await expect("offer a draw", /^$/);
+  await expect("draw", /offer a draw\? yes or no/i);
+  await expect("cancel", /cancelled/i);
+
   // ---- w119: a SAY line quotes the sentence bare ----
   // w113 bracketed a color onto move announcements ("[black]
   // knight charlie 6.") so a recapture's read-back and
@@ -1596,8 +1607,13 @@ const sleep = ms =>
         tm.includes('id="panelInstructions"') &&
         tm.indexOf('id="panelInstructions"') >
           tm.indexOf('id="panelLichess"'));
-  check("sign-in paragraph reworded",
-        tm.includes("3 things on your behalf") &&
+  // w133: the panel is the owner's own instructions text,
+  // handed over whole - asked for by a stable phrase of it,
+  // whitespace collapsed because the source wraps lines
+  check("sign-in paragraph is the owner's wording",
+        tm.replace(/\s+/g, " ")
+          .includes("never sees your password or any of your " +
+                    "account information") &&
         !tm.includes("cannot change your account"));
   const lichessPanel = tm.slice(tm.indexOf('id="panelLichess"'),
                                 tm.indexOf('id="panelInstructions"'));
@@ -3012,18 +3028,64 @@ const sleep = ms =>
     api.wtime = 600000; api.btime = 60000;
     api.clockAt = Date.now() - 15000;    // black thinking 15s
   `, sandbox);
-  // w100 retired the spoken clock query - the overlay's large
-  // digits are the across-the-room answer - so bare "clock"
-  // must now land as STRAY TALK: no answer, and no move played
-  // out of it either. "flip clock" keeps working and has its
-  // own test above.
+  // w133 REVERSED the w100/w118 deletion (owner's ruling,
+  // 17 Aug 2026 - the story is the spoken-clock note in
+  // header.js): bare "clock" or "time" SPEAKS both times on
+  // demand, the player's own color first, floored whole
+  // minutes and bare seconds under a minute - the overlay's
+  // own units. Black is mid-think here, so the extrapolated
+  // second may tick once between fixture and answer.
   say("clock");
   await sleep(80);
   const clkSaid = heard().join(" | ");
-  check("bare clock is stray talk now, not a command (" +
-        (clkSaid || "silence") + ")", clkSaid === "");
+  check("bare clock speaks both times, mine first (" +
+        (clkSaid || "silence") + ")",
+        /^white 10 minutes, black 4[45] seconds\.$/.test(clkSaid));
   check("and it moved nothing",
         vm.runInContext("api.moves.length", sandbox) === 3);
+  say("time");
+  await sleep(80);
+  check('"time" is the other accepted word for it',
+        /^white 10 minutes, black 4[45] seconds\.$/
+          .test(heard().join(" | ")));
+  // mine-first is the player's color, not white: same
+  // position asked for as black must lead with black
+  vm.runInContext('api.myColor = "b";', sandbox);
+  say("clock");
+  await sleep(80);
+  const clkAsBlack = heard().join(" | ");
+  check("asked as black, black is said first (" + clkAsBlack + ")",
+        /^black 4[45] seconds, white 10 minutes\.$/.test(clkAsBlack));
+  vm.runInContext('api.myColor = "w";', sandbox);
+  // the w133 vocabulary trim: "timer" died, and "swap time"
+  // must neither flip the clock nor speak - both are stray
+  // talk now
+  const sidesBefore = vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox);
+  say("timer");
+  await sleep(80);
+  const timerSaid = heard().join(" | ");
+  say("swap time");
+  await sleep(80);
+  const swapSaid = heard().join(" | ");
+  check('"timer" is stray talk (' + (timerSaid || "silence") + ")",
+        timerSaid === "");
+  check('"swap time" neither flips nor speaks (' +
+        (swapSaid || "silence") + ")",
+        swapSaid === "" &&
+        vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox) ===
+          sidesBefore);
+  // rule 5: no clock is an ANSWER, not a silence
+  const noClockSaid = vm.runInContext(`
+    (function () {
+      var w = api.wtime, b = api.btime;
+      api.wtime = null; api.btime = null;
+      speakClockTimes();
+      api.wtime = w; api.btime = b;
+      return __spoken.splice(0).join(" | ");
+    })()
+  `, sandbox);
+  check("no clock running is said, not implied (" + noClockSaid + ")",
+        /no clock running\./.test(noClockSaid));
   vm.runInContext("api.clockAt = null; dryRun = true;", sandbox);
 
   // 104: the glance board repaints when the colour is learned

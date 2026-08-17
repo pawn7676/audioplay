@@ -318,6 +318,7 @@
     }
 
     if (cmd === "repeat") { repeatLast(); return; }
+    if (cmd === "clock") { speakClockTimes(); return; }
     if (classifyFlipClock(primary)) { flipClockSides(); return; }
 
     if (cmd === "resign") { confirmAction = "resign";

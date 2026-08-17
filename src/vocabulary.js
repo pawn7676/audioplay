@@ -176,11 +176,18 @@
       });
     });
   })();
-  // whose/whos/who/which joined in v65 so that "whose time
-  // is it" reaches the clock and "whose turn" the turn
-  // answer, instead of counting as unknown words. Filler is
-  // consumed before the fuzzy matcher runs, so none of them
-  // can be bent into part of a move.
+  // THE QUERY-ERA FILLER LEFT AT w133. "whose whos who
+  // which" (v65) and "how much many left remaining whats
+  // hows got have has do does me we us" existed to soak up
+  // the framing of the position and time queries - "whose
+  // turn", "how much time is left" - and the queries died
+  // at w118. The owner's 17 Aug 2026 vocabulary trim
+  // cleared them: the two ways to ask for the time are the
+  // bare words "clock" and "time", and a framed sentence
+  // around them is now stray talk like any other. "i"
+  // STAYS, though it arrived with that family: "I resign"
+  // is natural speech, and a filler word that guards a
+  // game-ending command earns its line.
   // "a" and "an" joined in v121: game21 said "resign" and
   // Safari returned "A resign", which classifyCommand
   // counted as a content word and refused, so the resign
@@ -196,16 +203,27 @@
   // It carries no meaning here in any sentence this grammar
   // accepts, so it is filler like "the" and "on".
   var FILLER = wordSet("please move moves play plays the piece um " +
-    "uh a an then and go goes on my is it to into onto how much " +
-    "many left remaining whats hows got have has do does me we us " +
-    "i whose whos who which of");
+    "uh a an then and go goes on my is it to into onto i of");
 
   var YES_WORDS = wordSet("yes yeah yep yup correct right confirm " +
     "confirmed affirmative ok okay sure aye");
   var NO_WORDS = wordSet("no nope wrong negative next nah");
   var CANCEL_WORDS = wordSet("cancel nevermind forget stop abort");
-  var REPEAT_WORDS = wordSet("repeat again pardon what say");
-  var CLOCK_WORDS = wordSet("clock clocks time timer");
+  // ONE WORD PER COMMAND SINCE w133 (owner's trim, made
+  // while rewriting the instructions): the accepted
+  // vocabulary is kept as small as it can be, so the
+  // instructions can say "repeat" and mean exactly that.
+  // "again pardon what say" are in git at w132 - "what" and
+  // "say" especially were command words made of ordinary
+  // room talk.
+  var REPEAT_WORDS = wordSet("repeat");
+  // CLOCK_WORDS is the word "clock" itself; TIME_WORDS is
+  // the other way to ask for the remaining time (w133).
+  // They are separate sets because "flip clock" requires a
+  // CLOCK word specifically - the owner killed "swap time"
+  // by name, and "timer" with it.
+  var CLOCK_WORDS = wordSet("clock clocks");
+  var TIME_WORDS = wordSet("time");
   var FLIP_WORDS = wordSet("flip flips swap swaps switch reverse mirror");
   var RESIGN_WORDS = wordSet("resign resigns surrender");
   var DRAW_WORDS = wordSet("draw");
