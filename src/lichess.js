@@ -35,7 +35,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w135";
+  VERSION = "w136";
 
   var RULES = makeRules();
 
@@ -460,8 +460,8 @@
   /* AN OFFER MAY NOT QUIETLY INHERIT SOMEBODY ELSE'S "YES"
    * (w50). This set confirmAction unconditionally, so an offer
    * arriving while a question was already open replaced it
-   * without a word - ask "resign", hear "Resign the game? Yes
-   * or no.", have the opponent offer a draw in the gap, say
+   * without a word - ask "resign", hear "Resign the game?",
+   * have the opponent offer a draw in the gap, say
    * "yes" meaning resign, and accept a draw instead. Both are
    * game-ending and they are not the same game-ending.
    *

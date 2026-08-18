@@ -348,7 +348,11 @@ const sleep = ms =>
   await expect("pardon", /^$/);
   await expect("say again", /^$/);
   await expect("offer a draw", /^$/);
-  await expect("draw", /offer a draw\? yes or no/i);
+  // w136: the question ends at the question mark - no
+  // "yes or no" coaching after it, on either question
+  await expect("draw", /^offer a draw\?$/i);
+  await expect("cancel", /cancelled/i);
+  await expect("resign", /^resign the game\?$/i);
   await expect("cancel", /cancelled/i);
 
   // ---- w119: a SAY line quotes the sentence bare ----

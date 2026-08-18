@@ -67,7 +67,7 @@
 
   /* NO QUESTION OUTLIVES THE GAME IT WAS ASKED IN (w50). The
    * bad case is not hypothetical: ask "resign", get "Resign
-   * the game? Yes or no.", have the opponent mate you before
+   * the game?", have the opponent mate you before
    * you answer, let the next game auto-join off the event
    * stream - and the first "yes" of the new game resigns it.
    * Called from everywhere a game begins or ends: joinGame,
@@ -322,9 +322,9 @@
     if (classifyFlipClock(primary)) { flipClockSides(); return; }
 
     if (cmd === "resign") { confirmAction = "resign";
-      speak("Resign the game? Yes or no."); return; }
+      speak("Resign the game?"); return; }
     if (cmd === "draw") { confirmAction = "offerdraw";
-      speak("Offer a draw? Yes or no."); return; }
+      speak("Offer a draw?"); return; }
     // YES, NO AND CANCEL WITH NOTHING OPEN ARE SILENT, ON
     // PURPOSE (documented at w54; the behaviour is older). It
     // looks like a constraint-5 violation and it is the
