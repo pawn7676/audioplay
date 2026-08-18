@@ -107,7 +107,10 @@
   // (w131, owner's request; settings.js has the table):
   //   chime   the default - two notes when they can be
   //           scheduled, a spoken "okay." when they cannot
-  //           (rule 5 - never silence by accident)
+  //           (rule 5 - never silence by accident); three
+  //           loudnesses since w137, all landing here
+  //           (chimes.js reads the level, this file only
+  //           asks "is it a chime")
   //   voice   the move read back whole, the same sentence an
   //           opponent's move gets - the sound case's rule
   //           that spoken confirmation must carry information

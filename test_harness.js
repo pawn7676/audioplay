@@ -2131,6 +2131,121 @@ const sleep = ms =>
   confirmStyle("voice"); confirmStyle("chime");
   check("flipping to chime creates the context if none exists",
         vm.runInContext("!!chimeCtx", sandbox));
+
+  // ====== w137: the chime's loudness IS the Confirm choice ======
+  // Three chime entries in the one select instead of a volume
+  // control of its own. The loudness is asked of the gain the
+  // ramps actually receive - the played thing, never the table
+  // in the source - and the flip itself is the audition.
+  const confirmMarkup = tm.slice(
+    tm.indexOf('id="setConfirm"'),
+    tm.indexOf("</select>", tm.indexOf('id="setConfirm"')));
+  check("the Confirm select offers quiet, standard, loud, " +
+        "voice, none - in that order",
+        ['value="chime-quiet"', 'value="chime"', 'value="chime-loud"',
+         'value="voice"', 'value="none"']
+          .map(v => confirmMarkup.indexOf(v))
+          .every((p, i, a) => p >= 0 && (i === 0 || p > a[i - 1])));
+  // a running fake context that records what the ramps are
+  // ramped TO, so the level each pick plays is observable
+  vm.runInContext(`
+    __gainPeaks = [];
+    chimeCtx = {
+      state: "running", currentTime: 0, destination: {},
+      resume: function () {},
+      createOscillator: function () {
+        return { type: "", frequency: { value: 0 },
+                 connect: function () {},
+                 start: function () { __chimeStarts++; },
+                 stop: function () {} };
+      },
+      createGain: function () {
+        return { gain: { setValueAtTime: function () {},
+                         linearRampToValueAtTime: function (v) {
+                           if (v > 0) __gainPeaks.push(v); } },
+                 connect: function () {} };
+      }
+    };
+  `, sandbox);
+  const auditioned = (v) => vm.runInContext(`
+    (function () {
+      var sel = document.getElementById("setConfirm");
+      __gainPeaks = [];
+      sel.value = ${JSON.stringify(v)}; sel.on_change();
+      return __gainPeaks.join(",");
+    })()
+  `, sandbox);
+  const peakOf = (s) => s ? Math.max.apply(null, s.split(",").map(Number)) : 0;
+  const quietGain = auditioned("chime-quiet");
+  const loudGain = auditioned("chime-loud");
+  const stdGain = auditioned("chime");
+  check("picking a chime level plays it, at that level, " +
+        "quiet under standard under loud (" + quietGain + " / " +
+        stdGain + " / " + loudGain + ")",
+        quietGain.split(",").length === 2 &&
+        peakOf(quietGain) < peakOf(stdGain) &&
+        peakOf(stdGain) < peakOf(loudGain));
+  check("and the level is remembered under the one confirm key",
+        sandbox.localStorage.getItem("audioplay.confirm") === "chime");
+  // a cold context primes but must NOT audition: a chime
+  // scheduled into a context that is not running is the
+  // schedule-vs-hear gap all over again (chimes.js)
+  vm.runInContext(`
+    __chimeStarts = 0;
+    chimeCtx = { state: "interrupted", resume: function () {} };
+  `, sandbox);
+  auditioned("chime-loud");
+  check("a cold context primes on the flip but does not audition",
+        vm.runInContext("__chimeStarts", sandbox) === 0);
+  // a stored level survives a reload, and the move path plays
+  // at it - dialogue only asks "is it a chime", chimes.js
+  // reads the level
+  vm.runInContext(`
+    localStorage.setItem("audioplay.confirm", "chime-quiet");
+    loadStoredSettings();
+  `, sandbox);
+  check("a stored chime level survives a reload",
+        vm.runInContext("CONFIRM_MODE", sandbox) === "chime-quiet");
+  vm.runInContext(`
+    __chimeStarts = 0; __gainPeaks = [];
+    chimeCtx = {
+      state: "running", currentTime: 0, destination: {},
+      resume: function () {},
+      createOscillator: function () {
+        return { type: "", frequency: { value: 0 },
+                 connect: function () {},
+                 start: function () { __chimeStarts++; },
+                 stop: function () {} };
+      },
+      createGain: function () {
+        return { gain: { setValueAtTime: function () {},
+                         linearRampToValueAtTime: function (v) {
+                           if (v > 0) __gainPeaks.push(v); } },
+                 connect: function () {} };
+      }
+    };
+  `, sandbox);
+  await setBoard("k7/8/8/8/8/8/4P3/K7 w - - 0 1");
+  heard();
+  say("echo two echo four");
+  await sleep(120);
+  check("a move confirmed at a quiet level still chimes, at " +
+        "the quiet gain, nothing spoken",
+        heard().length === 0 &&
+        vm.runInContext("__chimeStarts", sandbox) === 2 &&
+        vm.runInContext("__gainPeaks.join()", sandbox) === quietGain);
+  // junk in storage still reads as the default middle level
+  vm.runInContext(`
+    localStorage.setItem("audioplay.confirm", "chime-medium");
+    loadStoredSettings();
+  `, sandbox);
+  check("a junk stored level reads as standard chime",
+        vm.runInContext("CONFIRM_MODE", sandbox) === "chime");
+  vm.runInContext(`
+    localStorage.removeItem("audioplay.confirm");
+    loadStoredSettings();
+  `, sandbox);
+
   // leave the sandbox as WebAudio-less as it started
   vm.runInContext("AudioContext = undefined; chimeCtx = null;", sandbox);
 

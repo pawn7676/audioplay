@@ -54,13 +54,30 @@
   // failures, not the silent kind.
 
   // Retune these by ear at the board: two short rising sine
-  // notes. GAIN is the knob for loudness, either direction -
-  // 0.35 was the first guess and the owner's ears said too
-  // loud (w136), so it came down. Only ears at the board can
-  // judge the next step too.
+  // notes. LOUDNESS IS THE CONFIRM SETTING'S CHOICE since
+  // w137: the one gain constant kept needing the owner's ears
+  // and a new build per step (0.35 shipped w116-w135, his
+  // ears said too loud, w136 halved it), so the three sizes
+  // he actually wanted became the three chime entries of the
+  // Confirm select - no new control, no new key, and the ear
+  // that judges is the finger that sets it. The steps are
+  // roughly 6 dB apart, which is what "a step" means to an
+  // ear; the device volume slider scales speech and chime
+  // together, so this ratio is the only chime-to-speech
+  // balance there is.
   var CHIME_FREQS = [988, 1319];    /* B5 then E6 */
   var CHIME_NOTE_S = 0.09;          /* per note, seconds */
-  var CHIME_GAIN = 0.18;
+  var CHIME_GAINS = { "chime-quiet": 0.09,
+                      "chime":       0.18,
+                      "chime-loud":  0.35 };
+
+  // Standard for any non-chime mode: confirmFeedback only
+  // calls into here on a chime mode, but a caller with no
+  // mode (a future audition path, a test) still gets a sound,
+  // never a NaN ramp.
+  function chimeGain() {
+    return CHIME_GAINS[CONFIRM_MODE] || CHIME_GAINS["chime"];
+  }
 
   var chimeCtx = null, chimeNoApiLogged = false;
 
@@ -112,6 +129,7 @@
         return false;
       }
       var t = chimeCtx.currentTime;
+      var gain = chimeGain();
       for (var i = 0; i < CHIME_FREQS.length; i++) {
         var o = chimeCtx.createOscillator();
         var g = chimeCtx.createGain();
@@ -120,8 +138,8 @@
         o.frequency.value = CHIME_FREQS[i];
         /* ramps, not steps: a bare start/stop clicks */
         g.gain.setValueAtTime(0, t0);
-        g.gain.linearRampToValueAtTime(CHIME_GAIN, t0 + 0.012);
-        g.gain.setValueAtTime(CHIME_GAIN, t1 - 0.025);
+        g.gain.linearRampToValueAtTime(gain, t0 + 0.012);
+        g.gain.setValueAtTime(gain, t1 - 0.025);
         g.gain.linearRampToValueAtTime(0, t1);
         o.connect(g);
         g.connect(chimeCtx.destination);
