@@ -597,9 +597,12 @@
        "bishop charlie 4", Squares "foxtrot 1, charlie 4"
        (moveToSpeech, speech-out.js; the deleted third
        style's story is in settings.js); Confirm (w131) is
-       what an accepted move of YOURS answers with - Chime,
-       Voice (the move read back), or None (settings.js has
-       the table, confirmFeedback in dialogue.js the act).
+       what an accepted move of YOURS answers with - a chime
+       at one of three loudnesses (folded into this select at
+       w137 rather than a volume control of its own; picking
+       a level plays it), Voice (the move read back), or None
+       (settings.js has the table, confirmFeedback in
+       dialogue.js the act).
        display:none inline like #challengeOther below: the
        markup state is closed, code owns the toggle. -->
   <div class="row" id="settingsRow" style="display:none">
@@ -612,7 +615,9 @@
       <option value="squares">Squares</option>
     </select></label>
     <label>Confirm <select id="setConfirm">
-      <option value="chime">Chime</option>
+      <option value="chime-quiet">Chime quiet</option>
+      <option value="chime">Chime standard</option>
+      <option value="chime-loud">Chime loud</option>
       <option value="voice">Voice</option>
       <option value="none">None</option>
     </select></label>

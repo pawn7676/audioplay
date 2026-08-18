@@ -4009,3 +4009,33 @@ holds - no API reports audibility, only ears at the board
 can tune this - so the new value is a step in the reported
 direction, not a formula, and CHIME_GAIN remains the one
 knob if it needs another step either way.
+
+### w137
+
+THE CHIME'S LOUDNESS IS THE CONFIRM CHOICE (owner's design,
+settled talking before coding). w136 halved the one gain
+constant on his report and the next step was visibly going
+to be another report and another build: loudness only his
+ears can judge, tuned through a diff, forever. A volume
+setting was the obvious answer and the wrong first draft -
+a 0-to-10 knob is eleven answers to a question with about
+three, a zero on it would be silence by slider (Confirm =
+None already says silence ON PURPOSE, and an inaudible
+"successful" chime is this project's oldest ghost), and a
+fourth control was pushing the settings row toward the
+panel apparatus w117 buried. So the axis folded into the
+axis it lives on: Confirm now offers Chime quiet, Chime
+standard, Chime loud, Voice, None - one select, no new key,
+the middle level keeping w131's stored value so nobody's
+saved choice moves. And a pick PLAYS itself, because three
+loudnesses are only choosable by ear and the tap that picks
+one is exactly the gesture WebAudio wants (w132's lesson,
+reused as a feature) - but only through a context already
+running: auditioning into a cold context would be the
+scheduled-but-unheard gap chimes.js exists to remember.
+
+The same conversation drew a line for later: if the row
+ever does get crowded, it grows by wrapping into plain
+labelled rows behind the same button - never into a
+hand-built dropdown of toggles, which is the w117 panel
+with a new hat.

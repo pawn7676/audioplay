@@ -893,9 +893,9 @@
       log("SET", "moves spoken " + MOVE_SPEECH);
     });
     confirm.addEventListener("change", function () {
-      if (confirm.value === "chime" || confirm.value === "voice" ||
-          confirm.value === "none") {
-        CONFIRM_MODE = confirm.value;
+      var picked = confirm.value;
+      if (isConfirmMode(picked)) {
+        CONFIRM_MODE = picked;
       }
       try { localStorage.setItem(CONFIRM_MODE_KEY, CONFIRM_MODE); }
       catch (e) { log("ERR", "could not save confirm: " + e.message); }
@@ -910,7 +910,25 @@
       // (15 Aug practice log). The fallback still exists for
       // interruptions mid-game; this just stops the flip
       // itself from manufacturing one.
-      if (CONFIRM_MODE === "chime") primeChimes();
+      //
+      // AND THE PICK PLAYS THE PICK (w137): three loudnesses
+      // in the select are only choosable by ear, so a chime
+      // level auditions itself on the spot. Only when the
+      // context is already RUNNING - a cold context resumes
+      // asynchronously, and a chime scheduled into it now
+      // would be the schedule-vs-hear gap this file's history
+      // is about; the flip that primed a cold context stays
+      // silent and the next pick sounds. No spoken fallback
+      // here: nothing was asked and nothing is owed, and
+      // "okay." in the settings row would confirm a move that
+      // does not exist.
+      if (CONFIRM_MODE.indexOf("chime") === 0) {
+        primeChimes();
+        if (picked === CONFIRM_MODE &&
+            chimeCtx && chimeCtx.state === "running") {
+          playConfirmChime();
+        }
+      }
     });
   }
 

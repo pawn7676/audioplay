@@ -118,18 +118,33 @@
   // - the Settings row's third choice. The signal itself is
   // one bit ("heard exactly, legal, played" - confirmFeedback,
   // dialogue.js); this picks what carries it:
-  //   chime   two rising notes (chimes.js), the default and
-  //           what every game since w116 played; falls back
-  //           to a spoken "okay." when no chime can even be
-  //           scheduled
+  //   chime-quiet, chime, chime-loud
+  //           two rising notes (chimes.js) at one of three
+  //           loudnesses - one axis folded into the other
+  //           (w137, owner's design) rather than a volume
+  //           control of its own, because the only chime
+  //           question is "what plays, and how loud" and
+  //           one select asks all of it. "chime" is the
+  //           middle loudness and the default, and keeps its
+  //           w131 stored value so no saved choice moves.
+  //           All three fall back to a spoken "okay." when
+  //           no chime can even be scheduled.
   //   voice   the move read back whole (moveToSpeech), for
   //           ears the chime has gone missing on - it is
   //           speech, so it is never silently lost
   //   none    nothing on success. An explicit waiver of
   //           rule 5 by the one person it protects; errors
-  //           still speak.
+  //           still speak. Silence is THIS choice, never a
+  //           volume of zero - a chime "played" at nothing
+  //           is the inaudible-success bug (chimes.js) made
+  //           configurable.
   var CONFIRM_MODE = "chime";
   var CONFIRM_MODE_KEY = "audioplay.confirm";
+
+  function isConfirmMode(v) {
+    return v === "chime" || v === "chime-quiet" ||
+           v === "chime-loud" || v === "voice" || v === "none";
+  }
 
   // Loaded on boot, before the page builds, so the selects
   // and the first announcement both agree with storage. Junk
@@ -150,7 +165,7 @@
         MOVE_SPEECH = s;
       }
       var c = localStorage.getItem(CONFIRM_MODE_KEY);
-      if (c === "chime" || c === "voice" || c === "none") {
+      if (isConfirmMode(c)) {
         CONFIRM_MODE = c;
       }
     } catch (e) { /* private mode; the defaults stand */ }
