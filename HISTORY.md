@@ -3989,3 +3989,23 @@ same device reading as w134): every word in an instructions
 header capitalizes except "a" - "Sign In", "Speak Your
 Move", "Select a Better Voice". A one-look change; the
 words themselves are untouched.
+
+### w136
+
+THE QUESTIONS DROP "YES OR NO" (owner's request). "Resign
+the game?" and "Offer a draw?" are the whole prompt now -
+the question mark already implies its answers, and the
+owner has been answering these questions for a hundred
+versions; the coaching was for a first meeting long past.
+What stays: "Say yes or no." when an open question gets an
+answer that is neither, because there the words carry the
+repair; and the opponent-offer sentences keep "Say yes to
+accept, no to decline", because those arrive unasked and
+must say which side of the question a "yes" lands on.
+
+AND THE CHIME COMES DOWN, 0.35 to 0.18, on the owner's
+report that it is too loud at the board. The chimes.js rule
+holds - no API reports audibility, only ears at the board
+can tune this - so the new value is a step in the reported
+direction, not a formula, and CHIME_GAIN remains the one
+knob if it needs another step either way.

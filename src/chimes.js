@@ -54,11 +54,13 @@
   // failures, not the silent kind.
 
   // Retune these by ear at the board: two short rising sine
-  // notes. GAIN is the first thing to raise if the iPad
-  // across the room is too quiet.
+  // notes. GAIN is the knob for loudness, either direction -
+  // 0.35 was the first guess and the owner's ears said too
+  // loud (w136), so it came down. Only ears at the board can
+  // judge the next step too.
   var CHIME_FREQS = [988, 1319];    /* B5 then E6 */
   var CHIME_NOTE_S = 0.09;          /* per note, seconds */
-  var CHIME_GAIN = 0.35;
+  var CHIME_GAIN = 0.18;
 
   var chimeCtx = null, chimeNoApiLogged = false;
 
