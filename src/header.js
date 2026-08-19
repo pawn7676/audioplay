@@ -59,6 +59,25 @@
    *  the w-series is the only version line; the harness
    *  guards the frozen v137 ARTIFACT
    *  (userscript-frozen.sha256), not its buildability.
+   *
+   *  AMENDED AT v138 (owner's request, 19 Aug 2026): the
+   *  userscript is IN PRINT AGAIN, as the backup that still
+   *  works if the website's hosting ever goes away - but not
+   *  as the old line continued. It is a second BUILD of the
+   *  same src/ pipeline: manifest-userscript.txt wraps the
+   *  shared files in a userscript shell (userscript-header,
+   *  userscript-lichess, userscript-ui, userscript-boot) and
+   *  build.js writes the committed root lichess_audioplay.js,
+   *  which the harness rebuilds and compares so it can never
+   *  fall behind src/ (the w18 shape). So the paragraph
+   *  above needs one correction: the pipeline files serve
+   *  BOTH builds now, and a change to them ships twice.
+   *  Everything else stands - the w-series is still the only
+   *  history line (the userscript's v-number names the
+   *  artifact, not a fork of the behaviour), us-header.js is
+   *  still history not authority, and the frozen v137 stays
+   *  sha-guarded in frozen-userscript/ as the last of the
+   *  line that was actually maintained by hand.
    *================================================================*/
 
   /*=================== HARD CONSTRAINTS ===========================

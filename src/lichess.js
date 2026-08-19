@@ -29,6 +29,15 @@
    *  of them. Read the provenance above for WHY something
    *  looks the way it does; do not treat it as a constraint.
    *
+   *  (Amended v138: the copying REVERSED direction. The
+   *  revived userscript's Lichess layer, userscript-lichess.js,
+   *  is cut FROM this file - token and URL deltas aside, its
+   *  handlers are this file's handlers. This file still
+   *  evolves on its own merits, exactly as w54 says; a fix to
+   *  a shared block is just owed a re-copy into the twin, and
+   *  the harness's rebuild check will not let the artifact
+   *  ship stale.)
+   *
    *  VERSION is assigned here rather than where it is
    *  declared: the w-series is the only version line, and
    *  keeping the number next to the note explaining the series

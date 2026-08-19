@@ -27,6 +27,10 @@ node test_harness.js    # must be all-pass before any commit
 node property_check.js  # the invariants, on generated utterances
 node perft_check.js     # only when src/rules.js changes
 node build.js           # writes index.html locally, to LOOK at
+node build.js manifest-userscript.txt lichess_audioplay.js
+                        # rebuilds the userscript artifact -
+                        # run after ANY edit to a file that
+                        # manifest names, and COMMIT the result
 ```
 
 `property_check.js` is the other half of the harness, and it
@@ -64,15 +68,27 @@ page in a browser; the output is scratch.
 - `index.html` at the repo root — **GENERATED and
   GITIGNORED**. Built on demand locally, built again by the
   deploy workflow. Never edit it, never commit it.
-- `manifest.txt` — the load order.
+- `manifest.txt` — the load order (the website build).
+- `manifest-userscript.txt` — the load order of the LIVE
+  userscript build (v138, un-frozen 19 Aug 2026): the same
+  shared `src/` files wrapped in the `userscript-*.js` shell
+  instead of the site shell.
+- `lichess_audioplay.js` at the repo root — the built v138
+  userscript. GENERATED but COMMITTED, unlike `index.html`:
+  there is no deploy step to build it for the person
+  installing it, so the file is the deliverable. Never edit
+  it by hand; rebuild it (command above) and commit it with
+  the `src/` change. The harness and `checks.yml` both fail
+  if it drifts from `src/`.
 - `HISTORY.md` — the w-series history, one entry per bump.
 - `.github/workflows/checks.yml` — the checks GitHub runs.
-- `frozen-userscript/` — the userscript, frozen at v137,
-  kept as a working fallback. Do not build, do not "fix".
-  `test_harness.js` checks the ARTIFACT's sha against
-  `userscript-frozen.sha256`; the sources beside it are not
-  guarded, which is how `us-header.js` could be marked as
-  history without breaking anything.
+- `frozen-userscript/` — the OLD userscript line, frozen at
+  v137, kept as the record of the maintained-by-hand era. Do
+  not build, do not "fix". `test_harness.js` checks the
+  ARTIFACT's sha against `userscript-frozen.sha256`; the
+  sources beside it are not guarded, which is how
+  `us-header.js` could be marked as history without breaking
+  anything.
 - `reference/` — the retired w19 site. Salvage only.
 
 ## Rules that are not style preferences
@@ -107,6 +123,15 @@ One line: `w`-series, assigned in `src/lichess.js` as
 an entry to `HISTORY.md` saying WHY, not what — the diff
 already says what. Never displayed on screen — it appears in
 log lines, so a pasted log says which build produced it.
+
+The userscript build has its own artifact number, `v`-series
+(so no log line ever collides with a `w`): `@version` in
+`src/userscript-header.js` and `VERSION = "vNN"` in
+`src/userscript-lichess.js`. Bump BOTH, together, whenever a
+change — shared or shell — alters what the userscript does;
+two installs logging the same v-number must behave the same.
+The `w`-series history in `HISTORY.md` stays the only story;
+the v-number names the artifact, not a fork.
 
 Entries go at the END of `HISTORY.md`, oldest first: they
 refer back and forward to each other, so the order is the
