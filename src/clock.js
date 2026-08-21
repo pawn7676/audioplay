@@ -77,9 +77,9 @@
   // changing once a minute — and under a minute the number
   // becomes the seconds and the number turns red
   // (LOW_TIME_COLOR). Since w133 the voice can say the same
-  // reading ON DEMAND — "clock" or "time", speakClockTimes
-  // below — in these same units; nothing speaks it
-  // unprompted (see the spoken-clock note in header.js).
+  // reading ON DEMAND — "time", speakClockTimes below — in
+  // these same units; nothing speaks it unprompted (see the
+  // spoken-clock note in header.js).
   function clockDigits(ms) {
     if (ms == null) return "--";
     if (ms < 0) ms = 0;
@@ -97,7 +97,7 @@
     clockHalves = {};
     // the halves are LEFT and RIGHT (v97). Which one is
     // yours is PLAYER_ON_LEFT_OF_CLOCK, read at paint time,
-    // so "flip clock" is a repaint and never a rebuild.
+    // so "flip" is a repaint and never a rebuild.
     ["left", "right"].forEach(function (k) {
       var half = document.createElement("div");
       half.style.cssText =
@@ -183,14 +183,14 @@
     paintClockHalf(clockHalves[oppHalf], theirs);
   }
 
-  // "flip clock" swaps the sides. Nothing is rebuilt: the
+  // "flip" swaps the sides. Nothing is rebuilt: the
   // next tick paints the other way round, within
   // OVERLAY_TICK_MS, so the overlay is never disturbed —
   // which matters, because it cannot be retaken without
   // another tap. CONFIRMED in use.
   // AND IT SAYS WHICH SIDE (w54). This repainted and said
   // nothing, which is fine while you are looking at the
-  // overlay and is silence everywhere else - and "flip clock"
+  // overlay and is silence everywhere else - and "flip"
   // is a VOICE command, reachable with the overlay down, where
   // the repaint is invisible and nothing else happens at all.
   // That is constraint 5: silence reads as "not heard", so the
@@ -210,7 +210,7 @@
 
   // THE SPOKEN CLOCK, back on demand at w133 (owner's
   // reversal - the whole story is the spoken-clock note in
-  // header.js). "clock" or "time", said alone, answers with
+  // header.js). "time", said alone, answers with
   // both times, the player's own color FIRST - the number
   // the asker almost always wants - in the overlay's own
   // units: whole minutes, floored, exactly as the screen

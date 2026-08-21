@@ -4039,3 +4039,58 @@ ever does get crowded, it grows by wrapping into plain
 labelled rows behind the same button - never into a
 hand-built dropdown of toggles, which is the w117 panel
 with a new hat.
+
+### w138
+
+THE USERSCRIPT AND THE WEBSITE STOP MOVING IN LOCKSTEP
+(owner's decision), and the website catches up to what the
+userscript learned while they were apart. v138 rebuilt the
+userscript from src/ and chained the two together - the
+harness and CI both failed if the committed artifact
+drifted from the sources. The owner then did the natural
+thing to a file that is finally his own deliverable: edited
+it directly, v139 through v141, and ruled that the chain
+does not have to exist. So it does not. The root
+lichess_audioplay.js is maintained by hand now, the
+userscript shell sources and manifest-userscript.txt are
+gone (in git at w137), and no check compares the artifact
+to src/. When one side learns something the other should
+have, it is ported by hand - which is what this entry is.
+
+What v141 learned, now here:
+
+- THE FUZZY NEAR-MISS MATCHER IS GONE. It accepted a token
+  one edit from exactly one file or rank spelling, and it
+  took two guard lists (FUZZY_EXACT_ONLY, FUZZY_NEVER) and
+  a near-miss log line to keep ordinary talk from becoming
+  move components. The guards were bigger than the feature,
+  and the feature was guessing - the one thing the w118
+  grammar promises never to do. A word now matches a table
+  exactly or is unknown; the tables grow one real log at a
+  time, as they always did. "call" (golf), "clean" (queen)
+  and "fish"/"fisher" (bishop) join the tables from the
+  owner's own logs on the way.
+- ONE WORD PER COMMAND, FINISHED. "clock" and the "flip
+  clock" phrase leave the vocabulary (CLOCK_WORDS and
+  classifyFlipClock with them): "time" asks for the
+  remaining times, bare "flip" swaps the clock sides, and
+  "surrender" no longer resigns. The w133 trim's principle,
+  applied to its own survivors.
+- THE PRACTICE CLOCK IS GONE (reversing w128). Practice has
+  no referee and nothing ends it on time, so the running
+  ten-minute pair and its banking machinery were theatre.
+  The clocks are null; the rail shows its placeholders;
+  "time" answers "no clock running.", which is the truth.
+- SHOW RATINGS IS GONE WHOLE - the select, the stored key
+  (scrubbed on boot now), the boot-line field, the number
+  beside the names. A switch nobody flips is apparatus.
+- THE VOICE BUTTON GOES RED WHILE VOICE IS ON - red, the
+  universal recording colour, instead of sharing the lit
+  green that means merely "running". The one state that
+  means "the room is being heard" now looks like no other
+  state on the page. And mid-practice the button says
+  "voice play on.", the userscript's wording.
+- Dead weight out with it: api.overText stays (the website
+  draws the result; the userscript never did) but
+  lastSanW/lastSanB and myRemainingMs - assigned or defined
+  everywhere, read nowhere - are gone.

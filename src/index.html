@@ -170,19 +170,32 @@
   .panel button:focus, .panel button:focus-visible { outline: none; box-shadow: none; }
   .panel button:disabled { opacity: .35; }
   .panel button.primary { background: var(--blue); color: var(--bg); border-color: var(--blue); }
-  /* THE "ON" GREEN, for the two controls that mean "this is
-     running": the voice button while voice is on, and the
-     account button while signed in (w54). Both used to be
-     painted from JS with #3a5a2a and #91bddf written out by
-     hand - the same two values --button-on and --blue
-     already hold, duplicated where no stylesheet could see
-     them drift. Every one of ui.js's copies is a named
-     constant since w102, and the harness compares the pair
-     of files. Same green as .tc.picked and #timeCustom.picked
-     on purpose: it means the same thing in all four places. */
+  /* THE "ON" GREEN, for controls that mean "this is
+     running" - the account button while signed in (w54; the
+     voice button wore it too until w138, when its on-state
+     became the recording red below). It used to be painted
+     from JS with #3a5a2a and #91bddf written out by hand -
+     the same two values --button-on and --blue already
+     hold, duplicated where no stylesheet could see them
+     drift. Every one of ui.js's copies is a named constant
+     since w102, and the harness compares the pair of files.
+     Same green as .tc.picked and #timeCustom.picked on
+     purpose: it means the same thing in all four places. */
   .panel button.on {
     background: var(--button-on); color: var(--bright);
     border-color: var(--button-on);
+  }
+  /* THE RECORDING RED (w138, from the owner's userscript
+     restyle): the voice button while voice is on. Red is
+     the universal recording colour, and this is the one
+     state on the page that means "the room is being heard"
+     - so it stopped sharing the .on green, which now means
+     only "this is running" (the account button). The value
+     is the userscript's own recording red, not the clock's
+     low red: those mean different things. */
+  .panel button.rec {
+    background: #f34335; color: var(--bright);
+    border-color: #f34335;
   }
   /* THE ARMED QUESTION (w77): the account button while
      "Sign out?" stands. Filled like .primary because it
@@ -586,13 +599,12 @@
        outside-tap closer, no stored blob - just this row,
        shown and hidden by the Settings button in the row
        above it, which is its own exit (the w69 lesson) and
-       wears the lit green while the row is open. Three
+       wears the lit green while the row is open. Two
        choices, wired by wireSettings in ui.js, each stored
-       under its own flat key (the w111 scheme):
-       Show ratings ("Ratings" until w126: beside a
-       Rated/Casual control, the short label read as being
-       about the GAME) shows the numbers beside the players'
-       names; Moves spoken is the announcement style, named
+       under its own flat key (the w111 scheme; the third,
+       Show ratings, died at w138 - settings.js has the
+       tombstone):
+       Moves spoken is the announcement style, named
        for WHAT is announced since both speak NATO - Pieces
        "bishop charlie 4", Squares "foxtrot 1, charlie 4"
        (moveToSpeech, speech-out.js; the deleted third
@@ -606,10 +618,6 @@
        display:none inline like #challengeOther below: the
        markup state is closed, code owns the toggle. -->
   <div class="row" id="settingsRow" style="display:none">
-    <label>Show ratings <select id="setRatings">
-      <option value="off">Off</option>
-      <option value="on">On</option>
-    </select></label>
     <label>Moves spoken <select id="setSpeech">
       <option value="pieces">Pieces</option>
       <option value="squares">Squares</option>
@@ -739,9 +747,9 @@
   "draw" &mdash; Offer a draw? Player is asked for yes/no
   confirmation.<br>
   "cancel" &mdash; Drops an open yes/no question.<br>
-  "clock" or "time" &mdash; Say the time remaining for each
+  "time" &mdash; Say the time remaining for each
   player.<br>
-  "flip clock" &mdash; Flip which side of the screen your
+  "flip" &mdash; Flip which side of the screen your
   clock is on (in "Clock Mode").<br>
   "memo" &mdash; Transcribe a memo into the log. Useful for
   reporting problems. A pause stops the memo
@@ -758,8 +766,6 @@
   random legal reply, sending nothing to Lichess. Useful for
   practicing phrasings.</p>
   <p class="hint"><b>7. Settings</b><br>
-  Show ratings &mdash; Display the player and opponent
-  ratings.<br>
   Moves spoken &mdash; Choose how the opponent's moves are
   spoken to you: Piece ("knight charlie 6", "queen takes
   delta 5 check") or Squares ("bravo 8 charlie 6", "delta 8

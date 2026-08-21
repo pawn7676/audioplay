@@ -75,18 +75,18 @@
    *  that does not matter and let it absorb the loss:
    *  "move", "play", "please", "okay", "um" are ignored.
    *
-   *  COMMANDS: "repeat", "clock" or "time", "flip clock",
-   *  "cancel", "memo ...", "resign", "draw" - the last two
-   *  still ask their yes/no, because they end a game and are
-   *  not moves. ONE WORD EACH since w133 (owner's trim):
-   *  the synonyms - "say again", "pardon", "offer a draw",
-   *  "timer" - are gone so the accepted vocabulary is as
-   *  small as the instructions claim. (The position queries
-   *  - "whose turn", "what is on foxtrot three" - were
-   *  deleted at w118 with the rest: the owner never used
-   *  them. The spoken TIME came back at w133, reversing the
-   *  12 Aug ruling - see the spoken-clock note in
-   *  header.js.)
+   *  COMMANDS: "repeat", "time", "flip", "cancel",
+   *  "memo ...", "resign", "draw" - the last two still ask
+   *  their yes/no, because they end a game and are not
+   *  moves. ONE WORD EACH since w133 (owner's trim), and
+   *  w138 finished the job: "clock" and the "flip clock"
+   *  phrase went the way of the other synonyms, so the
+   *  accepted vocabulary is as small as the instructions
+   *  claim. (The position queries - "whose turn", "what is
+   *  on foxtrot three" - were deleted at w118 with the
+   *  rest: the owner never used them. The spoken TIME came
+   *  back at w133, reversing the 12 Aug ruling - see the
+   *  spoken-clock note in header.js.)
    *
    *  STRAY TALK. The mic is open all game, so everything said
    *  in the room reaches it. An utterance with no complete
@@ -97,77 +97,20 @@
    *================================================================*/
 
 
-  /* Safari mangles words the homophone lists cannot all anticipate
-   * ("foxtrott", "delter", "charlies"). As a LAST resort, accept a
-   * token that is one edit away from exactly one vocabulary word.
-   * Ambiguous near-misses are rejected rather than guessed. Since
-   * w118 the targets are FILES and RANKS only - there is nothing
-   * else left to be near - and a false positive cannot play a
-   * move: it makes a fifth item, or a wrong item in an illegal
-   * move, and both are "Say again." */
-  function editDistance(a, b, cap) {
-    if (Math.abs(a.length - b.length) > (cap || 1)) return 99;
-    var prev = [], cur = [], i, j;
-    for (j = 0; j <= b.length; j++) prev[j] = j;
-    for (i = 1; i <= a.length; i++) {
-      cur[0] = i;
-      for (j = 1; j <= b.length; j++) {
-        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1,
-                          prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-      }
-      prev = cur.slice();
-    }
-    return prev[b.length];
-  }
-
-  var FUZZY_SETS = [[NATO, "file"], [NUMS, "rank"]];
-
-  /* THE CANDIDATE LIST IS BUILT ONCE (w53): the tables are
-   * constants, so the eligible spellings are flattened at load. */
-  var FUZZY_TARGETS = (function () {
-    var out = [];
-    FUZZY_SETS.forEach(function (pair) {
-      var dict = pair[0], kind = pair[1];
-      Object.keys(dict).forEach(function (w) {
-        if (w.length < 4) return;
-        if (FUZZY_EXACT_ONLY[w]) return;
-        out.push({ t: kind, v: dict[w], w: w });
-      });
-    });
-    return out;
-  })();
-
-  function fuzzyToken(tk) {
-    if (tk.length < 4) return null;
-    if (FUZZY_NEVER[tk]) return null;
-    /* short words are dense with collisions, long ones are not */
-    var tol = tk.length >= 6 ? 2 : 1;
-    var hits = [];
-    for (var fi = 0; fi < FUZZY_TARGETS.length; fi++) {
-      var cand = FUZZY_TARGETS[fi];
-      if (editDistance(tk, cand.w, tol) <= tol) hits.push(cand);
-    }
-    if (!hits.length) return null;
-    var distinct = {};
-    hits.forEach(function (h) { distinct[h.t + h.v] = h; });
-    var keys = Object.keys(distinct);
-    if (keys.length !== 1) {
-      // AMBIGUOUS, REFUSE TO GUESS - but say so in the log
-      // (w114): the owner's deliberate "light" vanished
-      // without a trace once, and the refusal was right but
-      // the silence read as the word never being seen.
-      var words = keys.map(function (k) {
-        return "\"" + distinct[k].w + "\"";
-      }).join(" or ");
-      var rmsg = "near-miss \"" + tk + "\" dropped: could be " + words;
-      if (!nearMissLogged[rmsg]) {
-        nearMissLogged[rmsg] = 1;
-        log("PRS", rmsg);
-      }
-      return null;
-    }
-    return distinct[keys[0]];
-  }
+  /* THE FUZZY NEAR-MISS MATCHER IS GONE (w138, from the
+   * owner's own trim of the hand-maintained userscript, v141
+   * there). It accepted a token one edit away from exactly
+   * one file or rank spelling ("foxtrott", "delter"), and it
+   * earned two guard lists (FUZZY_EXACT_ONLY, FUZZY_NEVER)
+   * and a near-miss log line just to keep ordinary room talk
+   * from being converted into move components - "good"
+   * becoming "gold", "lord" becoming "ford". The guards
+   * were bigger than the feature, and the feature was
+   * guessing, which is the one thing this grammar promises
+   * never to do. Now a word either matches a table exactly
+   * or it is unknown, and an unknown word damns its reading
+   * (readItems below) - the log line naming it is how the
+   * homophone tables grow. */
 
   // Apostrophes are deleted, not turned into spaces, so
   // "who's" becomes "whos" and matches the filler words.
@@ -187,27 +130,14 @@
     return null;
   }
 
-  // "flip clock" swaps which side of the screen your clock
-  // is on - and since w134 it is literally that phrase: the
-  // flip synonyms died with the rest of the trim. As
-  // strict as its neighbors: a flip word AND a clock word,
-  // and any other content word disqualifies.
-  function classifyFlipClock(raw) {
-    var toks = wordsOf(raw);
-    var flip = 0, clk = 0, other = 0;
-    for (var i = 0; i < toks.length; i++) {
-      var t = toks[i];
-      if (FLIP_WORDS[t]) flip++;
-      else if (CLOCK_WORDS[t]) clk++;
-      else if (!FILLER[t]) other++;
-    }
-    return !!(flip && clk && !other);
-  }
+  // (classifyFlipClock died at w138 with the "flip clock"
+  // phrase: "flip" is a one-word command now, classified
+  // below with the rest.)
 
   function classifyCommand(raw) {
     var toks = wordsOf(raw);
     var yes = 0, no = 0, cancel = 0, repeat = 0,
-        resign = 0, draw = 0, clk = 0, other = 0;
+        resign = 0, draw = 0, time = 0, flip = 0, other = 0;
     toks.forEach(function (t) {
       if (YES_WORDS[t]) yes++;
       else if (NO_WORDS[t]) no++;
@@ -215,11 +145,11 @@
       else if (REPEAT_WORDS[t]) repeat++;
       else if (RESIGN_WORDS[t]) resign++;
       else if (DRAW_WORDS[t]) draw++;
-      // "clock" or "time", alone, asks for the remaining
-      // times (w133). A FLIP word beside a clock word counts
-      // as other content here, which is what hands "flip
-      // clock" to classifyFlipClock instead.
-      else if (CLOCK_WORDS[t] || TIME_WORDS[t]) clk++;
+      // "time", alone, asks for the remaining times (w133;
+      // the "clock" synonym left at w138).
+      else if (TIME_WORDS[t]) time++;
+      // "flip", alone, swaps the clock sides.
+      else if (FLIP_WORDS[t]) flip++;
       else if (!FILLER[t]) other++;
     });
     if (cancel && !other) return "cancel";
@@ -228,7 +158,8 @@
     if (yes && !no && !other) return "yes";
     if (no && !yes && !other) return "no";
     if (repeat && !other) return "repeat";
-    if (clk && !other) return "clock";
+    if (time && !flip && !other) return "time";
+    if (flip && !time && !other) return "flip";
     return null;
   }
 
@@ -241,16 +172,10 @@
    * hearing. */
   function knownNonMoveWord(tk) {
     return !!(YES_WORDS[tk] || NO_WORDS[tk] || CANCEL_WORDS[tk] ||
-              REPEAT_WORDS[tk] || CLOCK_WORDS[tk] || TIME_WORDS[tk] ||
+              REPEAT_WORDS[tk] || TIME_WORDS[tk] ||
               FLIP_WORDS[tk] || RESIGN_WORDS[tk] || DRAW_WORDS[tk] ||
               MEMO_WORDS[tk]);
   }
-
-  // See the near-miss logging note in fuzzyToken; declared
-  // here so the parser test slice (vocabulary, parsing and
-  // matching) contains it. handleTranscripts resets it per
-  // utterance.
-  var nearMissLogged = {};
 
   /* ONE READING, REDUCED TO ITS ITEMS. Returns
    *   { items: [{t:"file"|"rank", v}...],
@@ -339,16 +264,10 @@
       if (/^[1-8]$/.test(tk)) { items.push({ t: "rank", v: tk }); continue; }
       if (FILLER[tk]) continue;
       if (knownNonMoveWord(tk)) continue;
-      var fz = fuzzyToken(tk);
-      if (fz) {
-        var nmsg = "near-miss \"" + tk + "\" read as \"" + fz.w + "\"";
-        if (!nearMissLogged[nmsg]) {
-          nearMissLogged[nmsg] = 1;
-          log("PRS", nmsg);
-        }
-        items.push({ t: fz.t, v: fz.v });
-        continue;
-      }
+      // Not in any table: an unknown word. It is REMEMBERED,
+      // not skipped - the four-item test refuses a move with
+      // an unknown beside it, and the log line naming it
+      // (describeItems) is how the homophone tables grow.
       if (!unknown) unknown = tk;
     }
     return { items: items, promo: promo, unknown: unknown };

@@ -305,7 +305,7 @@
         // practice surviving this button (w90). Mid-practice,
         // "sign in first" is a non-sequitur - practice needs no
         // token - and the owner heard exactly that and asked.
-        if (dryRun) speak("voice on.");
+        if (dryRun) speak("voice play on.");
         else if (!storedToken()) speak("sign in with Lichess first.");
         else if (!api.gameId) speak("voice on. waiting for a game.");
         // AND PICK THE GAME BACK UP (w50). Voice off leaves the
@@ -417,6 +417,12 @@
   // the single source of the look if nothing inline is
   // competing with it. buildUI sets a background on this
   // button when it builds it, so there IS something to clear.
+  // RED WHILE RECORDING (w138, from the owner's userscript
+  // restyle): red is the universal recording colour, and the
+  // one state on this page that means "the room is being
+  // heard" wears it - .rec, in the stylesheet, instead of
+  // the lit green the other on-buttons share. The code still
+  // only says WHICH state (rule 6).
   function paintVoiceButton() {
     if (!bigBtn) return;
     bigBtn.textContent = !running ? "\u25B6 Voice Mode"
@@ -425,7 +431,7 @@
     bigBtn.style.color = "";
     bigBtn.style.borderColor = "";
     bigBtn.classList.toggle("primary", !running);
-    bigBtn.classList.toggle("on", !!running);
+    bigBtn.classList.toggle("rec", !!running);
   }
 
   // THE VOICE BUTTONS LOOK LIKE THE PAGE'S BUTTONS (w32).
@@ -575,9 +581,9 @@
     var parts = [(pl.title
       ? '<span class="' + titleCls + '">' + esc(pl.title) + "</span> " : "") +
       esc(pl.name)];
-    if (SHOW_RATINGS && pl.rating != null) {
-      parts.push('<span class="rating">' + esc(pl.rating) + "</span>");
-    }
+    // (the rating is never shown since w138 - the Show
+    // ratings switch died with the setting; settings.js has
+    // the tombstone)
     // THE NAME ROW NEVER DIMS (w81). w72's idle class was
     // mirrored here from the clocks, and on the device the
     // waiting side's name and rating sank below readable -
@@ -868,22 +874,12 @@
   // changed.
   function wireSettings() {
     var row = el("settingsRow");
-    var ratings = el("setRatings"), speech = el("setSpeech");
+    var speech = el("setSpeech");
     var confirm = el("setConfirm");
-    if (!row || !ratings || !speech || !confirm) return;
+    if (!row || !speech || !confirm) return;
     row.style.display = "none";
-    ratings.value = SHOW_RATINGS ? "on" : "off";
     speech.value = MOVE_SPEECH;
     confirm.value = CONFIRM_MODE;
-    ratings.addEventListener("change", function () {
-      SHOW_RATINGS = ratings.value === "on";
-      try { localStorage.setItem(RATINGS_KEY, SHOW_RATINGS ? "on" : "off"); }
-      catch (e) { log("ERR", "could not save ratings: " + e.message); }
-      log("SET", "ratings " + (SHOW_RATINGS ? "on" : "off"));
-      // the setting's whole effect is something already on
-      // screen, so the flip repaints on the spot
-      renderPlayers();
-    });
     speech.addEventListener("change", function () {
       if (speech.value === "pieces" || speech.value === "squares") {
         MOVE_SPEECH = speech.value;

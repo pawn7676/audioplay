@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         Lichess Audioplay
-// @version      138
+// @name         Lichess Audioplay v141
+// @version      141
 // @description  Eyes-free voice play on Lichess (Board API)
 // @match        https://lichess.org/*
 // @grant        GM.setValue
@@ -9,55 +9,18 @@
 // @run-at       document-idle
 // ==/UserScript==
 
-/*  THE USERSCRIPT, BACK IN PRINT (v138, owner's request,
- *  19 Aug 2026). v137 froze on 5 Aug 2026 when the website
- *  became the project; the owner then asked for a userscript
- *  that carries the website's CURRENT behaviour, as the
- *  backup that still works if the website's hosting ever
- *  goes away. So this build is not the v137 line continued -
- *  it is the website's own pipeline files, byte-identical,
- *  wrapped in a small userscript shell:
+/* ======================= INSTRUCTIONS ======================= */
+
+/*  CREATE TOKEN
+ *  Go to: https://lichess.org/account/oauth/token/create
+ *  Tick "board:play". The script asks for it the first
+ *  time and remembers it, so later versions do not need
+ *  it pasted in again. It is kept in the Userscripts
+ *  app's own storage, out of reach of anything running
+ *  on the page. Tap "token" in the log panel to replace
+ *  or clear it.
  *
- *    SHARED, verbatim from src/ (the website's files):
- *      settings, log, watchdog, vocabulary, parsing,
- *      matching, dialogue, practice, speech-out, chimes,
- *      mic, rules, clock
- *    USERSCRIPT-ONLY:
- *      this header, userscript-lichess (token via the
- *      Userscripts app's storage, game id from the URL),
- *      userscript-ui (the floating row over lichess.org),
- *      userscript-boot (watch for a game page)
- *
- *  "node build.js manifest-userscript.txt lichess_audioplay.js"
- *  rebuilds it; the committed copy at the repo root is the
- *  installable artifact, and the harness fails if the two
- *  ever disagree. The frozen v137 stays untouched in
- *  frozen-userscript/ as the last of the old line.
- *
- *  WHAT THE SHELL DELIBERATELY LEAVES OUT: the website's
- *  board, clocks-by-the-board, player names, sign-in, seek
- *  and challenge panels. This script runs ON lichess.org,
- *  where all of that is the page underneath - start the
- *  game with Lichess's own buttons, then speak.
- *
- *  SETUP
- *  1. Create a token at
- *     https://lichess.org/account/oauth/token/create
- *     Tick "board:play". The script asks for it the first
- *     time and remembers it, so later versions do not need
- *     it pasted in again. It is kept in the Userscripts
- *     app's own storage, out of reach of anything running
- *     on the page. Tap "token" in the log panel to replace
- *     or clear it.
- *  2. Save this file in the Userscripts app folder and
- *     enable it for lichess.org.
- *  3. Open a game, tap the round button ONCE (iOS needs
- *     one touch to unlock mic and audio), then walk to
- *     your board.
- *
- *  SPEAKING MOVES (the w118 grammar - the piece-name
- *  grammar of v137 and before is GONE)
- *
+ *  SPEAKING MOVES
  *  Speak your move by saying the starting and ending
  *  squares, using the NATO alphabet for the files:
  *    A = alpha    B = bravo    C = charlie  D = delta
@@ -71,10 +34,12 @@
  *        a queen)
  *    "alpha 2 alpha 1 equals knight" (underpromotion to
  *        a knight)
- *  Do not say any piece names. Do not say "takes" or
- *  "captures". Do not say "check" or "checkmate". Do not
- *  say "castles kingside/short" or "castles
- *  queenside/long". None of these words are accepted.
+ *  Do not say any piece names.
+ *  Do not say "takes" or "captures".
+ *  Do not say "check" or "checkmate".
+ *  Do not say "castles kingside/short" or "castles
+ *  queenside/long".
+ *  None of these words are accepted.
  *
  *  A legal move heard whole plays at once, and the chime
  *  (or the Confirm setting's choice) says it landed.
@@ -82,12 +47,6 @@
  *  answered "Say again." - the script never guesses. A
  *  whole move that is simply not legal is answered "That
  *  is not a legal move."
- *
- *  Single letters work as well as NATO words ("E two E
- *  four"), and glued squares work ("e2 e4"). But the
- *  letters b, c, d, e, g are one vowel apart across a
- *  room; the NATO words are the ones that survive the
- *  distance.
  *
  *  IF THE FIRST WORD KEEPS GETTING LOST
  *    iOS needs a moment to notice speech has started, and
@@ -98,21 +57,19 @@
  *
  *  VERBAL COMMANDS
  *    "repeat"        say the last move again
- *    "resign"        Resign the game? asks yes/no
- *    "draw"          Offer a draw? asks yes/no
+ *    "resign"        Resign the game? Confirm with a yes/no
+ *    "draw"          Offer a draw? Confirm with a yes/no
  *    "cancel"        drops an open yes/no question
- *    "clock"/"time"  say the time remaining for each player
- *    "flip clock"    flip which side of the screen your
- *                    clock is on (in clock mode)
- *    "memo ..."      transcribe a memo into the log -
- *                    useful for reporting problems
- *
- *  THE BUTTONS (floating, bottom right)
- *    round button    microphone and speech on or off
+ *    "time"          say the time remaining for each player
+ *    "flip"          flip which side your clock is on
+ *                    (in full-screen clock mode)
+ *    "memo"          transcribe a memo into the log
+ * 
+ *  THE BUTTONS
+ *    voice           microphone and speech OFF (■) or ON (●)
  *    settings        how moves are spoken (Pieces or
  *                    Squares) and how your move is
- *                    confirmed (Chime at three loudnesses,
- *                    Voice, or None)
+ *                    confirmed (Chime, Voice, or None).
  *    clock           full-screen clock mode: a black screen
  *                    showing just the two clocks, the side
  *                    to move in bolder font. Tap anywhere
@@ -123,176 +80,53 @@
  *                    token.
  *    practice        understands moves and answers and
  *                    gives a random legal reply, sending
- *                    nothing to Lichess
+ *                    nothing to Lichess.
  *
  *  A BETTER VOICE: the script speaks with the device's
  *  system voice. On an iPhone or iPad: Settings >
  *  Accessibility > Spoken Content > Voices > English -
  *  choose a Premium or Enhanced voice (Ava is a good one).
- *
- *  THE HISTORY. v1-v137 are the old line, whose story is
- *  frozen-userscript/us-header.js; the behaviour carried
- *  here is the website's, whose story is HISTORY.md (w20
- *  onward). The short version of what changed between v137
- *  and this build: the four-item move grammar replaced the
- *  piece-name grammar and its question machinery (w118),
- *  refusals shrank to "Say again." plus the illegal-move
- *  carve-out (w131), your own move confirms with a chime at
- *  a chosen loudness, a spoken read-back, or nothing
- *  (w116/w120/w131/w137), the spoken clock answers "clock"
- *  or "time" on demand (w133), the vocabulary was trimmed
- *  to what the instructions claim (w133/w134), takebacks
- *  that do not shorten the list are caught (w50), a
- *  departed opponent is announced and the win claimable
- *  (w61), a dead token stops the retries and says what to
- *  do (w52/w60), reconnects back off (w52), variant games
- *  are refused out loud (w61), and a main-thread stall
- *  writes itself into the log (w90). The keep-alive and
- *  screen-off play are gone (w90); the mic itself holds the
- *  audio session (w91).
  */
+
 (function () {
   "use strict";
-  /*=========================== SETTINGS ===========================*/
 
-  // DECLARED HERE, ASSIGNED IN lichess.js. It said "v137" for
-  // as long as this file was shared with the userscript, and
-  // was only ever right at runtime because lichess.js loads
-  // later in the manifest and overwrites it - so reordering
-  // the manifest would have shipped logs claiming a version
-  // this project stopped using in August (w54). The w-series
-  // is the only version line now; the value lives in one
-  // place, next to the comment explaining the series.
-  var VERSION = "";
+  /* =================== DEFAULT SETTINGS ==================== */
 
-  // LEAVE TOKEN EMPTY. PKCE sign-in gets a token and
-  // localStorage on this origin keeps it, so nobody types one
-  // and nothing needs pasting in again.
-  //
-  // Anything put here is used instead, which is handy for
-  // testing but means the token lives in the file.
-  //
-  // (Through w53 this said "tap 'token' in the log panel to
-  // replace or clear it" - the userscript's way in, and a
-  // button this page deliberately does not have. Sign out is
-  // how you clear it here.)
+  var VERSION = "v141";
+
+  // LEAVE TOKEN EMPTY: the stored token is used. Anything put
+  // here is used instead, which is handy for testing but means
+  // the token lives in the file.
   var TOKEN = "";
-  // "audioplay_lichess_token", underscores and all, until
-  // w111: the userscript's key name, carried into the w20
-  // port by the cut-and-wrap and never earning its keep -
-  // the userscript ran on lichess.org, a different origin,
-  // so the name never shared storage with anything. The
-  // w111 storage audit renamed every key to one flat
-  // current scheme (see scrubDeadStorage below), WITHOUT
-  // migrations - a shim that reads a dead name is the
-  // clutter the audit exists to remove. The one-time cost
-  // was a single re-sign-in.
-  var TOKEN_KEY = "audioplay.token";
 
   // Maximum number of lines in the log
   var LOG_MAX = 3000;
 
-  /*------------- THE SETTINGS PANEL IS GONE (w117) -----------
-   * v124 built it: a "settings" button, a panel of switches,
-   * values persisted under "audioplay.settings", and this
-   * file holding only first-run defaults. It shrank for two
-   * years as choices became rules - ten rows to three at
-   * w110, three to one at w116, when confirming every move
-   * stopped being optional and took "confirm my move" and
-   * "guard pawn pushes" with it (a system that can post a
-   * silently wrong move once does not get to decide which
-   * moves deserve a question, and after the yes nothing is
-   * repeated - the chime answers it). With one row left the
-   * owner called the whole apparatus not needed, and he was
-   * right: a panel, a persistence layer and a stored blob,
-   * all to flip one cosmetic bit.
-   *
-   * So settings are CODE again, like VOICE_NAME below always
-   * was: constants in this file, edited here, no storage.
-   * The stored blob is a dead key now and scrubDeadStorage
-   * removes it. The dead switch names stay barred - if any
-   * of confirmMyMove, readBackMine, confirmMine or
-   * guardPawnPushes ever reads from anywhere again, some
-   * old save's false is steering behaviour that stopped
-   * being a choice.
-   *
-   * What the panel-era tombstones guarded is now one line
-   * each, and the reasoning lives where it acts:
-   *   the move grammar     parsing.js (four items, w118)
-   *   the chime           chimes.js (three acts)
-   *   clock-mode text     w110 HISTORY entry; strip in git
-   *                       at w109
-   *
-   * AND A SETTINGS BUTTON RETURNED AT w120 - the owner's
-   * order, both times. w117 killed a panel that had shrunk
-   * to one cosmetic switch; w120 added a second choice (how
-   * moves are spoken, below) and the owner wanted both on
-   * the page, not in the source. What returned is smaller
-   * than what died: a plain row in the page (#settingsRow,
-   * wired by wireSettings in ui.js) and one flat
-   * audioplay.* key per choice, the w111 naming scheme.
-   * The blob stays dead: audioplay.settings is still
-   * scrubbed on boot, and the four barred switch names
-   * above stay barred.
-   *------------------------------------------------------*/
-
-  // The opponent's rating, shown beside their name. OFF is
-  // the owner's default (w117): a rating is a fact about a
-  // person, not the position - never a fair-play question
-  // (constraint 1 is about MOVE CHOICE) - but it is also a
-  // number he stopped wanting to see. A code constant from
-  // w117 to w119; a stored choice again since w120, flipped
-  // from the Settings row.
-  var SHOW_RATINGS = false;
-  var RATINGS_KEY = "audioplay.ratings";
-
-  // HOW A MOVE IS ANNOUNCED (w120, owner's design; two-way
-  // since w126) - the Settings row's other choice. Named for
-  // WHAT IS ANNOUNCED, because both styles speak NATO files:
+  // HOW A MOVE IS ANNOUNCED:
   //   pieces   "bishop charlie 4" - the piece and where it
-  //            landed; what every game before w120 spoke,
-  //            and the default
-  //   squares  "foxtrot 1, charlie 4" - the move's own two
-  //            squares, from then to: exactly the four-item
-  //            shape the grammar asks the USER to speak
-  //            (parsing.js), so the page and the player use
-  //            one language
-  // A third style, chess ("bishop C 4"), lived w120-w125 and
-  // was DELETED at w126: the owner could not hear bare file
-  // letters clearly from any spelling - four listens chased
-  // A, G, and E through the respelling table (see forTheEar,
-  // speech-out.js) - and a style whose letters cannot be
-  // heard is not a style. The old stored values (hybrid,
-  // nato, chess) read as junk below and fall back to the
-  // default: one re-pick, no migration shim, the w111 way.
-  // moveToSpeech in speech-out.js is the one consumer.
+  //            landed
+  //   squares  "foxtrot 1, charlie 4" - the move's starting
+  //            and ending squares: exactly the four-item
+  //            shape the grammar asks the USER to speak,
+  //            so the page and the player use one language.
   var MOVE_SPEECH = "pieces";
   var MOVE_SPEECH_KEY = "audioplay.movespeech";
 
-  // HOW AN ACCEPTED MOVE IS CONFIRMED (w131, owner's request)
-  // - the Settings row's third choice. The signal itself is
-  // one bit ("heard exactly, legal, played" - confirmFeedback,
-  // dialogue.js); this picks what carries it:
+  // HOW AN ACCEPTED MOVE IS CONFIRMED:
   //   chime-quiet, chime, chime-loud
   //           two rising notes (chimes.js) at one of three
   //           loudnesses - one axis folded into the other
-  //           (w137, owner's design) rather than a volume
-  //           control of its own, because the only chime
-  //           question is "what plays, and how loud" and
-  //           one select asks all of it. "chime" is the
-  //           middle loudness and the default, and keeps its
-  //           w131 stored value so no saved choice moves.
-  //           All three fall back to a spoken "okay." when
-  //           no chime can even be scheduled.
+  //           rather than a volume control of its own,
+  //           because the only chime question is "what
+  //           plays, and how loud" and one select asks all
+  //           of it. "chime" is the middle loudness and the
+  //           default. All three fall back to a spoken
+  //           "okay." when no chime can even be scheduled.
   //   voice   the move read back whole (moveToSpeech), for
   //           ears the chime has gone missing on - it is
   //           speech, so it is never silently lost
-  //   none    nothing on success. An explicit waiver of
-  //           rule 5 by the one person it protects; errors
-  //           still speak. Silence is THIS choice, never a
-  //           volume of zero - a chime "played" at nothing
-  //           is the inaudible-success bug (chimes.js) made
-  //           configurable.
+  //   none    nothing on success. Errors still speak.
   var CONFIRM_MODE = "chime";
   var CONFIRM_MODE_KEY = "audioplay.confirm";
 
@@ -303,18 +137,15 @@
 
   // Loaded on boot, before the page builds, so the selects
   // and the first announcement both agree with storage. Junk
-  // or a missing key reads as the default - the rated
-  // dropdown's rule (w99): storage must never quietly change
-  // behaviour.
+  // or a missing key reads as the default: storage must
+  // never quietly change behaviour.
   function loadStoredSettings() {
     // the defaults are RESTATED, not assumed: this function's
     // contract is stored-or-default whatever the variables
     // held before it ran, so calling it IS a settings reload
-    SHOW_RATINGS = false;
     MOVE_SPEECH = "pieces";
     CONFIRM_MODE = "chime";
     try {
-      SHOW_RATINGS = localStorage.getItem(RATINGS_KEY) === "on";
       var s = localStorage.getItem(MOVE_SPEECH_KEY);
       if (s === "pieces" || s === "squares") {
         MOVE_SPEECH = s;
@@ -326,40 +157,13 @@
     } catch (e) { /* private mode; the defaults stand */ }
   }
 
-  /* THE STORAGE AUDIT (w111, owner's request): every key
-   * this program keeps is named audioplay.<what it is> -
-   * token, verifier, panels, opponent, rated, timecontrol,
-   * since w120 ratings and movespeech, and since w131
-   * confirm -
-   * and storage holds NOTHING else of ours. This list is
-   * every name a previous era wrote on this origin, removed
-   * on boot so no dead key sits behind the program to
-   * puzzle over in twenty versions:
-   *
-   *   audioplay_lichess_token   the userscript's token key,
-   *                             carried into the w20 port -
-   *                             its stranded token is a live
-   *                             credential and deleting it
-   *                             is the point (rule 4)
-   *   audioplay.lichess.token   the w19 site's token key,
-   *                             possibly still holding a
-   *                             token from before the
-   *                             rebuild
-   *   audioplay.lichess.verifier  the PKCE verifier's old
-   *                             name; transient anyway
-   *   audioplay.web.*           the seek prefs, when "web"
-   *                             distinguished this site
-   *                             from a userscript that is
-   *                             frozen now
-   *   audioplay.settings        the panel's blob, v124-w116;
-   *                             the panel died at w117 and
-   *                             settings are code constants
-   *                             again
-   *
-   * A name leaves this list only if it is reused - never
-   * because the scrub "must have run by now": storage is
-   * per browser, and a device away from the site for a year
-   * still deserves the clean-up. */
+  /* THE STORAGE AUDIT: every key this program keeps is
+   * named audioplay.<what it is>, and storage holds NOTHING
+   * else of ours. This list is every name a previous era
+   * wrote on this origin, removed on boot so no dead key
+   * sits behind the program to puzzle over. The old
+   * localStorage token names matter most: a stranded token
+   * is a live credential and deleting it is the point.*/
   function scrubDeadStorage() {
     var dead = ["audioplay_lichess_token",
                 "audioplay.lichess.token",
@@ -380,15 +184,7 @@
     if (gone.length) log("SET", "storage: removed dead keys " + gone.join(" "));
   }
 
-  // (GUARD_PAWN_PUSHES and CONFIRM_ALL_MOVES lived here as
-  // constants until v128, as panel toggles until w110/w116,
-  // and are gone - see the panel tombstone above.)
-
   // LEAVE VOICE_NAME = "" TO USE SYSTEM DEFAULT.
-  // To pick system default voice on iOS or iPadOS device:
-  // Settings > General > Accessibility > Read & Speak >
-  //   Voices > English > Voice
-  // Ava (Premium) is my preferred voice on current iPadOS.
   // Other English voices that can be explicitly chosen here:
   // Samantha, Daniel, Karen, Moira, Rishi, Tessa
   var VOICE_NAME = "";
@@ -399,22 +195,17 @@
   // still runs together, lower them if it feels slow.
   var GAP_SENTENCE_MS = 450;   // after . ; :
   var GAP_CLAUSE_MS = 220;     // after ,
-  // (GAP_ITEM_MS lived here for one version, w123, and is
-  // GONE at w124 with the whole chess-item-gap experiment -
-  // the tombstone is in speech-out.js, at sanToSpeech.)
 
   // Logs the real duration of every spoken chunk to the log
   // panel. Set false once the pacing sounds right.
   var SPEAK_DEBUG = false;
 
   // The practice button. False builds the UI without it, and
-  // the mode becomes unreachable — the #voicetest hash that
-  // was its second door is gone (v112), so the button is the
-  // only one. dryRun then stays false for the whole session
-  // and every branch that tests it is simply never taken.
-  // The code stays: it is how the grammar gets exercised
-  // without spending a real game, which is what it was
-  // written for.
+  // the mode becomes unreachable - the button is its only
+  // door. dryRun then stays false for the whole session and
+  // every branch that tests it is simply never taken. The
+  // code stays: it is how the grammar gets exercised without
+  // spending a real game.
   var PRACTICE_MODE = true;
 
   // KEEP THIS ON IF YOU PLAY WITH THE SCREEN OFF. iOS will
@@ -431,8 +222,8 @@
   //
   // Leaving the mic running avoids both. The mic hears
   // nothing of our own announcements either way: iPadOS
-  // echo cancellation removes them (the v132 finding), so
-  // the open mic transcribes only the room.
+  // echo cancellation removes them, so the open mic
+  // transcribes only the room.
   //
   // One cost: a long session has no restart to recover
   // from if Safari stops delivering results. Watch "MIC
@@ -442,19 +233,12 @@
   //
   // That line SAYS NOTHING EXTRA while this is on, and adds
   // " switching" when it is off, so the suffix marks the
-  // unusual mode. It marked the opposite before v127, where
-  // " continuous" was gated on the deleted MIC_CONTINUOUS
-  // and so never printed in a normal session: logs from
-  // v126 and earlier read the other way round.
+  // unusual mode.
   var MIC_ALWAYS_ON = true;
 
-  // MIC_IGNORE_TAIL_MS and the whole speaking gate deleted
-  // at v132 with the headphones setting: AEC keeps our own
-  // voice out of the mic, so there is nothing to gate.
-
   // ---- overlay: clock mode ----
-  // ONE color for all overlay text (v82); the only color
-  // change left is the under-a-minute red.
+  // ONE color for all overlay text; the only color change
+  // left is the under-a-minute red.
   var TEXT_COLOR = "#a8a29a"; // grey
   var LOW_TIME_COLOR = "#b0503e"; // red
 
@@ -463,11 +247,7 @@
   var IDLE_WEIGHT = "200";     // clock: waiting side
   var OVERLAY_TICK_MS = 100;   // overlay redraw period
 
-  // (The message strip's CLOCK_MSG_* pair, the move row's
-  // CLOCK_TIME_SIZE / CLOCK_MOVE_* / MOVE_CHAR_EM, and
-  // MOVE_WEIGHT above all left with the clock-mode text at
-  // w110 - see the w110 HISTORY entry. The digits below
-  // are all the overlay draws now.)
+  // The digits below are all the overlay draws.
 
   // ---- clock digits ----
   // Sized for the digits ACTUALLY ON SCREEN: whole
@@ -486,7 +266,7 @@
   // between and 5vw either side. At 46 the digits nearly
   // touched and "10 10" read as 1010. A divider line was
   // refused — space is what separates things, and it costs
-  // nothing to light. CONFIRMED on screen at 40; separation
+  // nothing to light. Confirmed on screen at 40; separation
   // is proportional, so it holds at any viewing distance.
   //
   // The vh cap is the WHOLE height. THERE IS NO FULLSCREEN,
@@ -503,50 +283,53 @@
   // clock stands beside the board with the near face its
   // owner's, so the right value is whichever side the iPad
   // is sitting on — and that changes between games, which
-  // is why "flip clock" flips it live instead of this being
+  // is why "flip" flips it live instead of this being
   // a constant you must reload to change.
   var PLAYER_ON_LEFT_OF_CLOCK = true;
 
-  /*========================== DEBUG LOG ===========================*/
+  /* ========================= DEBUG LOG ========================== */
 
-  /* THE TAGS, for reading a pasted log (w119 - the owner asked
-   * what PST meant, which means the log was not carrying its
-   * own key). Nothing enforces this list; it is the convention
-   * the log() calls follow, and a new tag belongs here too.
-   *
-   *   UI   page chrome: buttons, panels     SET  settings loaded or changed
-   *   API  a Lichess REST call              NET  streams opening and closing
-   *   EVT  an event a stream delivered      MOV  a move applied to the board
-   *   HRD  what the recognizer heard        PRS  the items parsed out of it
-   *   CND  candidate legal moves matched    PST  a move POSTed + the answer
-   *   SAY  what the voice spoke             TTS  the synthesizer's own state
-   *   CHM  the confirm chime                MIC  recognizer lifecycle
-   *   AUD  the audio session and route      CLK  clock mode
-   *   TCH  tap moves on the board           DRY  practice mode
-   *   DLG  dialogue-level refusals          LAG  main-thread stalls
+  /* THE TAGS:
+   *   API  a Lichess REST call
+   *   AUD  the audio session and route
+   *   CHM  the confirm chime
+   *   CLK  clock mode
+   *   CND  candidate legal moves matched
+   *   DLG  dialogue-level refusals
+   *   DRY  practice mode
    *   ERR  page errors
+   *   EVT  an event a stream delivered
+   *   HRD  what the recognizer heard
+   *   LAG  main-thread stalls
+   *   MIC  recognizer lifecycle
+   *   MOV  a move applied to the board
+   *   NET  streams opening and closing
+   *   PRS  the items parsed out of it
+   *   PST  a move PoSTed + the answer
+   *   SAY  what the voice spoke
+   *   SET  settings loaded or changed
+   *   TCH  tap moves on the board
+   *   TTS  the synthesizer's own state
+   *   UI   page chrome: buttons, panels
    *
-   * The one worth knowing cold: a PST line is the POST of your
-   * move to Lichess and, on its second line, the HTTP status
-   * that came back - "d2d4 -> 200 {"ok":true}" is Lichess
-   * saying yes. The EVT gameState that lands beside it is the
+   * A PST line is the POST of your move to Lichess and,
+   * on its second line, the HTTP status that came back:
+   * "d2d4 -> 200 {"ok":true}" is Lichess saying yes.
+   * The EVT gameState that lands beside it is the
    * same move returning on the game stream; both are logged
    * because they race (see acceptMove), and which one wins
    * differs move to move even within one game. */
   var LOG = [];
   var logBody = null;
 
-  /* THE PANEL IS REPAINTED ONLY WHEN IT CAN BE SEEN (w53).
-   * This joined up to LOG_MAX lines - three thousand - and
-   * reassigned textContent on EVERY log line, whether or not
-   * the panel was open. The log is chatty during a game (every
-   * heard utterance, every parse, every move, every net event),
-   * so that is a few hundred kilobytes of string built and
-   * thrown away per move, on a device that is also running
-   * speech recognition and a synthesiser. The panel's own
-   * toggle already repaints on open, so a hidden panel loses
-   * nothing by being skipped; logPanelVisible is what the
-   * toggle sets. */
+  /* THE PANEL IS REPAINTED ONLY WHEN IT CAN BE SEEN. The log
+   * is chatty during a game (every heard utterance, every
+   * parse, every move, every net event), so repainting a
+   * hidden panel builds a few hundred kilobytes of string per
+   * move on a device that is also running speech recognition
+   * and a synthesiser. The panel's own toggle repaints on
+   * open, so a hidden panel loses nothing by being skipped;
+   * logPanelVisible is what the toggle sets. */
   var logPanelVisible = false;
 
   function paintLog() {
@@ -568,18 +351,14 @@
     log("ERR", (e.message || "?") + " @" + (e.lineno || "?"));
   });
 
-  /*========================= STALL WATCH ==========================\
+  /*========================= STALL WATCH ==========================
    *
-   *  A heartbeat that notices the main thread freezing (w90).
+   *  A heartbeat that notices the main thread freezing.
    *
-   *  Born of the w87-w89 lag hunt: three fixes aimed at the
-   *  keep-alive eviction fight, and the w89 log disproved the
-   *  whole line - the holder never played at all, the session
-   *  was declared, and the page still froze for seconds at a
-   *  time. "It felt laggy around then" cannot pick between
-   *  the mic, the synthesizer, and the OS; a log line saying
-   *  the main thread stalled, HOW LONG, and WHEN, sits right
-   *  next to the SAY/MIC/AUD lines that name what was running.
+   *  "It felt laggy around then" cannot pick between the mic,
+   *  the synthesizer, and the OS; a log line saying the main
+   *  thread stalled, HOW LONG, and WHEN, sits right next to
+   *  the SAY/MIC/AUD lines that name what was running.
    *  Measure first; the next theory has to fit the numbers.
    *
    *  A setInterval beat expects itself every STALL_TICK_MS;
@@ -616,23 +395,7 @@
    * spelling iOS has been heard to return for the a-file, for
    * the rank 4, for the knight, on one line together. expand()
    * flips that into the flat word -> value map the parser looks
-   * words up in.
-   *
-   * Written flat, a word could sit on the "c" line and be typed
-   * : "b" with nothing to show for it, and the same word could
-   * appear under two letters with the last one silently winning.
-   * Grouped, the first cannot happen and the second throws at
-   * load. Both were routes to a quiet wrong move.
-   *
-   * expand() must stay INSIDE this file, because property_check.js
-   * loads a SLICE of the program - rules, vocabulary, parsing and
-   * matching, the four files that turn words into moves - and
-   * anything expand() needed from outside that set would not be
-   * there. (Through w53 this said the slice was taken "from the
-   * 3. VOCABULARY header to 6. DIALOGUE": that was true when the
-   * files were numbered sections of one scroll, and the numbers
-   * went away with the userscript. The rule it was justifying
-   * still holds; the mechanism it described stopped existing.) */
+   * words up in.*/
   function expand(groups) {
     var out = {};
     Object.keys(groups).forEach(function (val) {
@@ -660,11 +423,6 @@
     a: "alpha alfa alpher ay eh apple elsa alsa ilsa alka alba " +
        "elba alva ulta olfa alfalfa adam",
     b: "bravo brava bravos bravado be bee beta",
-    // "chili" and "chilly" joined at w114 from the owner's
-    // 9 Aug practice log, where a rival transcript wrote
-    // "charlie" as "chili" ("Light chili three"). Both meet
-    // the criterion above: Safari's own output for the
-    // spoken word. Exact-only, everyday words.
     c: "charlie charley charly charlee shirley sharlie sea see " +
        "chan chang ching chong chung chin chino chinese " +
        "charlotte shortly channel chili chilly",
@@ -672,13 +430,10 @@
     e: "echo ecko eco eggo echoes aiko",
     f: "foxtrot foxtrots foxtrott foxdrop fox ef eff " +
        "astra ostra otra austra oxtra",
-    g: "golf golfs gulf gold goal gee",
+    g: "golf golfs gulf gold goal gee call",
     h: "hotel hotels hotell motel aitch age"
   });
 
-  // Keys are digits, so Object.keys hands them back in numeric
-  // order whatever order they are written in. Nothing reads the
-  // order, but do not rely on it either.
   var NUMS = expand({
     1: "one won wan juan wun",
     2: "two too tu tue tew tube",
@@ -690,64 +445,29 @@
     8: "eight ate hate ait eighth"
   });
 
-  /* PIECE NAMES LEFT THE MOVE GRAMMAR AT w118 (owner's
-   * design: moves are four coordinate items, nothing else),
-   * and this table shrank from the program's largest scar
-   * tissue to one job: naming the PROMOTION piece after an
-   * "equals" keyword. Every spelling here was paid for with
-   * a real game's mishearing - the history is in git at w117
-   * - but the promotion word is spoken next to "equals",
-   * which no other sentence contains, so the risky spellings
-   * ("clean", "patient", "rug") are not carried forward:
-   * they existed to catch piece names in open sentences, and
-   * there are no open sentences left. What remains is each
-   * piece's plain name and the transcriptions Safari returns
-   * for it when spoken clearly.
-   */
   var PIECES = expand({
-    q: "queen queens quean quinn",
+    q: "queen queens quean quinn clean",
     r: "rook rooks rock rocks brook rooke",
-    b: "bishop bishops bishup bish",
+    b: "bishop bishops bishup bish fish fisher",
     n: "knight knights night nights nite"
   });
 
-  /* A WHOLE SQUARE CAN FUSE INTO ONE WORD, and these are the
-   * recoveries. The piece+file fusions (rookie, rugby, knife,
-   * queenie...) died with the piece grammar at w118; what
-   * survives is the family the four-item grammar still needs,
-   * file+rank heard as one word. Each entry either cost a
-   * real move (aquaphor, w84: "echo four" came back as
-   * "Aquaphor" in BOTH readings and the move was lost) or
-   * came from the w85 search of that proven mechanism - the
-   * swallowed consonant and the o-becomes-w glide. Two bars,
-   * as ever: a tight rendering of the sound, and not a word
-   * said near numbers at a board.
-   */
+  // A WHOLE SQUARE CAN FUSE INTO ONE WORD, and these are the
+  // recoveries. 
   var COMPOUND = {
+    abbreviate: [["file", "b"], ["rank", "8"]],
     aquaphor: [["file", "e"], ["rank", "4"]],
-    golfer: [["file", "g"], ["rank", "4"]],
-    golfers: [["file", "g"], ["rank", "4"]],
-    gopher: [["file", "g"], ["rank", "4"]],
-    gophers: [["file", "g"], ["rank", "4"]],
-    gofer: [["file", "g"], ["rank", "4"]],
     chariot: [["file", "c"], ["rank", "8"]],
     chariots: [["file", "c"], ["rank", "8"]],
     equate: [["file", "e"], ["rank", "8"]],
-    // The owner's own hearing of bravo+8, looser than the
-    // rest of the batch - it grows a leading syllable - but
-    // it is not a word anyone says at a board, so a line
-    // that never fires costs nothing.
-    abbreviate: [["file", "b"], ["rank", "8"]]
+    gofer: [["file", "g"], ["rank", "4"]],
+    golfer: [["file", "g"], ["rank", "4"]],
+    golfers: [["file", "g"], ["rank", "4"]],
+    gopher: [["file", "g"], ["rank", "4"]],
+    gophers: [["file", "g"], ["rank", "4"]]
   };
 
-  // (TAKE_WORDS and CASTLE_WORDS died at w118 with the piece
-  // grammar: a capture is just the to-square holding their
-  // piece, and castling is the king's own two-square move -
-  // "echo one golf one". The spellings they held - "text" for
-  // takes, "cassel" - are in git at w117 with the games that
-  // earned them.)
-
-  /* AND NOW ACROSS THE TABLES, NOT JUST WITHIN THEM (w54).
+  /* AND NOW ACROSS THE TABLES, NOT JUST WITHIN THEM.
    *
    * expand() throws when one word is given two values inside a
    * single map - that is what the grouped shape above is for -
@@ -755,11 +475,11 @@
    * DIFFERENT maps, where it is just as wrong and quieter.
    * readItems tries the tables in a fixed order; a word in two
    * of them is decided by that order, silently, and the
-   * loser's meaning simply never happens. These tables only ever grow, one real log at a
-   * time - "cakes" at w48, "text" at w44, the whole plant
-   * family - and a homophone landing in two of them is exactly
-   * the kind of thing that gets added twice by two different
-   * sessions reading two different game logs.
+   * loser's meaning simply never happens. These tables only
+   * ever grow, one real log at a time, and a homophone
+   * landing in two of them is exactly the kind of thing that
+   * gets added twice by two different sessions reading two
+   * different game logs.
    *
    * Checked at load, throwing like expand() does, because a
    * grammar that is wrong should refuse to start rather than
@@ -769,8 +489,8 @@
    * "a" works.
    */
   (function crossCheckVocabulary() {
-    // COMPOUND joined the check at w65. The reason is
-    // structural, not about any one entry: it is consumed
+    // COMPOUND is in the check for a structural reason, not
+    // about any one entry: it is consumed
     // BEFORE the others in readItems, so a word in both wins
     // here and the other meaning silently never happens - the
     // loudest version of exactly the bug this guard exists
@@ -788,32 +508,24 @@
       });
     });
   })();
-  // THE QUERY-ERA FILLER LEFT AT w133. "whose whos who
-  // which" (v65) and "how much many left remaining whats
-  // hows got have has do does me we us" existed to soak up
-  // the framing of the position and time queries - "whose
-  // turn", "how much time is left" - and the queries died
-  // at w118. The owner's 17 Aug 2026 vocabulary trim
-  // cleared them: the two ways to ask for the time are the
-  // bare words "clock" and "time", and a framed sentence
-  // around them is now stray talk like any other. "i"
-  // STAYS, though it arrived with that family: "I resign"
-  // is natural speech, and a filler word that guards a
-  // game-ending command earns its line.
-  // "a" and "an" joined in v121: game21 said "resign" and
-  // Safari returned "A resign", which classifyCommand
-  // counted as a content word and refused, so the resign
-  // needed saying twice. Every command classifier requires
-  // no other content, so a stray article breaks all of
-  // them. readItems is untouched: its own "a" branch runs
+  // Framed sentences are not accepted: the way to ask for
+  // the time is the bare word "time", and a sentence around
+  // it is stray talk like any other.
+  // "i" is filler because "I resign" is natural speech, and
+  // a filler word that guards a game-ending command earns
+  // its line.
+  // "a" and "an" are filler because Safari returns "resign"
+  // as "A resign", which classifyCommand would count as a
+  // content word and refuse. Every command classifier
+  // requires no other content, so a stray article breaks all
+  // of them. readItems is untouched: its own "a" branch runs
   // BEFORE the filler check, so the a-file still reads as
   // the a-file when a rank follows it.
-  // "of" joined at w115: Safari wrote the owner's "bishop
-  // charlie four" as "Patient OF Charlie four", and since
-  // w115 an unaccounted word next to a bare square raises a
-  // question, a stray "of" would have raised one on its own.
-  // It carries no meaning here in any sentence this grammar
-  // accepts, so it is filler like "the" and "on".
+  // "of" is filler because Safari inserts it ("Patient OF
+  // Charlie four"), and an unaccounted word next to a bare
+  // square raises a question - a stray "of" would raise one
+  // on its own. It carries no meaning in any sentence this
+  // grammar accepts, so it is filler like "the" and "on".
   var FILLER = wordSet("please move moves play plays the piece um " +
     "uh a an then and go goes on my is it to into onto i of");
 
@@ -821,110 +533,24 @@
     "confirmed affirmative ok okay sure aye");
   var NO_WORDS = wordSet("no nope wrong negative next nah");
   var CANCEL_WORDS = wordSet("cancel nevermind forget stop abort");
-  // ONE WORD PER COMMAND SINCE w133 (owner's trim, made
-  // while rewriting the instructions): the accepted
-  // vocabulary is kept as small as it can be, so the
-  // instructions can say "repeat" and mean exactly that.
-  // "again pardon what say" are in git at w132 - "what" and
-  // "say" especially were command words made of ordinary
-  // room talk.
   var REPEAT_WORDS = wordSet("repeat");
-  // CLOCK_WORDS is the word "clock" itself; TIME_WORDS is
-  // the other way to ask for the remaining time (w133).
-  // They are separate sets because "flip clock" requires a
-  // CLOCK word specifically - the owner killed "swap time"
-  // by name, and "timer" with it.
-  var CLOCK_WORDS = wordSet("clock clocks");
+  // "time" asks for the remaining time. One word, no synonym
+  // family - "timer" and "clock" are not accepted.
   var TIME_WORDS = wordSet("time");
-  // "flip" alone since w134: the owner learned "swap clock"
-  // had survived the w133 trim and killed the whole synonym
-  // family ("swap swaps switch reverse mirror") - "flip
-  // clock" is the phrase, as the instructions say. The
-  // plural stays for the same reason "clocks" does: a
-  // spelling the mic plausibly returns for the word spoken.
+  // "flip" swaps which side of the screen your clock is on.
+  // The plural is a spelling the mic plausibly returns for
+  // the word spoken.
   var FLIP_WORDS = wordSet("flip flips");
-  var RESIGN_WORDS = wordSet("resign resigns surrender");
+  var RESIGN_WORDS = wordSet("resign resigns");
   var DRAW_WORDS = wordSet("draw");
   var MEMO_WORDS = wordSet("memo memos");
-
-  // (CHECK_WORDS and MATE_WORDS died at w118: check is a fact
-  // about the position after a move, and the four-item grammar
-  // carries no adjectives. The announcements still SAY check
-  // and mate - that is sanToSpeech's, on the way out.)
-
-  // MATCHED AS SPELLED, NEVER USED AS A FUZZY TARGET.
-  // These are spellings iOS has actually returned, not
-  // words anyone says, so an exact hit is all they are for.
-  // Left in the fuzzy dictionary they seed a halo of their
-  // own: the eight c-file spellings alone pulled 86
-  // ordinary English words onto the c-file, "change",
-  // "chance", "coming", "coin", "thing" and "hang" among
-  // them, each one edit from "ching" or "chan". Since "for"
-  // is a homophone of four, "are you coming for tea" parsed
-  // as c4. Listed here they still match when spoken and
-  // seed nothing.
-  var FUZZY_EXACT_ONLY = wordSet("chan chang ching chong chung " +
-    "chin chino chinese charlotte shortly " +
-    // v121, game21. Each would drag ordinary words in as
-    // a fuzzy target: "astra"/"ostra" sit one edit from
-    // "extra" and "ultra", "ruts" from "rats", "cuts",
-    // "nuts" and "ruth", "bitch" from "pitch", "ditch" and
-    // "witch", "shortly" from "shorty". Named as spellings
-    // they still match when spoken and seed nothing.
-    "astra ostra otra austra oxtra ruts bitch vision visions " +
-    // v134, game24. "channel" is the first c-file spelling
-    // that is an everyday word, and the worst-shaped one:
-    // "channels", "chapel", "change" and "chancel" are all
-    // one or two edits away and none of them is the file.
-    "channel " +
-    // w59, game w58-1. "clean" is the first QUEEN spelling
-    // that is an everyday word, and it is badly shaped: six
-    // ordinary words sit one edit away - clear, clan, lean,
-    // glean, cleans, cleat - and "clear" and "lean" are both
-    // things a person says at a board. As a fuzzy target it
-    // would turn all six into queens; named as a spelling it
-    // matches when spoken and seeds nothing.
-    "clean " +
-    // w114. "chili" and "chilly" are everyday words with an
-    // everyday neighbourhood - chill, chills, child, hilly,
-    // dilly - and none of that family is the c-file. Named
-    // as spellings they match when spoken and seed nothing.
-    "chili chilly " +
-    // w115. "patient" is the bishop by the same rule and the
-    // same hazard, one size worse: at seven letters the fuzzy
-    // matcher allows TWO edits, which reaches "patients",
-    // "patience", "ancient" and "impatient".
-    "patient");
-
-  // Ordinary words sit one edit from vocabulary words and
-  // were being converted silently: "good" became "gold", a
-  // golf homophone, and "lord" became "ford", a four
-  // homophone. Both invent a move component out of ordinary
-  // speech. These are never guessed at. To disable this
-  // guard, empty the list and delete the FUZZY_NEVER line
-  // in fuzzyToken, in parsing.js.
-  var FUZZY_NEVER = wordSet(
-    "lord load word ward cord form good goods gone going cold " +
-    "hold told sold bold fold food wood hood mood door " +
-    "done some same come time like make made more most that " +
-    "this than them they what when were well will with " +
-    "here hear near year your yeah give live love over " +
-    "only just must back been best nice mine name wait " +
-    "want damn hell crap oops");
 
   /*=========================== PARSING ============================*/
 
   /*===================== THE SPOKEN GRAMMAR =======================
    *
-   *  WHAT CAN BE SAID, and what it means. Rewritten whole at
-   *  w118, on the owner's design, after the piece-name grammar
-   *  lost one game too many (the 11 Aug "Patient Charlie four"
-   *  resignation, and w116's confirm-every-move answer to it,
-   *  which traded the danger for a question on every move).
-   *  This grammar deletes the danger instead.
-   *
-   *  A MOVE IS FOUR ITEMS: from-file, from-rank, to-file,
-   *  to-rank.
+   *  A MOVE IS FOUR ITEMS:
+   *  from-file, from-rank, to-file, to-rank
    *
    *    "echo two echo four"        e2e4
    *    "golf one foxtrot three"    Ng1-f3, no piece name needed
@@ -934,18 +560,12 @@
    *    "echo one golf one"         castles kingside: castling
    *                                is the KING's move, spoken
    *                                as the king's two squares
-   *    "echo seven echo eight"     promotion, a queen unless...
+   *    "echo seven echo eight"     promotion to a queen unless...
    *    "... equals knight"         ...a piece is named after
    *                                an equals word
    *
    *  THE VOCABULARY IS SIXTEEN WORDS - alpha through hotel,
-   *  one through eight - plus their logged homophones, and
-   *  that is the whole point: every catastrophic mishearing
-   *  in this project's history was a PIECE NAME (bishop as
-   *  "Patient", pawn as "Plants", rook as "Rug", queen as
-   *  "Clean"). The NATO alphabet exists because its words
-   *  share no neighbours; the piece names were never chosen
-   *  for the ear at all.
+   *  one through eight - plus their logged homophones.
    *
    *  AND THE FORMAT IS ITS OWN GUARD. Four items name one
    *  move with no legal-move disambiguation, so nothing is
@@ -956,51 +576,23 @@
    *  and the chime confirms it - no read-back, no yes. The
    *  user said all four items; the chime says they landed.
    *
-   *  ANYTHING LESS IS "Say again." - all of it, on purpose
-   *  (owner's decision, w118). Not "I heard X", no filling in
-   *  a missing item by what is legal, however unique the
-   *  completion. The old grammar's repair chain could turn
-   *  half a hearing into the right move most days, and into
-   *  c4-instead-of-Bc4 once - and once was the whole game. A
-   *  system that never guesses cannot guess wrong: the ONLY
-   *  thing that plays is four items heard whole. If several
-   *  rival readings parse to DIFFERENT legal moves, that is a
-   *  mishearing by definition, and it is "Say again." too.
+   *  ANYTHING LESS IS "Say again." The ONLY thing that is
+   *  accepted is four items heard whole. If several rival
+   *  readings parse to DIFFERENT legal moves, that is a
+   *  mishearing by definition, and it gets "Say again." too.
    *
-   *  w118 drew the line one step further - "that is not
-   *  legal" was refused as well - and the owner MOVED it at
-   *  w131, after four identical "Say again."s at a blocked
-   *  Nc3 left him unable to tell a mishearing from a bad
-   *  move. A WHOLE move, heard clean, that is not legal now
-   *  gets "That is not a legal move." - it confirms the
-   *  hearing and states legality, and it still reads nothing
-   *  back, explains nothing, suggests nothing. The line and
-   *  its reasons live at namesIllegalMove (matching.js).
-   *
-   *  SINGLE LETTERS work as well as NATO words ("E two E
-   *  four"), and glued squares work ("e2 e4", "e2e4"), since
-   *  Safari often returns them fused. But the letters b, c,
-   *  d, e, g are one vowel apart across a room, and a letter
-   *  that lands as an ordinary word lands as nothing - "B
-   *  four" comes back as "before". NATO words are the ones
-   *  that survive the distance.
+   *  ONE EXCEPTION: a WHOLE move, heard clean, that is not
+   *  legal gets: "That is not a legal move.".
+   *  The line and its reasons live at namesIllegalMove.
    *
    *  IF THE FIRST WORD KEEPS GETTING LOST, start with one
    *  that does not matter and let it absorb the loss:
    *  "move", "play", "please", "okay", "um" are ignored.
    *
-   *  COMMANDS: "repeat", "clock" or "time", "flip clock",
-   *  "cancel", "memo ...", "resign", "draw" - the last two
+   *  COMMANDS: "repeat", "time", "flip", "cancel",
+   *  "memo", "resign", "draw" - the last two
    *  still ask their yes/no, because they end a game and are
-   *  not moves. ONE WORD EACH since w133 (owner's trim):
-   *  the synonyms - "say again", "pardon", "offer a draw",
-   *  "timer" - are gone so the accepted vocabulary is as
-   *  small as the instructions claim. (The position queries
-   *  - "whose turn", "what is on foxtrot three" - were
-   *  deleted at w118 with the rest: the owner never used
-   *  them. The spoken TIME came back at w133, reversing the
-   *  12 Aug ruling - see the spoken-clock note in
-   *  header.js.)
+   *  not moves.
    *
    *  STRAY TALK. The mic is open all game, so everything said
    *  in the room reaches it. An utterance with no complete
@@ -1010,79 +602,6 @@
    *  answer ("black to move.", "The game is over.").
    *================================================================*/
 
-
-  /* Safari mangles words the homophone lists cannot all anticipate
-   * ("foxtrott", "delter", "charlies"). As a LAST resort, accept a
-   * token that is one edit away from exactly one vocabulary word.
-   * Ambiguous near-misses are rejected rather than guessed. Since
-   * w118 the targets are FILES and RANKS only - there is nothing
-   * else left to be near - and a false positive cannot play a
-   * move: it makes a fifth item, or a wrong item in an illegal
-   * move, and both are "Say again." */
-  function editDistance(a, b, cap) {
-    if (Math.abs(a.length - b.length) > (cap || 1)) return 99;
-    var prev = [], cur = [], i, j;
-    for (j = 0; j <= b.length; j++) prev[j] = j;
-    for (i = 1; i <= a.length; i++) {
-      cur[0] = i;
-      for (j = 1; j <= b.length; j++) {
-        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1,
-                          prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-      }
-      prev = cur.slice();
-    }
-    return prev[b.length];
-  }
-
-  var FUZZY_SETS = [[NATO, "file"], [NUMS, "rank"]];
-
-  /* THE CANDIDATE LIST IS BUILT ONCE (w53): the tables are
-   * constants, so the eligible spellings are flattened at load. */
-  var FUZZY_TARGETS = (function () {
-    var out = [];
-    FUZZY_SETS.forEach(function (pair) {
-      var dict = pair[0], kind = pair[1];
-      Object.keys(dict).forEach(function (w) {
-        if (w.length < 4) return;
-        if (FUZZY_EXACT_ONLY[w]) return;
-        out.push({ t: kind, v: dict[w], w: w });
-      });
-    });
-    return out;
-  })();
-
-  function fuzzyToken(tk) {
-    if (tk.length < 4) return null;
-    if (FUZZY_NEVER[tk]) return null;
-    /* short words are dense with collisions, long ones are not */
-    var tol = tk.length >= 6 ? 2 : 1;
-    var hits = [];
-    for (var fi = 0; fi < FUZZY_TARGETS.length; fi++) {
-      var cand = FUZZY_TARGETS[fi];
-      if (editDistance(tk, cand.w, tol) <= tol) hits.push(cand);
-    }
-    if (!hits.length) return null;
-    var distinct = {};
-    hits.forEach(function (h) { distinct[h.t + h.v] = h; });
-    var keys = Object.keys(distinct);
-    if (keys.length !== 1) {
-      // AMBIGUOUS, REFUSE TO GUESS - but say so in the log
-      // (w114): the owner's deliberate "light" vanished
-      // without a trace once, and the refusal was right but
-      // the silence read as the word never being seen.
-      var words = keys.map(function (k) {
-        return "\"" + distinct[k].w + "\"";
-      }).join(" or ");
-      var rmsg = "near-miss \"" + tk + "\" dropped: could be " + words;
-      if (!nearMissLogged[rmsg]) {
-        nearMissLogged[rmsg] = 1;
-        log("PRS", rmsg);
-      }
-      return null;
-    }
-    return distinct[keys[0]];
-  }
-
   // Apostrophes are deleted, not turned into spaces, so
   // "who's" becomes "whos" and matches the filler words.
   function wordsOf(raw) {
@@ -1091,7 +610,7 @@
       .split(/\s+/).filter(Boolean);
   }
 
-  /* THE CLASSIFIERS (w57): they read an utterance and decide
+  /* THE CLASSIFIERS: they read an utterance and decide
    * what KIND of thing it is. */
   function memoTranscript(transcripts) {
     for (var i = 0; i < transcripts.length; i++) {
@@ -1101,27 +620,10 @@
     return null;
   }
 
-  // "flip clock" swaps which side of the screen your clock
-  // is on - and since w134 it is literally that phrase: the
-  // flip synonyms died with the rest of the trim. As
-  // strict as its neighbors: a flip word AND a clock word,
-  // and any other content word disqualifies.
-  function classifyFlipClock(raw) {
-    var toks = wordsOf(raw);
-    var flip = 0, clk = 0, other = 0;
-    for (var i = 0; i < toks.length; i++) {
-      var t = toks[i];
-      if (FLIP_WORDS[t]) flip++;
-      else if (CLOCK_WORDS[t]) clk++;
-      else if (!FILLER[t]) other++;
-    }
-    return !!(flip && clk && !other);
-  }
-
   function classifyCommand(raw) {
     var toks = wordsOf(raw);
     var yes = 0, no = 0, cancel = 0, repeat = 0,
-        resign = 0, draw = 0, clk = 0, other = 0;
+        resign = 0, draw = 0, time = 0, flip = 0, other = 0;
     toks.forEach(function (t) {
       if (YES_WORDS[t]) yes++;
       else if (NO_WORDS[t]) no++;
@@ -1129,11 +631,10 @@
       else if (REPEAT_WORDS[t]) repeat++;
       else if (RESIGN_WORDS[t]) resign++;
       else if (DRAW_WORDS[t]) draw++;
-      // "clock" or "time", alone, asks for the remaining
-      // times (w133). A FLIP word beside a clock word counts
-      // as other content here, which is what hands "flip
-      // clock" to classifyFlipClock instead.
-      else if (CLOCK_WORDS[t] || TIME_WORDS[t]) clk++;
+      // "time", alone, asks for the remaining times.
+      else if (TIME_WORDS[t]) time++;
+      // "flip", alone, swaps the clock sides.
+      else if (FLIP_WORDS[t]) flip++;
       else if (!FILLER[t]) other++;
     });
     if (cancel && !other) return "cancel";
@@ -1142,12 +643,13 @@
     if (yes && !no && !other) return "yes";
     if (no && !yes && !other) return "no";
     if (repeat && !other) return "repeat";
-    if (clk && !other) return "clock";
+    if (time && !flip && !other) return "time";
+    if (flip && !time && !other) return "flip";
     return null;
   }
 
   /* A WORD THAT IS NOT PART OF A MOVE BUT IS NOT UNKNOWN
-   * EITHER (w115). The command tables hold every word the
+   * EITHER. The command tables hold every word the
    * program recognises without it being a file or a rank;
    * the move parser has no use for them, but their presence
    * must not damn a reading the way a genuinely unknown word
@@ -1155,16 +657,10 @@
    * hearing. */
   function knownNonMoveWord(tk) {
     return !!(YES_WORDS[tk] || NO_WORDS[tk] || CANCEL_WORDS[tk] ||
-              REPEAT_WORDS[tk] || CLOCK_WORDS[tk] || TIME_WORDS[tk] ||
+              REPEAT_WORDS[tk] || TIME_WORDS[tk] ||
               FLIP_WORDS[tk] || RESIGN_WORDS[tk] || DRAW_WORDS[tk] ||
               MEMO_WORDS[tk]);
   }
-
-  // See the near-miss logging note in fuzzyToken; declared
-  // here so the parser test slice (vocabulary, parsing and
-  // matching) contains it. handleTranscripts resets it per
-  // utterance.
-  var nearMissLogged = {};
 
   /* ONE READING, REDUCED TO ITS ITEMS. Returns
    *   { items: [{t:"file"|"rank", v}...],
@@ -1173,8 +669,8 @@
    * The caller decides what the shape means; this only
    * translates words. An unknown content word marks the
    * reading DAMAGED - something was said that the grammar
-   * cannot account for, and w115's lesson is that the
-   * commonest such something is a word the mic mangled. A
+   * cannot account for, and the commonest such something
+   * is a word the mic mangled. A
    * damaged reading never plays; whether it earns a "Say
    * again." depends on whether any reading held a square.
    */
@@ -1195,17 +691,16 @@
         continue;
       }
       // "to" is filler EXCEPT directly after a file, where it
-      // is the rank 2 (v116): Safari writes "two" as "to", and
-      // the four-item grammar says a rank follows every file,
-      // so "echo to echo four" MUST read as e2e4. This rule
-      // predates w118 and matters more now than it ever did.
+      // is the rank 2: Safari writes "two" as "to", and the
+      // four-item grammar says a rank follows every file, so
+      // "echo to echo four" MUST read as e2e4.
       if (tk === "to") {
         if (items.length && items[items.length - 1].t === "file") {
           items.push({ t: "rank", v: "2" });
         }
         continue;
       }
-      // SAFARI WRITES "delta" AS "down to" (w84): "down to"
+      // SAFARI WRITES "delta" AS "down to": "down to"
       // DIRECTLY BEFORE A RANK is the d-file, the "to"
       // consumed as part of the word.
       if (tk === "down" && toks[i + 1] === "to") {
@@ -1253,16 +748,10 @@
       if (/^[1-8]$/.test(tk)) { items.push({ t: "rank", v: tk }); continue; }
       if (FILLER[tk]) continue;
       if (knownNonMoveWord(tk)) continue;
-      var fz = fuzzyToken(tk);
-      if (fz) {
-        var nmsg = "near-miss \"" + tk + "\" read as \"" + fz.w + "\"";
-        if (!nearMissLogged[nmsg]) {
-          nearMissLogged[nmsg] = 1;
-          log("PRS", nmsg);
-        }
-        items.push({ t: fz.t, v: fz.v });
-        continue;
-      }
+      // Not in any table: an unknown word. It is REMEMBERED,
+      // not skipped - the four-item test refuses a move with
+      // an unknown beside it, and the log line naming it is
+      // how the homophone tables grow.
       if (!unknown) unknown = tk;
     }
     return { items: items, promo: promo, unknown: unknown };
@@ -1273,9 +762,9 @@
    * unknown word beside them. Returns "e2e4"-style UCI (the
    * promotion letter appended by the caller once legality is
    * known), or null. No shorter or longer shape is ever
-   * completed or trimmed: the owner's rule is that the system
-   * never guesses, so a hearing that is not the whole move is
-   * not a move.
+   * completed or trimmed: the rule is that the system never
+   * guesses, so a hearing that is not the whole move is not
+   * a move.
    */
   function parseMove(raw) {
     var r = readItems(raw);
@@ -1313,28 +802,23 @@
   }
   /*=========================== MATCHING ===========================*/
 
-  /* WHAT THIS FILE IS, since w118: the one step between "some
-   * readings arrived" and "exactly one legal move, or nothing".
-   * The old matching layer was the program's largest room -
-   * constraint sets, scored candidates, rival-reading tiers,
-   * the bare-pawn guard - because the old grammar let a
-   * sentence UNDERDESCRIBE a move and legality had to finish
-   * the job. The four-item grammar (parsing.js) says the whole
-   * move or says nothing, so all that is left to do here is:
-   * read every rival transcript, keep the readings that reduce
-   * to a clean four-item move, check them against the legal
+  /* WHAT THIS FILE IS: the one step between "some readings
+   * arrived" and "exactly one legal move, or nothing". The
+   * four-item grammar says the whole move or
+   * says nothing, so all that is left to do here is: read
+   * every rival transcript, keep the readings that reduce to
+   * a clean four-item move, check them against the legal
    * moves, and insist the survivors AGREE.
    *
-   * RIVAL READINGS may still rescue a move - Safari's first
-   * guess writes "echo four" as "go for" while its third gets
-   * it right, and the third is as much the user's utterance as
-   * the first (w49's rule was that a rival may only ASK, never
-   * play; what made rivals dangerous then was inference, and
-   * there is none left - a rival that yields a complete legal
-   * four-item move heard the same mouth say the same squares).
-   * But if two readings yield two DIFFERENT legal moves, the
-   * mic is guessing, and the answer is the caller's "Say
-   * again." - never a pick between them.
+   * RIVAL READINGS may rescue a move - Safari's first guess
+   * writes "echo four" as "go for" while its third gets it
+   * right, and the third is as much the user's utterance as
+   * the first. Rivals are safe because nothing is inferred:
+   * a rival that yields a complete legal four-item move heard
+   * the same mouth say the same squares. But if two readings
+   * yield two DIFFERENT legal moves, the mic is guessing, and
+   * the answer is the caller's "Say again." - never a pick
+   * between them.
    */
 
   function dedupeTranscripts(list) {
@@ -1358,8 +842,8 @@
    * refuses a crowd. The promotion default is applied here,
    * where legality is known: a four-item move that lands a
    * pawn on the last rank is a QUEEN promotion unless the
-   * utterance named another piece (owner's rule, w118 -
-   * "equals knight" is the one surviving piece phrase).
+   * utterance named another piece ("equals knight" is the
+   * one accepted piece phrase).
    */
   function collectMoves(pos, transcripts) {
     var legal = pos.legalMoves();
@@ -1388,10 +872,9 @@
     return out;
   }
 
-  /* The one distinction the refusal is allowed to make (owner's
-   * revision, w131, from a real game - four tries at a blocked
-   * Nc3, four identical "Say again."s, and no way to tell a
-   * mishearing from a bad move): did some reading reduce to a
+  /* The one distinction the refusal is allowed to make -
+   * without it, a mishearing and a bad move are
+   * indistinguishable at the board: did some reading reduce to a
    * clean four-item move - nothing missing, no unknown word -
    * whose from-to pair matches NO legal move? Then the mic
    * heard a whole move and the move itself is the problem, and
@@ -1420,41 +903,26 @@
    *  what to do about it - play it, or say "Say again." - and it
    *  is the file that owes the user a sentence on every path out.
    *
-   *  IT WAS 1,270 LINES THE DAY BEFORE w118, and its size WAS
-   *  the old grammar: four kinds of open question, a repair
-   *  chain, a candidate walk, a piece prompt, a partial prompt -
-   *  all machinery for finishing sentences the mic had half
-   *  delivered. The four-item grammar (parsing.js) does not
-   *  allow half a sentence, so the machinery went with the
-   *  hazard it managed. What survives is the one question that
-   *  is not a move (resign/draw/claim, yes or no), the busy
-   *  guard, the post pipeline, and the chime.
+   *  The four-item grammar does not allow half a
+   *  sentence, so there is no repair or prompting machinery
+   *  here. What there is: the one question that is not a move
+   *  (resign/draw/claim, yes or no), the busy guard, the post
+   *  pipeline, and the chime.
    *
-   *  THE ORDER OF handleTranscripts IS STILL LOAD-BEARING:
+   *  THE ORDER OF handleTranscripts IS LOAD-BEARING:
    *  memo first (a memo naming a move must never be played),
    *  then the open yes/no, then commands, then the move.
    *
-   *  SILENCE IS NOT AN ANSWER (constraint 5, header.js). Every
-   *  path out of here speaks or chimes, except the two
-   *  deliberate exceptions documented where they live: stray
-   *  talk with no square in it, and yes/no/cancel with nothing
-   *  open.
+   *  SILENCE IS NOT AN ANSWER. Every path out of here speaks or
+   *  chimes, except the two deliberate exceptions documented
+   *  where they live: stray talk with no square in it, and
+   *  yes/no/cancel with no open question.
    *
-   *  "Say again." IS THE WHOLE REFUSAL, verbatim, for
-   *  everything that is not a clean legal four-item move
-   *  (owner's decision, w118). The previous grammar's refusals
-   *  read the hearing back ("I heard queen takes...") so a
-   *  mishearing could be told from a bad move - worth it when
-   *  a question hung on the answer, all talk now that nothing
-   *  is ever asked. The log still carries what was heard, for
-   *  afterwards; the room gets three words.
+   *  "Say again." IS THE REFUSAL for everything that is not a
+   *  clean legal four-item move. The log records what was heard.
    *
-   *  ONE CARVE-OUT SINCE w131 (owner's revision, from a real
-   *  game): a WHOLE move, heard clean, that is simply not
-   *  legal gets "That is not a legal move." instead - see
-   *  namesIllegalMove (matching.js) for the line and why it
-   *  is drawn where it is. Everything damaged, incomplete, or
-   *  disagreed-on is still the same three words.
+   *  ONE EXCEPTION: a WHOLE move, heard clean, that is simply
+   *  not legal gets "That is not a legal move."
    *================================================================*/
 
   var confirmAction = null;  // key into CONFIRMS
@@ -1468,7 +936,7 @@
                      no: "draw/no", noSay: "draw declined." },
     takebackoffer: { yes: "takeback/yes", yesSay: "takeback accepted.",
                      no: "takeback/no", noSay: "takeback declined." },
-    // claim-victory (w61): offered when the opponent has been
+    // claim-victory: offered when the opponent has been
     // gone past Lichess's window. "no" sends nothing - the
     // window stays open, and handleOpponentGone only re-arms
     // the question on a FRESH departure, so declining is
@@ -1479,25 +947,19 @@
 
   var busy = false;
 
-  /* NO QUESTION OUTLIVES THE GAME IT WAS ASKED IN (w50). The
-   * bad case is not hypothetical: ask "resign", get "Resign
-   * the game?", have the opponent mate you before
-   * you answer, let the next game auto-join off the event
-   * stream - and the first "yes" of the new game resigns it.
+  /* NO QUESTION OUTLIVES THE GAME IT WAS ASKED IN.
    * Called from everywhere a game begins or ends: joinGame,
    * the game-over branch, practice on and off, voice off. The
    * armed read-back goes too, since it refers to a move posted
-   * in a game that is no longer the current one. (Four kinds
-   * of question stood here until w118; the move questions died
-   * with the grammar that needed them.)
+   * in a game that is no longer the current one.
    */
   function clearDialogue() {
     confirmAction = null;
     armedUci = null;
   }
 
-  // THE CONFIRMATION BELONGS TO WHICHEVER EVENT ARRIVES FIRST
-  // (v134). Two things confirm a move we posted - the stream
+  // THE CONFIRMATION BELONGS TO WHICHEVER EVENT ARRIVES
+  // FIRST. Two things confirm a move we posted - the stream
   // carrying our own uci back, and the 200 - and they arrive
   // in either order within the same second. armedUci is set by
   // acceptMove to the move we sent, and the first caller to
@@ -1507,33 +969,19 @@
   //
   // ONLY A MOVE WE POSTED IS ARMED. A move made by hand on
   // the Lichess board arrives through the same syncMoves
-  // path with no arm behind it and stays unspoken, as it
-  // always has been. A TAPPED move (w86) is posted by us and
-  // still not armed, on purpose: two taps prove the eyes are
-  // on the screen, where the piece appearing is the answer.
+  // path with no arm behind it and stays unspoken.
   var armedUci = null;
 
-  // The post-move feedback (w108 shape; the whole own-move
-  // channel since w116). Under the w118 grammar it confirms a
-  // move the user spoke WHOLE - all four items - so the one
-  // bit it carries is the bit that is owed: heard exactly,
-  // legal, played. HOW it is carried is the Confirm setting
-  // (w131, owner's request; settings.js has the table):
+  // The post-move feedback. It confirms a move the user
+  // spoke WHOLE - all four items - so the one bit it carries
+  // is the bit that is owed: heard exactly, legal, played.
+  // HOW it is carried is the Confirm setting:
   //   chime   the default - two notes when they can be
-  //           scheduled, a spoken "okay." when they cannot
-  //           (rule 5 - never silence by accident); three
-  //           loudnesses since w137, all landing here
-  //           (chimes.js reads the level, this file only
-  //           asks "is it a chime")
+  //           scheduled, a spoken "okay" when they cannot.
+  //           three loudnesses.
   //   voice   the move read back whole, the same sentence an
-  //           opponent's move gets - the sound case's rule
-  //           that spoken confirmation must carry information
-  //           (header.js), and it is never lost where a chime
-  //           can go unheard
-  //   none    nothing. A DELIBERATE rule-5 exemption, like
-  //           the stray-talk one: the owner chose to waive
-  //           the confirmation, and only the confirmation -
-  //           every error path below still speaks.
+  //           opponent's move gets.
+  //   none    nothing. Every error path below still speaks.
   function confirmFeedback(san, uci) {
     if (CONFIRM_MODE === "none") return;
     if (CONFIRM_MODE === "voice") {
@@ -1552,29 +1000,23 @@
     if (!armedUci || armedUci !== uci) return;
     armedUci = null;
     if (!announce) return;
-    // v104's rule: a SAN ending in # ends the game whoever
-    // gets there first, and the result line says it better
-    // than a confirmation can. api.over alone was not enough
-    // then and is not now.
+    // A SAN ending in # ends the game whoever gets there
+    // first, and the result line says it better than a
+    // confirmation can. api.over alone is not enough.
     if (api.over || /#$/.test(san)) return;
     confirmFeedback(san, uci);
   }
 
-  /* quiet=true is a tapped move (touch.js): no confirmation,
-   * no arming - but every ERROR below still speaks, because a
-   * failure must be heard whichever way the move went in.
-   *
-   * SINCE w118 THE ONLY OTHER CALLER IS THE FOUR-ITEM MATCH in
+  /* THE ONLY OTHER CALLER IS THE FOUR-ITEM MATCH in
    * handleTranscripts: a reading that reduced to exactly one
    * legal move, spoken whole by the user. Nothing arrives here
-   * inferred, repaired, or picked from a list - that machinery
-   * is gone, and if a new path ever wants in without the whole
-   * move behind it, that is the 11-Aug conversation to have
-   * again, and the answer is no. */
+   * inferred, repaired, or picked from a list, and if a new
+   * path ever wants in without the whole move behind it, the
+   * answer is no. */
   function acceptMove(c, quiet) {
     if (busy) {
       // SILENCE IS NOT AN ANSWER, not even for "I am still
-      // working on the last one" (w50). It is a short window
+      // working on the last one". It is a short window
       // normally; it was an unbounded one until postMove grew
       // a timeout.
       log("DLG", "ignored, busy");
@@ -1585,10 +1027,9 @@
     var uci = api.pos.uciOf(c.m);
 
     if (dryRun) {
-      bankPracticeClock();   /* w128: your think drained your clock */
       api.pos.apply(c.m);
       api.moves.push(uci);
-      api.lastSan = c.san; api.lastSanW = c.san;
+      api.lastSan = c.san;
       api.lastUci = uci;
       busy = false;
       log("DRY", "you play " + uci + " = " + c.san + " (not sent)");
@@ -1596,14 +1037,14 @@
       // is where the chime can be heard without a game at
       // stake
       if (!quiet) confirmFeedback(c.san, uci);
-      // CALLED BY NAME, NOT BY REFERENCE (w54): late binding
+      // CALLED BY NAME, NOT BY REFERENCE: late binding
       // costs nothing and means the current definition is the
       // one that runs.
       setTimeout(function () { dryOpponentReply(); }, 1600);
       return;
     }
 
-    armedUci = quiet ? null : uci;        /* v134: see readBackMine */
+    armedUci = quiet ? null : uci;        /* see readBackMine */
     postMove(uci).then(function (r) {
       busy = false;
       var ok = r.status === 200 && r.body && r.body.ok !== false && !r.body.error;
@@ -1612,16 +1053,14 @@
         // THIS RESOLVES LATE. The gameState event for the same
         // move usually arrives before this promise does - on
         // the mating move, always - so whichever got here first
-        // confirms, the other finds it disarmed (v134, v104:
-        // see readBackMine).
+        // confirms, the other finds it disarmed (see
+        // readBackMine).
         readBackMine(c.san, uci, true);
       } else {
         armedUci = null;     /* rejected: nothing to confirm */
-        // A DEAD TOKEN IS NOT A BAD MOVE (w60). Mid-game
-        // revocation used to speak "Lichess rejected that
-        // move. error 401" per move - true words, wrong
-        // diagnosis, and the one useful instruction (sign in
-        // again) never said.
+        // A DEAD TOKEN IS NOT A BAD MOVE. "Lichess rejected
+        // that move. error 401" is true words with the wrong
+        // diagnosis; say the one useful instruction instead.
         if (r.status === 401 || r.status === 403) {
           var firstAuthFail = !authGone;
           noteAuthFailure(new Error("move HTTP " + r.status));
@@ -1630,7 +1069,7 @@
         }
         if (r.status === 429) {
           // the one wrong answer to a 429 is trying again at
-          // once, and "rejected" invites exactly that (w63)
+          // once, and "rejected" invites exactly that
           speak("Lichess asks us to slow down. " +
                 "wait a moment, then say the move again.");
           return;
@@ -1647,17 +1086,17 @@
   }
 
   /* Send a confirmed yes/no action and report what actually
-   * happened (w50). In practice mode there is nothing to send
+   * happened. In practice mode there is nothing to send
    * and nothing to fail, so it just says the line. */
   function confirmedAction(path, saidWhenSent) {
     if (dryRun) { speak(saidWhenSent); return; }
     postAction(path).then(function (r) {
       if (r.ok) { speak(saidWhenSent); return; }
-      // THE STATUS IS PART OF THE ANSWER (w60). Lichess 400s
-      // these paths in ordinary play - resign in the abortable
+      // THE STATUS IS PART OF THE ANSWER. Lichess 400s these
+      // paths in ordinary play - resign in the abortable
       // phase, a takeback the opponent just withdrew, a draw
-      // offer that expired - and this spoke "resigning." over
-      // every one of them.
+      // offer that expired - and "resigning." over any of
+      // them would be a lie.
       if (r.status === 401 || r.status === 403) {
         var firstFail = !authGone;
         noteAuthFailure(new Error("action HTTP " + r.status));
@@ -1686,7 +1125,6 @@
   }
 
   function handleTranscripts(rawList) {
-    nearMissLogged = {};  // one near-miss line per utterance (v116)
     var transcripts = dedupeTranscripts(rawList);
     var primary = transcripts[0] || "";
     var dropped = (rawList ? rawList.length : 0) - transcripts.length;
@@ -1696,8 +1134,8 @@
 
     // A verbal memo for the log. Checked before ANYTHING
     // else, because a memo that mentions a move must never
-    // be parsed as one: in game3 a note containing a
-    // currently legal move would have been PLAYED. Any
+    // be parsed as one: a note containing a currently legal
+    // move would otherwise be PLAYED. Any
     // reading may carry the memo word. A pending yes/no
     // question survives a memo untouched.
     var memoText = memoTranscript(transcripts);
@@ -1707,8 +1145,8 @@
       return;
     }
     // COMMANDS ARE READ FROM THE PRIMARY TRANSCRIPT ONLY, and
-    // that is a decision, not an oversight (documented at
-    // w54): "resign", "yes" and "draw" all END something, and
+    // that is a decision, not an oversight: "resign", "yes"
+    // and "draw" all END something, and
     // a command invented from a reading the mic ranked second
     // could resign a game the user is winning. A missed
     // command costs one repetition.
@@ -1716,7 +1154,7 @@
 
     if (confirmAction) {
       var spec = CONFIRMS[confirmAction];
-      // THE ANSWER WAITS FOR THE POST (w50): nothing is
+      // THE ANSWER WAITS FOR THE POST: nothing is
       // claimed until the send succeeds, and a failed send
       // says so.
       if (cmd === "yes") {
@@ -1735,17 +1173,15 @@
     }
 
     if (cmd === "repeat") { repeatLast(); return; }
-    if (cmd === "clock") { speakClockTimes(); return; }
-    if (classifyFlipClock(primary)) { flipClockSides(); return; }
+    if (cmd === "time") { speakClockTimes(); return; }
+    if (cmd === "flip") { flipClockSides(); return; }
 
     if (cmd === "resign") { confirmAction = "resign";
       speak("Resign the game?"); return; }
     if (cmd === "draw") { confirmAction = "offerdraw";
       speak("Offer a draw?"); return; }
     // YES, NO AND CANCEL WITH NOTHING OPEN ARE SILENT, ON
-    // PURPOSE (documented at w54; the behaviour is older). It
-    // looks like a constraint-5 violation and it is the
-    // stray-talk exemption: the mic is open the whole game,
+    // PURPOSE. The mic is open the whole game,
     // and CANCEL_WORDS includes "stop" and "forget", which
     // land in ordinary speech at the board more often than as
     // commands. The trade is only safe because it is narrow: a
@@ -1787,22 +1223,15 @@
     }
     // More than one means rival readings disagree about which
     // legal move was said - a mishearing by definition, and
-    // never a pick (w118; the log above names them both).
-    // Zero with a square in the utterance means damaged,
-    // incomplete, or illegal. ONE ANSWER FOR ALL OF IT
-    // (owner's decision, w118): no read-back of the hearing,
-    // no legality lecture, no filling the gap however unique
-    // the completion. "If we get too fancy with using logic to
-    // fix mishears, we're going down the wrong path."
+    // never a pick (the log above names them both). Zero with
+    // a square in the utterance means damaged, incomplete, or
+    // illegal. ONE ANSWER FOR ALL OF IT: no read-back of the
+    // hearing, no legality lecture, no filling the gap however
+    // unique the completion - getting fancy with logic to fix
+    // mishears is the wrong path.
     if (moveLike || cands.length > 1) {
-      // THE ONE CARVE-OUT from the single refusal (owner's
-      // revision, w131): a whole four-item move, heard clean,
-      // that is not legal is answered "That is not a legal
-      // move." - the two failures ask for different next
-      // steps (say it again, or look at the board again), and
-      // the sentence tells the user they WERE heard. Still no
-      // read-back, no reason why, and nothing suggested:
-      // legality is stated, which is all rules.js may answer.
+      // A whole four-item move, heard clean, that is not legal
+      // is answered "That is not a legal move."
       if (!cands.length && namesIllegalMove(api.pos, transcripts)) {
         speak("That is not a legal move.");
         return;
@@ -1822,26 +1251,19 @@
    *  grammar is exercised without spending a real game, and it
    *  is what the harness drives.
    *
-   *  SPLIT OUT OF dialogue.js AT w57. It had lived there since
-   *  the v-series and it is not dialogue: dialogue decides what
-   *  a sentence means and what to say back, and this simulates
-   *  an opponent. The file it was in had grown three jobs, and
-   *  this was the most separable of them - it shares exactly
-   *  one flag with the rest of the program.
-   *
-   *  THAT FLAG IS dryRun, and it is declared here because this
+   *  THE ONE FLAG SHARED with the rest of the program is
+   *  dryRun, and it is declared here because this
    *  is what owns it. Everything else only ever ASKS: lichess.js
    *  refuses to send while it is true, ui.js toggles it, the
    *  harness sets it directly. It is read in a dozen places and
    *  written in three, all of which are about entering or
    *  leaving this mode.
    *
-   *  W50 IS THE ENTRY WORTH READING before touching dryStart.
-   *  Practice must put down everything that could deliver a
-   *  real game - the game stream, the ACCOUNT event stream, any
-   *  outstanding seek - because dryRun gags every announcement,
-   *  and a real game arriving while it is on is a live clock in
-   *  silence.
+   *  BEFORE TOUCHING dryStart: practice must put down
+   *  everything that could deliver a real game - here that
+   *  is the game stream and its reconnect/poll timers -
+   *  because dryRun gags every announcement, and a real game
+   *  arriving while it is on is a live clock in silence.
    *================================================================*/
 
   // practice mode: nothing is ever sent to Lichess
@@ -1849,22 +1271,12 @@
 
   function dryStart() {
     // EVERYTHING THAT COULD DELIVER A REAL GAME IS PUT DOWN
-    // FIRST (w50). This used to close the game stream and the
-    // timers and stop there, leaving the ACCOUNT event stream
-    // open and any outstanding seek live. Both of those exist
-    // precisely to start a game without being asked, and
-    // dryRun then gagged the result: the join happened, the
-    // real position replaced the practice one, and every
-    // announcement was suppressed because practice mode was
-    // still on. A real game with a running clock, in silence,
-    // while the board in front of you says something else.
-    // Practice is a mode where nothing is sent to Lichess, so
-    // nothing may arrive from it either.
+    // FIRST. dryRun gags every announcement - a real game
+    // with a running clock, in silence, while the board in
+    // front of you says something else. Practice is a mode
+    // where nothing is sent to Lichess, so nothing may
+    // arrive from it either.
     try { if (streamAbort) streamAbort.abort(); } catch (e) {}
-    try { if (eventAbort) eventAbort.abort(); } catch (e) {}
-    clearTimeout(eventTimer);
-    cancelSeek();
-    cancelChallenge();      /* an open challenge dies with practice too (w61) */
     clearTimeout(reconnectTimer);
     clearInterval(pollTimer);
     clearDialogue();
@@ -1872,64 +1284,18 @@
     api.myColor = "w";
     api.pos = new RULES.Position();
     api.moves = [];
-    api.over = false; api.overText = "";
-    api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+    api.over = false;
+    api.lastSan = "";
     api.lastUci = "";
-    // THE PRACTICE CLOCK IS REAL (w128, owner's ask, third
-    // draft of this block). w60 froze it at 10:00 - a
-    // placeholder in the data, right when the only clock on
-    // screen was the opt-in overlay. w127 read the frozen
-    // number as fake and nulled it to dashes - and the owner
-    // wanted the opposite: a clock that RUNS, like a game's.
-    // So: ten minutes each, and the same remainingMs that
-    // drains a live game's clock drains this one - same ply
-    // gating (nothing moves until both sides have played),
-    // same turn colours, same red under a minute. What a
-    // server does for a real game, bankPracticeClock below
-    // does here: the mover's drained value is written back
-    // as their move applies, and the anchor resets. One
-    // honest difference is left: nothing ends a practice
-    // game on time. A flag sits at red 0:00 while play goes
-    // on - practice has no referee, and losing on time is
-    // not what practice is FOR.
-    api.wtime = 600000;
-    api.btime = 600000;
-    api.clockAt = Date.now();
-    // still re-anchored here explicitly (the w60 lesson): a
-    // real game's stale anchor must never leak into practice
-    // - it used to arrive minutes old and flag white on
-    // entry. The banking resets it per move once play
-    // starts; this covers the entry itself.
+    // practice has no clock: "time" answers "no clock
+    // running.", which is the truth.
+    api.wtime = null;
+    api.btime = null;
+    api.clockAt = null;
     api.movesBefore = 0;
-    // AND NOBODY IS PLAYING (w68). Exactly the w60 hazard one
-    // field over: play a real game, then practice, and the
-    // panel would still name the opponent you just finished
-    // with - beside a board they are not on. There is no
-    // opponent here; the row says so by being empty.
     api.players = { w: null, b: null };
     log("DRY", "practice mode ON - nothing will be sent to Lichess");
     speakWhenAudioSettled("Practice mode. You are white.");
-  }
-
-  // What the server does for a real game's clock, done here
-  // for practice (w128): at the moment a move applies, the
-  // MOVER's clock stops - their drained value is banked into
-  // wtime/btime - and the anchor resets so remainingMs
-  // starts draining the other side. Called with the mover
-  // still to move (before pos.apply), because remainingMs
-  // reads api.pos.turn to decide whose clock is running.
-  // Clamped at zero: a flagged practice clock shows 0:00 and
-  // play continues (see the dryStart note).
-  function bankPracticeClock() {
-    if (api.gameId !== "PRACTICE" || api.over || !api.pos) return;
-    var mover = api.pos.turn;
-    var left = remainingMs(mover);
-    if (left != null) {
-      if (left < 0) left = 0;
-      if (mover === "w") api.wtime = left;
-      else api.btime = left;
-    }
-    api.clockAt = Date.now();
   }
 
   function dryOpponentReply() {
@@ -1948,10 +1314,9 @@
     var m = legal[Math.floor(Math.random() * legal.length)];
     var san = api.pos.sanOf(m);
     var uci = api.pos.uciOf(m);
-    bankPracticeClock();   /* the opponent's think drained their clock */
     api.pos.apply(m);
     api.moves.push(uci);
-    api.lastSan = san; api.lastSanB = san;
+    api.lastSan = san;
     api.lastUci = uci;
     log("DRY", "opponent plays random legal move " + uci + " = " + san);
     speak(moveToSpeech(san, uci) + ".");
@@ -1977,15 +1342,12 @@
   // first tap, instead of trusting a single early call.
   var voiceTries = 0;
 
-  // SILENT WHEN IT WORKS (v106). This used to log the
-  // installed and English voice counts once, and again
-  // that VOICE_NAME was unset - both printed every
-  // session and said the same thing every time, which is
-  // noise in a log read to find bugs. The counts had one
-  // job: making a missing voice diagnosable. That is now
-  // the job of the miss path below, which prints the full
-  // list only when VOICE_NAME was set and did not match -
-  // the only moment the names are actually wanted.
+  // SILENT WHEN IT WORKS: per-session voice counts say the
+  // same thing every time, which is noise in a log read to
+  // find bugs. Making a missing voice diagnosable is the job
+  // of the miss path below, which prints the full list only
+  // when VOICE_NAME was set and did not match - the only
+  // moment the names are actually wanted.
   function loadVoices() {
     // An empty list is not a failure: iOS returns nothing
     // until speech has been used once, and the false
@@ -2028,10 +1390,8 @@
     } else {
       log("TTS", "voice not found: " + VOICE_NAME);
     }
-    // built HERE, not at the top: v106 removed the
-    // per-session voice counts and took the list with
-    // them, leaving these two uses referencing nothing.
-    // This path is the only one that wants the names.
+    // built HERE, not at the top: this path is the only
+    // one that wants the names.
     var eng = list.filter(function (v) {
       return /^en/i.test(v.lang || "");
     });
@@ -2084,79 +1444,37 @@
     return parts;
   }
 
-  // THE COLOR ANNOTATION IS GONE (w119). From w113 to w118
-  // a move announcement carried a color word, written to
-  // the log as "[black] ..." and never spoken. It earned
-  // its place when a recapture made the read-back of your
-  // own move and the announcement of the reply the same
-  // sentence - game18 17:12 and 17:24 were both "queen
-  // takes delta 4" - and the neighbouring MOV line could
-  // not settle whose it was, since the 200 and the
-  // gameState event arrive in either order. w118 ended the
-  // spoken read-back (your own move confirms with the
-  // chime, or "okay."), so the opponent is the only side
-  // whose moves are spoken now: every SAY sentence is
-  // theirs, and the MOV line beside it already names the
-  // color. The owner read a game log, asked what the
-  // bracket was still for, and the answer was nothing.
   function speak(text) {
     if (!text) return;
-    // EVERY output funnels through here, and since w110 it
-    // all goes ONE way: to the voice. This point has twice
-    // hosted a second, on-screen channel - silent mode
-    // (v80-v108, see the v109 entry for why it went) and
-    // the v129 clock-mode message strip with its channel
-    // routing - and both died the same death: text on a
-    // screen pulls the eyes off the physical board. The
-    // strip and its switches were deleted at w110 (see the
-    // clock.js header). If a third channel is ever
-    // proposed, this comment is its history.
+    // EVERY output funnels through here, and it all goes
+    // ONE way: to the voice. On-screen channels have been
+    // tried and removed twice, both times for the same
+    // reason: text on a screen pulls the eyes off the
+    // physical board. If another channel is ever proposed,
+    // that is the argument to answer first.
     log("SAY", text);
     splitForSpeech(text).forEach(function (p) { speakQueue.push(p); });
     pumpSpeech();
   }
 
-  /* SPOKEN FOR THE EAR, LOGGED FOR THE EYE (w121). Every
-   * English voice reads "lichess" as "LITCH-ess" (the w39
-   * finding), and Ava reads "bravo" with the wrong first
-   * vowel (13 Aug: "BRO-vo", and the first fix "brahvo"
-   * came back "BRE-vo" - the vowel the owner specified is
-   * the o of octopus, whose stable English spelling is aw).
-   *
-   * The old fix respelled the SENTENCES: "lee chess" was
-   * written into the source strings, so every SAY line
-   * carried the phonetic form into the log this project
-   * asks users to paste. The owner asked for the log to
-   * read normally - Lichess and bravo, not their phonetic
-   * forms. So the sentences are written with the real
-   * words, log("SAY") records them as written, and this
-   * table is applied at the LAST moment, on the text handed
-   * to the synthesizer and nowhere else (pumpSpeech).
+  /* SPOKEN FOR THE EAR, LOGGED FOR THE EYE. Every English
+   * voice reads "lichess" as "LITCH-ess", and Ava reads
+   * "bravo" with the wrong first vowel; the respellings
+   * below fix what the ear hears. The sentences are written
+   * with the real words, log("SAY") records them as written,
+   * and this table is applied at the LAST moment, on the
+   * text handed to the synthesizer and nowhere else
+   * (pumpSpeech) - so the log this project asks users to
+   * paste reads normally.
    *
    * WHY RESPELLING AND NOT PROPER PHONETICS: the standard
    * for saying a pronunciation precisely EXISTS - SSML's
-   * <phoneme> tag carries IPA, and dictionary notation like
-   * a-macron means the same thing - but Safari's
-   * speechSynthesis takes plain text only: SSML is read out
-   * as markup or stripped, and there is no lexicon hook.
-   * (The W3C spec permits SSML input; no iOS Safari has
-   * shipped it.) Respelling in ordinary spelling-to-sound
-   * English is the one lever this platform offers, which is
-   * why this table exists instead of a phoneme field.
-   *
-   * AND ITS LIMIT IS WHY THE "CHESS" STYLE DIED (w126).
-   * That style spoke bare file letters, and three listens
-   * chased them through the table: "A 5" was the article,
-   * "G 6" the unit gram, "ay" came back "aye", "ee" came
-   * back as two e-sounds. Letter names are one mouth-moment
-   * long - there is nothing for spelling-to-sound rules to
-   * grip - and the owner ended it: he could not hear the
-   * letters clearly, whatever they were fed as. The
-   * EAR_LETTER table and its capital-before-digit matcher
-   * are deleted with the style. Do not reintroduce spoken
-   * bare letters; the NATO words exist precisely because
-   * single letters fail this way in both directions, ear
-   * and mouth alike. */
+   * <phoneme> tag carries IPA - but Safari's speechSynthesis
+   * takes plain text only: SSML is read out as markup or
+   * stripped, and there is no lexicon hook. Respelling in
+   * ordinary spelling-to-sound English is the one lever this
+   * platform offers, which is why this table exists instead
+   * of a phoneme field.*/
   function forTheEar(text) {
     return String(text)
       .replace(/lichess/gi, "lee chess")
@@ -2184,7 +1502,7 @@
     if (!window.speechSynthesis) {
       // nothing can be spoken here, but the panel this project
       // tells users to paste should say so rather than the
-      // queue just emptying (w63)
+      // queue just emptying
       if (!noSynthLogged) {
         noSynthLogged = true;
         log("TTS", "no speechSynthesis in this browser - " +
@@ -2206,7 +1524,7 @@
       if (settled) return;
       settled = true;
       clearTimeout(speakGuard);
-      // A WEDGED SYNTHESIZER IS RESET, NOT WALKED PAST (w63). An iOS
+      // A WEDGED SYNTHESIZER IS RESET, NOT WALKED PAST. An iOS
       // audio-session interruption mid-utterance - Siri, a
       // call, an alarm - can leave speechSynthesis stuck:
       // speaking forever, new utterances queued inside it and
@@ -2240,7 +1558,7 @@
               gap + "ms  \"" + text + "\"");
         }
         if (speakQueue.length) {
-          // speaking stays TRUE across the gap (w63): it was
+          // speaking stays TRUE across the gap: it was
           // cleared above first, so a speak() arriving inside
           // the gap window pumped immediately and the
           // deliberate pause between chunks was lost. The
@@ -2250,18 +1568,17 @@
         }
         else {
           if (!MIC_ALWAYS_ON) resumeMicSoon();
-          // THE MIC MAY NEVER HAVE STARTED (v105, game17,
-          // found on the website build). startListening()
+          // THE MIC MAY NEVER HAVE STARTED. startListening()
           // refuses while speech is in flight, and with
           // MIC_ALWAYS_ON nothing above resumes it. Here
           // the button starts the mic BEFORE connect()'s
           // announcement returns over the network, so the
           // race is narrow - but it exists any time the
           // button is tapped while anything is being
-          // spoken, and on the website it left the mic
-          // dead for half a minute with the button lit.
-          // startListening() returns early if already
-          // listening, so this costs nothing normally.
+          // spoken, and it can leave the mic dead with the
+          // button lit. startListening() returns early if
+          // already listening, so this costs nothing
+          // normally.
           else if (running && !listening) {
             log("MIC", "starting after speech (was blocked by it)");
             startListening();
@@ -2271,7 +1588,7 @@
     };
 
     try {
-      // the one place the phonetic respellings apply (w121):
+      // the one place the phonetic respellings apply:
       // the queue, the log and the debug line all carry the
       // text as written
       var u = new SpeechSynthesisUtterance(forTheEar(text));
@@ -2300,13 +1617,6 @@
   // route - the real utterance goes out on the next tick
   // after the primer has ended.
   //
-  // (This said "leaves a further gap for the route to settle"
-  // until w54, and there is no gap: the setTimeout that
-  // follows the primer has no delay. The primer IS the
-  // settling, which is the whole point of it - a comment
-  // describing a second mechanism that does not exist would
-  // send anyone debugging a clipped first word looking for a
-  // timing bug instead of at the primer.)
   // iOS loses the FIRST thing spoken after the audio route
   // comes up. Not clipped, lost outright. Something has to
   // be spoken before the route is really live, so this
@@ -2346,18 +1656,17 @@
     })();
   }
 
-  // Both surviving styles speak NATO files (w126, chess
-  // deleted): a square is its NATO word and its rank.
+  // Both styles speak NATO files: a square is its NATO word
+  // and its rank.
   function spokenSquare(square) {
     return (SPOKEN_FILE[square[0]] || square[0]) + " " + square[1];
   }
 
-  // the check/mate suffix, which every shape below reaches at
-  // the end and castling used to return past. "O-O+" was
-  // announced as a bare "castles kingside" - the one move that
-  // could give check without saying so, and the opponent's
-  // castling is exactly the move being listened to rather than
-  // watched.
+  // the check/mate suffix, which every shape below must reach
+  // at the end - castling included: a bare "castles kingside"
+  // for "O-O+" would be the one move that gives check without
+  // saying so, and the opponent's castling is exactly the move
+  // being listened to rather than watched.
   function checkWord(san) {
     if (san.slice(-1) === "#") return ", checkmate";
     if (san.slice(-1) === "+") return ", check";
@@ -2370,15 +1679,13 @@
     if (san.indexOf("O-O") === 0) return "castles kingside" + checkWord(san);
     var text = san.replace(/[+#]$/, "").replace(/=([QRBN])/, "");
     var promoted = /=([QRBN])/.exec(san);
-    // ONE FLAT PHRASE, AND THAT IS A CLOSED CASE (w122-w124,
-    // two tries, owner's verdict both ways). A comma between
-    // every item was tried at the full clause gap (staccato)
-    // and at a dedicated 110ms (still choppy) - and the
-    // chunking had a cost no number could fix: splitting
-    // hands the synthesizer each item as its own utterance,
-    // which changes how the words themselves are voiced.
-    // "queen" and "takes" stopped sounding like words in a
-    // sentence. Do not re-propose comma-pacing inside a move
+    // ONE FLAT PHRASE, AND THAT IS A CLOSED CASE. Comma
+    // pacing was tried at two gap lengths and the chunking
+    // had a cost no number could fix: splitting hands the
+    // synthesizer each item as its own utterance, which
+    // changes how the words themselves are voiced - "queen"
+    // and "takes" stop sounding like words in a sentence.
+    // Do not re-propose comma-pacing inside a move
     // announcement; a future fix has to change what the
     // synthesizer is HANDED (forTheEar above is that lever),
     // not how the sentence is chopped.
@@ -2400,26 +1707,25 @@
     return words;
   }
 
-  /* HOW A MOVE IS SPOKEN IS THE MOVE_SPEECH SETTING (w120;
-   * two-way since w126 - settings.js has the table). pieces
-   * is sanToSpeech: the piece and where it landed. squares
-   * drops the piece talk entirely and speaks the move's own
-   * two squares, from then to - the same four items the
-   * grammar asks the user to SAY, so what the page announces
-   * is exactly what could be spoken back at it. The uci is
-   * the truth for those squares: castling in uci is the
-   * king's own move ("echo 1 golf 1"), which is also how it
-   * is spoken IN. Promotion and the check suffix still come
-   * off the san, the only place they are written.
+  /* HOW A MOVE IS SPOKEN IS THE MOVE_SPEECH SETTING
+   * pieces is sanToSpeech: the piece and where it landed.
+   *  squares drops the piece talk entirely and speaks the
+   * move's own two starting and ending squares - the same
+   * four items the grammar asks the user to SAY, so what
+   * the page announces is exactly what could be spoken
+   * back at it. The uci is the truth for those squares:
+   * castling in uci is the king's own move ("echo 1 golf 1"),
+   * which is also how it is spoken IN. Promotion and the
+   * check suffix still come off the san, the only place
+   * they are written.
    *
    * Every announcement funnels through here; sanToSpeech is
    * called directly only where no uci exists to offer.
    */
   function moveToSpeech(san, uci) {
     if (MOVE_SPEECH === "squares" && uci && uci.length >= 4) {
-      // A COMMA BETWEEN THE SQUARES (w121): spoken flat,
-      // "delta 7 delta 5" ran on as one breathless phrase
-      // (owner's report, first game on the style). The comma
+      // A COMMA BETWEEN THE SQUARES: spoken flat, "delta 7
+      // delta 5" runs on as one breathless phrase. The comma
       // buys the same GAP_CLAUSE_MS pause every spoken comma
       // gets (splitForSpeech), so the two squares land as
       // two things - from, then to.
@@ -2436,69 +1742,33 @@
 
   /*============================ CHIMES ============================*/
 
-  // REMOVED in v68, deliberately and after real testing: do
-  // not bring chimes back without new evidence. Ten chimes
-  // (WAV-rendered, played through <audio> elements for
-  // screen-off survival) lived here through v67. Games 3
-  // and 4 proved iOS silently discards media-element audio
-  // while the mic is open: game4 logged SFX ok on all 39
-  // accepted moves with zero playback errors, yet four were
-  // inaudible, and neither a post-ack delay nor a doubled
-  // length helped. Speech was never once lost in four
-  // games, so every signal a chime carried is now spoken
-  // ("ok.", the rejection sentence, the yes/no question)
-  // and the renderer, BEEPS table, element cache, beep()
-  // and warmChimes() were deleted. The keep-alive silent
-  // WAV was unrelated and outlived them by design - it held
-  // the iOS audio session, it was not a chime - until w90
-  // removed it too, for its own reasons (see the keep-alive
-  // tombstone in header.js).
-
-  // REOPENED AT w108, CLOSED AT w112, REOPENED AT w116 - and
-  // this is not flip-flopping, because each turn answered a
-  // different question. w108 answered AUDIBILITY: WebAudio
-  // with the screen on, the session declared, the context
-  // born in a gesture - every chime scheduled, every chime
-  // heard, the thing that killed the v67 generation
-  // disproved for this narrow shape. w112 answered
-  // INFORMATION: with every accepted move read back in full
-  // AFTER it played, a chime in the yes-answered slot
-  // carried nothing the read-back did not, and "a tone
-  // cannot say WHICH move" ended it.
+  // WEBAUDIO ONLY, NEVER <audio> MEDIA ELEMENTS: iOS
+  // silently discards media-element audio while the mic is
+  // open - real games logged playback ok on moves that were
+  // inaudible - so the chime is scheduled on a WebAudio
+  // context born in a user gesture.
   //
-  // w116 changed the premise w112 stood on. Every voice move
-  // is now confirmed BEFORE it posts - the question IS the
-  // read-back, spoken while the move can still be refused -
-  // and the owner ruled that after his "yes" the move is not
-  // repeated a second time. So the post-yes signal must
-  // carry exactly ONE bit: your yes landed. That is the
-  // signal w112 proved a chime cannot outperform speech on -
-  // and the one it cannot be beaten at either, because
-  // repeating the move was ruled out by the same order that
-  // brought this back. The w112 verdict stands for any slot
-  // where WHICH is still owed; no such slot exists any more.
+  // The chime carries exactly ONE bit: your move landed.
+  // A tone cannot say WHICH move, so it may only stand in a
+  // slot where WHICH is not owed - and this is the only
+  // such slot.
   //
-  // What did NOT change: no API reports AUDIBILITY. game4's
-  // "SFX ok" on four silent chimes is permanent, media
-  // elements stay banned (v67, reproven w88-w90), and only
-  // ears at the board can judge this. RULE 5 STILL HOLDS: a
-  // chime that cannot even be SCHEDULED - no WebAudio,
-  // context not running - is answered with a spoken "okay."
-  // instead, never with silence. A chime that was scheduled
-  // and went unheard degrades to the opponent's reply being
-  // the next thing heard, or to asking "repeat" - loud
-  // failures, not the silent kind.
+  // No API reports AUDIBILITY; only ears at the board can
+  // judge this. A chime that cannot even
+  // be SCHEDULED - no WebAudio, context not running - is
+  // answered with a spoken "okay." instead, never with
+  // silence. A chime that was scheduled and went unheard
+  // degrades to the opponent's reply being the next thing
+  // heard, or to asking "repeat" - loud failures, not the
+  // silent kind.
 
   // Retune these by ear at the board: two short rising sine
-  // notes. LOUDNESS IS THE CONFIRM SETTING'S CHOICE since
-  // w137: the one gain constant kept needing the owner's ears
-  // and a new build per step (0.35 shipped w116-w135, his
-  // ears said too loud, w136 halved it), so the three sizes
-  // he actually wanted became the three chime entries of the
-  // Confirm select - no new control, no new key, and the ear
-  // that judges is the finger that sets it. The steps are
-  // roughly 6 dB apart, which is what "a step" means to an
-  // ear; the device volume slider scales speech and chime
+  // notes. LOUDNESS IS THE CONFIRM SETTING'S CHOICE: the
+  // three sizes are the three chime entries of the Confirm
+  // select - no separate volume control, no new key, and the
+  // ear that judges is the finger that sets it. The steps
+  // are roughly 6 dB apart, which is what "a step" means to
+  // an ear; the device volume slider scales speech and chime
   // together, so this ratio is the only chime-to-speech
   // balance there is.
   var CHIME_FREQS = [988, 1319];    /* B5 then E6 */
@@ -2517,7 +1787,7 @@
 
   var chimeCtx = null, chimeNoApiLogged = false;
 
-  // Called from the voice and practice taps (ui.js): an
+  // Called from the voice and practice taps: an
   // AudioContext created outside a user gesture starts
   // suspended on iOS, so it is created - and woken - where
   // the gestures are. Safe to call any number of times, and
@@ -2598,13 +1868,12 @@
 
   function startListening() {
     if (!Rec) { log("MIC", "SpeechRecognition unavailable in this browser"); return; }
-    // A REFUSAL USED TO BE SILENT (v105), and that is how
-    // the game17 dead mic hid: the button was lit and
-    // nothing in the log said the mic had declined to
-    // start. Speech blocking it is normal and now
-    // self-healing (the end of speech re-checks), so it
-    // is logged once rather than every time; anything
-    // else refusing is worth seeing.
+    // A SILENT REFUSAL HIDES A DEAD MIC: the button is lit
+    // and nothing in the log says the mic declined to
+    // start. Speech blocking it is normal and self-healing
+    // (the end of speech re-checks), so it is logged once
+    // rather than every time; anything else refusing is
+    // worth seeing.
     if (!running) return;
     if (listening) return;
     if (speaking) {
@@ -2631,18 +1900,16 @@
       micFails = 0;
       micCycles++;
       /* Proof the loop is alive. Safari ends and restarts on
-         its own, so cycles are rare now - rare enough to log
-         each one. The %10 throttle (gone in v127) was for the
-         switching mode, where onstart fired once per
-         utterance. */
+         its own, so cycles are rare - rare enough to log
+         each one. */
       log("MIC", "listening (cycle " + micCycles + ")" +
           (MIC_ALWAYS_ON ? "" : " switching"));
     };
-    // THE WEDGE IS OTHERWISE INVISIBLE (w91). The w90 log
-    // showed "listening (cycle 1)" and then nothing at all -
-    // no result, no error, no end - while spoken moves went
-    // unheard. A recognizer in that state fires none of the
-    // handlers below, so nothing could say WHERE voice died:
+    // THE WEDGE IS OTHERWISE INVISIBLE: a wedged recognizer
+    // logs "listening" and then nothing at all - no result,
+    // no error, no end - while spoken moves go unheard. It
+    // fires none of the handlers below, so nothing could say
+    // WHERE voice died:
     // no audio reaching it is a different disease from audio
     // arriving and nothing recognised, and the two point at
     // different culprits (the audio session vs the service).
@@ -2669,8 +1936,8 @@
       if (!res) return;
       var alts = [];
       for (var i = 0; i < res.length; i++) alts.push(res[i].transcript);
-      // no speaking gate here since v132: AEC keeps our own
-      // announcements out of the mic (platform finding), so
+      // no speaking gate here: AEC keeps our own
+      // announcements out of the mic, so
       // every result is the room, and a move said over an
       // announcement lands as said.
       handleTranscripts(alts);
@@ -2680,8 +1947,6 @@
        * never transcribe our own voice. "no-speech" is just silence.
        * Neither is worth a log line, and together they drowned out
        * the real events. */
-      /* "no-speech" was counted into a variable nothing ever
-       * read (w54); silence is not an event worth a number. */
       if (ev.error !== "no-speech" && ev.error !== "aborted") {
         log("MIC", "error " + ev.error);
       }
@@ -2721,21 +1986,13 @@
     }, ms);
   }
 
-  /* DECLARE THE SESSION instead of letting Safari guess
-   * (w89; removed with the keep-alive at w90; RESTORED at
-   * w91, and moved here because it is MIC code, not
-   * keep-alive code). "play-and-record" is the web's version
-   * of the AVAudioSession category a native mic-and-speaker
-   * app names, and this page is exactly that: mic open,
-   * synthesizer speaking. It rode out in w90 only because it
-   * lived in the deleted file - and w90, the one build since
-   * the iPad trouble began with neither a declared session
-   * nor a session-holding element, is also the build where
-   * spoken moves went unheard. Suspicion, not proof; the
-   * lifecycle lines above are what will tell either way. A
-   * condition to DETECT, never the shape of the world:
-   * browsers without the API get a log line and nothing
-   * else. */
+  /* DECLARE THE SESSION instead of letting Safari guess.
+   * "play-and-record" is the web's version of the
+   * AVAudioSession category a native mic-and-speaker app
+   * names, and this page is exactly that: mic open,
+   * synthesizer speaking. A condition to DETECT, never the
+   * shape of the world: browsers without the API get a log
+   * line and nothing else. */
   function declareAudioSession() {
     try {
       if (navigator.audioSession && "type" in navigator.audioSession) {
@@ -2757,72 +2014,28 @@
 
   function resumeMicSoon() { scheduleRestart(400); }
 
-  /*================ LICHESS BOARD API (USERSCRIPT) ================\
-   *
-   *  The userscript's Lichess layer. Re-cut at v138 from
-   *  src/lichess.js as it stood at w137, so every repair the
-   *  website earned in real games travels here too: the
-   *  prefix-checked syncMoves (w50), the departed-opponent
-   *  announcements (w61), offers that displace questions out
-   *  loud (w50), the auth latch that stops retrying a dead
-   *  token (w52/w60), the backoff ladders (w52/w63), the
-   *  variant refusal (w61), the repaired poll (w52/w62), the
-   *  ply-gated clock (w83). Where the two files say the same
-   *  thing they should STAY the same thing: fix a bug in one,
-   *  re-copy the block into the other.
-   *
-   *  THE DELTAS, and why each exists:
-   *  1. THE TOKEN IS PASTED, NOT PKCE. This script runs on
-   *     lichess.org, where a PKCE redirect back "to the page"
-   *     means nothing - there is no page of ours to return
-   *     to. The v-series answer stands: a personal API token,
-   *     asked for once, kept ONLY in the Userscripts app's
-   *     own storage (GM.setValue) - not in localStorage,
-   *     which on this origin belongs to the site and can be
-   *     read by anything running on it (rule 4). The
-   *     Userscripts app provides only the PROMISE forms, so
-   *     the value is read once at startup and held in memory.
-   *  2. THE GAME ID COMES FROM THE URL. The website has no
-   *     lichess.org URL and watches the account event stream;
-   *     here the user is STANDING on the game page - Lichess
-   *     itself was the lobby. userscript-boot watches for the
-   *     page, connect() reads the id out of it.
-   *  3. NO SEEK, NO CHALLENGE, NO ACCOUNT STREAM. Games are
-   *     started with Lichess's own buttons. The two cancel
-   *     stubs at the bottom keep practice.js shared verbatim:
-   *     its dryStart puts down everything that could deliver
-   *     a real game, and here two of those things simply
-   *     never exist.
-   *================================================================*/
-
-  VERSION = "v138";
+  /* ================ LICHESS BOARD API ============== */
 
   var RULES = makeRules();
 
   var api = {
     gameId: null,
     myId: null,
-    myName: null,        // for the log line, nothing draws it here
+    myName: null,
     myColor: null,
-    /* WHO IS ON THE OTHER SIDE (w68). Nothing on this shell
-     * draws the names - Lichess's own page does - but the
-     * join log line names the opponent, which is what a
-     * pasted log needs. Keyed by COLOUR (w39). */
     players: { w: null, b: null },
-    overText: "",         // the result sentence, kept (w106);
-                          // read here only by whoever reads the log
     pos: null,
     moves: [],            // uci list already applied
     movesBefore: 0,       // plies played before this list began -
-                          // zero except a mid-game poll join (w83:
-                          // the pair's sum is the true ply count,
+                          // zero except a mid-game poll join (the
+                          // pair's sum is the true ply count,
                           // which is what says whether the clocks run)
-    lastSan: "", lastSanW: "", lastSanB: "",
+    lastSan: "",
     lastUci: "",          // the same move as lastSan, in the
                           // coordinates the squares speech style
-                          // reads (w120)
+                          // reads
     wtime: null, btime: null,
-    clockAt: null,        // when wtime/btime were last true (w60)
+    clockAt: null,        // when wtime/btime were last true
     over: false
   };
 
@@ -2839,18 +2052,12 @@
   // once at startup and held in memory, which keeps the
   // rest of the script synchronous.
   //
-  // UNDER THE v137 KEY, NOT THE w111 NAME - deliberately.
-  // The shared TOKEN_KEY ("audioplay.token") names the
-  // website's localStorage slot; the w111 audit that named
-  // it audited THAT namespace. GM storage is a different
-  // store, where "audioplay_lichess_token" is the key the
-  // installed v137 has been keeping the owner's token under
-  // since the v-series - so v138 installed over it finds the
-  // token where it already is, and "later versions do not
-  // need it pasted in again" (the header's promise since
-  // v-era) stays true across the un-freeze. Renaming here
-  // would strand a live credential under the old name (rule
-  // 4) to buy nothing but tidiness.
+  // UNDER THE LEGACY KEY NAME, DELIBERATELY:
+  // "audioplay_lichess_token" is the key installed versions
+  // have been keeping the token under - so a new build
+  // installed over one finds the token where it already is,
+  // and "later versions do not need it pasted in again"
+  // stays true.
   var GM_TOKEN_KEY = "audioplay_lichess_token";
   var cachedToken = null;
 
@@ -2888,10 +2095,10 @@
 
   function saveToken(t) {
     cachedToken = t;
-    authGone = false;   /* w62: a NEW token re-arms the reconnects.
-                           Here it is the whole point of the token
-                           button - replace a dead token mid-session
-                           and the retries come back to life. */
+    authGone = false;   /* a NEW token re-arms the reconnects -
+                           the whole point of the token button:
+                           replace a dead token mid-session and
+                           the retries come back to life. */
     if (!gmAvailable()) return Promise.resolve(false);
     try {
       return Promise.resolve(GM.setValue(GM_TOKEN_KEY, t)).then(function () {
@@ -3012,7 +2219,7 @@
     });
   }
 
-  /* A POST THAT NEVER SETTLES MUST STILL SETTLE (w50). The
+  /* A POST THAT NEVER SETTLES MUST STILL SETTLE. The
    * caller sets busy = true and clears it in this promise's
    * handlers, so a fetch that hangs - a dead cell, a captive
    * wifi portal, the radio asleep - leaves busy stuck true
@@ -3046,11 +2253,11 @@
       .then(done, function (e) { done(); throw e; });
   }
 
-  /* RESOLVES WITH WHAT HAPPENED, not with nothing (w60). The
+  /* RESOLVES WITH WHAT HAPPENED, not with nothing. The
    * Board API 400s these paths in ordinary play: resign during
    * the abortable first moves, a takeback accepted after the
    * opponent withdrew it, a draw accepted after the offer
-   * expired. Each used to be announced as done. */
+   * expired - and each must not be announced as done. */
   function postAction(action) {
     var url = LICHESS_BASE + "/api/board/game/" + api.gameId + "/" + action;
     log("PST", action);
@@ -3065,7 +2272,7 @@
    * tail */
   function syncMoves(uciString, announce) {
     var list = (uciString || "").trim() ? uciString.trim().split(/\s+/) : [];
-    /* A TAKEBACK IS NOT ALWAYS SHORTER (w50). What we hold has
+    /* A TAKEBACK IS NOT ALWAYS SHORTER. What we hold has
      * to be a PREFIX of what the server sent; anything else is
      * a rebuild. The list is a few hundred entries at most and
      * this runs once per event. */
@@ -3078,7 +2285,7 @@
       log("MOV", "move list diverged - rebuilding");
       api.pos = new RULES.Position();
       api.moves = [];
-      api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+      api.lastSan = "";
       api.lastUci = "";
       armedUci = null;      /* it named a move in the old list */
       announce = false;
@@ -3089,8 +2296,8 @@
         log("ERR", "illegal uci from stream: " + list[i] + " (resyncing)");
         api.pos = new RULES.Position();
         api.moves = [];
-        /* REPLAY, KEEPING WHAT THE REPLAY SAYS (w50). */
-        api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+        /* REPLAY, KEEPING WHAT THE REPLAY SAYS. */
+        api.lastSan = "";
         api.lastUci = "";
         armedUci = null;
         for (var j = 0; j < list.length; j++) {
@@ -3098,8 +2305,6 @@
           if (!rr) { log("ERR", "resync failed at " + list[j]); break; }
           api.lastSan = rr.san;
           api.lastUci = list[j];
-          if (rr.move.color === "w") api.lastSanW = rr.san;
-          else api.lastSanB = rr.san;
         }
         api.moves = list.slice();
         return;
@@ -3108,14 +2313,12 @@
       var moverIsMine = (res.move.color === api.myColor);
       api.lastSan = res.san;
       api.lastUci = list[i];
-      if (res.move.color === "w") api.lastSanW = res.san;
-      else api.lastSanB = res.san;
       log("MOV", colorWord(res.move.color) + " " + list[i] + " = " + res.san +
           (announce ? "" : " (catch-up)"));
       if (announce && !moverIsMine) {
         speak(moveToSpeech(res.san, list[i]) + ".");
       }
-      // OUR OWN MOVE, CONFIRMED BY THE STREAM (v134). This
+      // OUR OWN MOVE, CONFIRMED BY THE STREAM. This
       // is the earlier of the two confirmations whenever
       // the stream wins the race with the 200, and it must
       // speak HERE: the opponent's reply can be in the very
@@ -3126,7 +2329,7 @@
     }
   }
 
-  /* AN OPPONENT WHO LEAVES IS INVISIBLE TOO (w61). Spoken once
+  /* AN OPPONENT WHO LEAVES IS INVISIBLE TOO. Spoken once
    * per departure, and when the window opens it becomes a
    * yes/no through the same CONFIRMS machinery as every other
    * game-ending question. The event repeats as the countdown
@@ -3162,8 +2365,8 @@
    * looking at the screen, so it has to be spoken and answerable. */
   var offerState = { draw: false, takeback: false };
 
-  /* AN OFFER MAY NOT QUIETLY INHERIT SOMEBODY ELSE'S "YES"
-   * (w50). The offer still has to be heard: it is invisible
+  /* AN OFFER MAY NOT QUIETLY INHERIT SOMEBODY ELSE'S "YES".
+   * The offer still has to be heard: it is invisible
    * from across the room and it expires. So it takes the slot
    * and SAYS it is doing so, naming what it displaced. And an
    * offer that goes away takes its question with it. */
@@ -3216,8 +2419,8 @@
 
   // Extrapolates the running side's clock between server
   // events, for either color: clock mode paints both. Frozen
-  // once the game is over (v73), AND FROZEN BEFORE BOTH SIDES
-  // HAVE MOVED (w83): Lichess does not start the clocks until
+  // once the game is over, AND FROZEN BEFORE BOTH SIDES
+  // HAVE MOVED: Lichess does not start the clocks until
   // each player has made their first move. The ply count is
   // movesBefore + moves.length so a mid-game poll join, whose
   // move list starts empty against a game already underway,
@@ -3232,9 +2435,6 @@
     return base;
   }
 
-  function myRemainingMs() { return remainingMs(api.myColor); }
-
-  /* stated in colors, never "you" or "they" */
   function resultSpoken(s2) {
     var status = (s2 && s2.status) || "over";
     // "white" | "black" | undefined
@@ -3255,28 +2455,17 @@
     return winner + " wins by " + how + ".";
   }
 
-  /* Speak the result AND keep it (w106). Here nothing draws
-   * overText - Lichess's own page shows the result - but the
-   * sentence is kept anyway so the shared shape stays the
-   * shared shape. */
   function sayResult(sentence) {
-    api.overText = sentence;
     speak(sentence);
   }
 
   // "connected" the first time, "reconnected" after that,
-  // so a mid-game network drop that healed itself (game3,
-  // 15:29:12) is announced as what it was: a resume, not a
-  // fresh start.
+  // so a mid-game network drop that healed itself is
+  // announced as what it was: a resume, not a fresh start.
   var everConnected = false;
 
   function handleGameFull(g) {
-    // STANDARD CHESS ONLY, SAID IN SO MANY WORDS (w61). A
-    // variant game would feed variant moves into rules.js,
-    // which would hit the illegal-uci resync on every event -
-    // a loop of ERR lines and a board that cannot be trusted,
-    // with nothing said about WHY. fromPosition is allowed: it
-    // is standard chess from a custom start.
+    // STANDARD CHESS ONLY. NO VARIANTS.
     var vkey = (g.variant && (g.variant.key || g.variant.name)) || "standard";
     if (vkey !== "standard" && vkey !== "fromPosition") {
       api.over = true;
@@ -3347,7 +2536,7 @@
       if (!api.over) {
         api.over = true;
         log("API", "game over: " + s.status + " " + (s.winner || ""));
-        // every open question dies with the game (w50). A
+        // every open question dies with the game. A
         // "yes" held over from a finished game had nothing
         // good to do: post to a game Lichess has closed and
         // hear "draw accepted." for a draw that was not.
@@ -3362,7 +2551,7 @@
 
   var streamAbort = null;
 
-  /* A LIVE STREAM IS LEFT ALONE (w81). The voice button calls
+  /* A LIVE STREAM IS LEFT ALONE. The voice button calls
    * this rather than startStream: restarting a HEALTHY stream
    * re-delivers gameFull, and the page announced "connected"
    * and "reconnected" back to back. Lichess keeps the stream
@@ -3397,7 +2586,7 @@
         if (!r.body || !r.body.getReader) throw new Error("no streaming body");
         streamBeatAt = Date.now();
         streamFails = 0;          /* it opened: the ladder resets */
-        stopPolling();            /* w62: one transport at a time */
+        stopPolling();            /* one transport at a time */
         var reader = r.body.getReader();
         var dec = new TextDecoder();
         var buf = "";
@@ -3405,11 +2594,11 @@
           return reader.read().then(function (res) {
             if (res.done) {
               log("NET", "stream ended");
-              streamBeatAt = 0;      /* w81: dead means dead */
+              streamBeatAt = 0;      /* dead means dead */
               scheduleReconnect();
               return;
             }
-            streamBeatAt = Date.now();   /* keep-alives count too (w81) */
+            streamBeatAt = Date.now();   /* keep-alives count too */
             buf += dec.decode(res.value, { stream: true });
             var lines = buf.split("\n");
             buf = lines.pop();
@@ -3430,14 +2619,14 @@
         return pump();
       })
       .catch(function (e) {
-        // AN ABORT IS OUR OWN DOING, NOT A DROPPED STREAM
-        // (w50). Without this filter, startStream aborting its
+        // AN ABORT IS OUR OWN DOING, NOT A DROPPED STREAM.
+        // Without this filter, startStream aborting its
         // predecessor fed a reconnect loop that re-delivered
         // gameFull every two seconds for a whole game.
         if (String(e.name) === "AbortError") return;
-        streamBeatAt = 0;         /* w81: a failed stream is not live */
+        streamBeatAt = 0;         /* a failed stream is not live */
         log("ERR", "stream: " + e.message);
-        /* a 429 jumps the ladder straight to its cap (w63) */
+        /* a 429 jumps the ladder straight to its cap */
         if (/HTTP 429/.test(String(e.message))) {
           streamFails = Math.max(streamFails, 5);
         }
@@ -3447,9 +2636,9 @@
   }
 
   /* A TOKEN THAT LICHESS NO LONGER ACCEPTS IS NOT A NETWORK
-   * BLIP (w52). A revoked or expired token meant an HTTP 401
-   * every two seconds, forever, filling the log and telling
-   * the user nothing. Said once, and the retrying stops,
+   * BLIP: retried, it is an HTTP 401 every two seconds,
+   * forever, filling the log and telling the user nothing.
+   * Said once, and the retrying stops,
    * because retrying cannot fix it. The remedy here is the
    * userscript's: the token button, not a sign-in page. */
   var authGone = false;
@@ -3466,7 +2655,7 @@
   var reconnectTimer = null;
   var streamFails = 0;
   function scheduleReconnect() {
-    // NOT GATED ON THE MIC (w50): listening and being
+    // NOT GATED ON THE MIC: listening and being
     // connected are different things. The stream is cheap,
     // every speaking path gates on its own state, and being
     // connected while silent costs nothing - whereas being
@@ -3474,7 +2663,7 @@
     // games.
     if (api.over || dryRun || !api.gameId || api.gameId === "PRACTICE") return;
     if (authGone) return;
-    // AND IT BACKS OFF (w52): doubling to a thirty-second
+    // AND IT BACKS OFF: doubling to a thirty-second
     // ceiling keeps the first few retries as quick as they
     // ever were, which is the case that actually matters.
     streamFails++;
@@ -3486,22 +2675,19 @@
 
   /* ---- polling fallback (if fetch streaming is unavailable) ----
    *
-   * The w52/w62 repairs, kept: this path exists for a browser
-   * that cannot hold a streaming body open, which the tested
-   * device can, so it must not be trusted on faith. What the
-   * endpoint can and cannot say: /api/account/playing carries
-   * neither a status nor a result nor the opponent's clock,
-   * and its `secondsLeft` is the account holder's. What
-   * cannot be known is left null, and the end of a game is
-   * inferred from the game leaving the list - twice in a row
-   * (w62), because a single anomalous response must not end a
-   * live game.
+   * This path exists for a browser that cannot hold a
+   * streaming body open, which the tested device can, so it
+   * must not be trusted on faith. What the endpoint can and
+   * cannot say: /api/account/playing carries neither a
+   * status nor a result nor the opponent's clock, and its
+   * `secondsLeft` is the account holder's. What cannot be
+   * known is left null, and the end of a game is inferred
+   * from the game leaving the list - twice in a row, because
+   * a single anomalous response must not end a live game.
    *
-   * THE WEBSITE'S DISCOVERY BRANCH IS NOT HERE: there, a
-   * poll-only browser had no other way to notice a seek had
-   * matched. Here the URL is the discovery - the user is
-   * standing on the game page - so the poll only ever FOLLOWS
-   * the game it was started for. */
+   * THE URL IS THE DISCOVERY - the user is standing on the
+   * game page - so the poll only ever FOLLOWS the game it
+   * was started for. */
   var pollTimer = null;
   var pollSeen = false;      // has THIS game appeared in the list?
                              // (reset per game, in joinGame)
@@ -3522,22 +2708,22 @@
   }
 
   function pollOnce() {
-    /* NOT GATED ON THE MIC (w62) - listening and being
+    /* NOT GATED ON THE MIC - listening and being
      * connected are different things, in this transport too. */
     if (dryRun) return;
-    /* the ladder, poll-shaped (w62): after four straight
+    /* the ladder, poll-shaped: after four straight
      * failures, only every eighth tick goes out (~12s); one
      * success restores full cadence. */
     if (pollFails >= 4) {
       pollSkip++;
       if (pollSkip % 8 !== 0) return;
     }
-    var forGame = api.gameId;   // w62: bail if the world changes
+    var forGame = api.gameId;   // bail if the world changes
                                 // while the request is in flight
     if (!forGame || forGame === "PRACTICE" || api.over) return;
     apiGet("/api/account/playing?nb=50").then(function (d) {
       pollFails = 0;
-      /* THE WORLD MAY HAVE CHANGED UNDER THE REQUEST (w62). */
+      /* THE WORLD MAY HAVE CHANGED UNDER THE REQUEST. */
       if (dryRun || api.gameId !== forGame || api.over) return;
 
       var g = (d.nowPlaying || []).filter(function (x) {
@@ -3547,7 +2733,7 @@
         /* The game left the list of ongoing games, so it is
          * over. The endpoint gives no status, so the sentence
          * does not guess a result. TWO consecutive missing
-         * ticks are required (w62). */
+         * ticks are required. */
         if (pollSeen && !api.over) {
           pollMisses++;
           if (pollMisses < 2) return;
@@ -3562,7 +2748,7 @@
       pollSeen = true;
       pollMisses = 0;
       if (!api.myColor) {
-        /* FIRST SIGHTING LOADS THE REAL POSITION (w62). The
+        /* FIRST SIGHTING LOADS THE REAL POSITION. The
          * endpoint's fen is FULL - side to move, castling,
          * ep, the lot - so load it and say whose move it is,
          * exactly as handleGameFull does. */
@@ -3570,7 +2756,7 @@
         api.pos = new RULES.Position();
         if (g.fen) api.pos.load(g.fen);
         api.moves = [];
-        /* THE FEN SAYS HOW FAR ALONG THE GAME IS (w83). */
+        /* THE FEN SAYS HOW FAR ALONG THE GAME IS. */
         var fp = String(g.fen || "").split(" ");
         var fm = parseInt(fp[5], 10);
         api.movesBefore = fm > 0
@@ -3588,21 +2774,19 @@
           api.moves.push(g.lastMove);
           api.lastSan = res.san;
           api.lastUci = g.lastMove;
-          if (res.move.color === "w") api.lastSanW = res.san;
-          else api.lastSanB = res.san;
           if (res.move.color !== api.myColor) {
             speak(moveToSpeech(res.san, g.lastMove) + ".");
           }
-          /* the stream's rule, kept identical here (v134) */
+          /* the stream's rule, kept identical here */
           if (res.move.color === api.myColor)
             readBackMine(res.san, g.lastMove, true);
           log("MOV", "poll " + g.lastMove + " = " + res.san);
         } else {
           /* RELOAD, THEN REMEMBER THAT WE DID: the uci is
-           * pushed so the next tick's comparison moves on (w52)
+           * pushed so the next tick's comparison moves on
            * and the ply guards keep counting; the list is a
            * position marker in poll mode, not a game record.
-           * The fen is loaded WHOLE (w62). */
+           * The fen is loaded WHOLE. */
           log("ERR", "poll desync on " + g.lastMove + "; reloading from fen");
           api.pos.load(g.fen);
           api.moves.push(g.lastMove);
@@ -3611,7 +2795,7 @@
       }
       /* secondsLeft IS THE ACCOUNT HOLDER'S CLOCK, not white's.
        * The other side is unknowable from this endpoint and
-       * stays null - "unknown" is the honest answer (w52). */
+       * stays null - "unknown" is the honest answer. */
       if (g.secondsLeft != null) {
         if (api.myColor === "w") api.wtime = g.secondsLeft * 1000;
         else api.btime = g.secondsLeft * 1000;
@@ -3619,11 +2803,11 @@
       }
     }).catch(function (e) {
       pollFails++;
-      /* A REVOKED TOKEN IN POLL MODE (w62): same sentence,
+      /* A REVOKED TOKEN IN POLL MODE: same sentence,
        * same halt as the streams. */
       if (noteAuthFailure(e)) { stopPolling(); return; }
       if (/HTTP 429/.test(String(e.message))) {
-        pollFails = Math.max(pollFails, 4);      /* w63: back off now */
+        pollFails = Math.max(pollFails, 4);      /* back off now */
       }
       log("ERR", "poll: " + e.message);
     });
@@ -3638,14 +2822,14 @@
     api.pos = null;
     api.moves = [];
     api.movesBefore = 0;
-    api.over = false; api.overText = "";
+    api.over = false;
     api.wtime = null; api.btime = null; api.clockAt = null;
     api.players = { w: null, b: null };
     offerState = { draw: false, takeback: false };
-    oppGone = false; claimAsked = false;   /* w61 */
-    pollSeen = false; pollMisses = 0;      /* w62: per-game */
+    oppGone = false; claimAsked = false;
+    pollSeen = false; pollMisses = 0;      /* per-game */
     // and the questions from whatever game came before this
-    // one (w50) - see clearDialogue.
+    // one - see clearDialogue.
     clearDialogue();
     (api.myId ? Promise.resolve(api.myId) : fetchMyId())
       .then(startStream)
@@ -3655,7 +2839,7 @@
       });
   }
 
-  // The round button's way in: the game id is the URL's, the
+  // The voice button's way in: the game id is the URL's, the
   // token is asked for if none is stored (the tap that got us
   // here is the gesture a prompt needs).
   function connect() {
@@ -3675,99 +2859,119 @@
     });
   }
 
-  /* ---- what the shared files expect and this shell has no
-   * use for. practice.js's dryStart puts down everything that
-   * could deliver a real game - on the website that includes
-   * the account event stream, an outstanding seek and an open
-   * challenge. None of those exist here (games start on
-   * Lichess's own page), so the names it calls are satisfied
-   * with nothing behind them, and practice.js stays shared
-   * verbatim rather than forked over four lines. */
-  var eventAbort = null;
-  var eventTimer = null;
-  function cancelSeek() { /* no seeks here: Lichess's own lobby */ }
-  function cancelChallenge() { /* no challenges here either */ }
-  /*======================= UI (USERSCRIPT) ========================\
+  /*=========================== UI ============================\
    *
-   *  The floating row over lichess.org: practice, log, clock,
-   *  settings, and the 72px round button - the userscript's
-   *  own home, where the circle is right (ui.js's w29 note:
-   *  it floats bottom-right, where a thumb finds it without
-   *  looking). Rebuilt at v138 from the v137 shell with the
-   *  website's behaviour carried across:
+   *  The control panel over lichess.org: practice, log, clock,
+   *  settings, and the voice button - a bordered box at the
+   *  bottom right. Every button is the same tunable size
+   *  (BUTTON_WIDTH / BUTTON_HEIGHT); the panel's position
+   *  (PANEL_BOTTOM_PX / PANEL_RIGHT_PX), typography and
+   *  colors are tunable just below too.
    *
-   *  - THE BUTTON OWNS THE VOICE, NOT THE CONNECTION (w50's
-   *    lesson, the website's delta 2). Voice off tears down
-   *    no network: the stream keeps announcing, the reconnect
-   *    ladder keeps working, and turning voice back on is
-   *    just the mic. What still lives on the ON tap is the
-   *    FIRST connection - the tap is also the iOS gesture
-   *    that unlocks mic, audio and (if needed) the token
-   *    prompt.
-   *  - PRACTICE SURVIVES THE VOICE BUTTON in both directions
-   *    (w90); the practice button is what ends it.
-   *  - THE SETTINGS PANEL IS TWO SELECTS, the website's
-   *    Settings row (w120/w131) in the userscript's floating
-   *    clothes: how moves are spoken, and how your move is
-   *    confirmed. Stored under the same audioplay.* keys -
-   *    this origin's localStorage, which is fine for a
-   *    cosmetic choice and would be wrong for the token
-   *    (userscript-lichess has that reasoning).
-   *  - THE LOG PANEL KEEPS ITS token BUTTON - the
+   *  - THE BUTTON OWNS THE VOICE, NOT THE CONNECTION.
+   *    Voice off tears down no network: the stream keeps
+   *    announcing, the reconnect ladder keeps working, and
+   *    turning voice back on is just the mic. What still lives
+   *    on the ON tap is the FIRST connection - the tap is also
+   *    the iOS gesture that unlocks mic, audio and (if needed)
+   *    the token prompt.
+   *  - PRACTICE SURVIVES THE VOICE BUTTON in both directions;
+   *    the practice button is what ends it.
+   *  - THE SETTINGS PANEL IS TWO SELECTS: how moves are
+   *    spoken, and how your move is confirmed. Stored under
+   *    audioplay.* keys in this origin's localStorage, which
+   *    is fine for a cosmetic choice and would be wrong for
+   *    the token (see GM_TOKEN_KEY for that reasoning).
+   *  - THE LOG PANEL KEEPS ITS 'TOKEN' BUTTON - the
    *    userscript's one door to replacing a dead token - and
-   *    gains the w53 repaint gate (logPanelVisible).
-   *
-   *  INLINE STYLES ARE CORRECT HERE, not a rule-6 violation:
-   *  this UI floats over lichess.org, where no stylesheet of
-   *  ours exists to own anything. Same paint pots the site's
-   *  buildUI names (ui.js).
+   *    the repaint gate (logPanelVisible).
    *================================================================*/
 
-  var wrapEl, bigBtn, logPanel, logBtn, practiceBtn, clockBtn,
+  var wrapEl, voiceBtn, logPanel, logBtn, practiceBtn, clockBtn,
       settingsBtn, setPanel;
 
-  var BUTTON_OFF = "#242220";
-  var BUTTON_ON = "#3a5a2a";
-  var BUTTON_TEXT_ON = "#f2f2ef";
-  var BLUE = "#91bddf";
-  var BORDER = "#3a3530";
-  var AMBER = "#d0a24c";
-  var PANEL_BG = "#171513";
-  var PANEL_HEAD = "#7d766e";
-  var PANEL_LABEL = "#c9c2b8";
-  var LOG_TEXT = "#9fb0a0";
+  // ----- Color Pallette -----
+  var BLACK = "#161512";      // panel + box background
+  var MED_GRAY = "#404040";   // panel + box borders
+  var LIGHT_GRAY = "#bbbbbb"; // secondary text (log body, heads)
+  var OFF_WHITE = "#eaeaea";  // primary text
+  var BLUE = "#3893E8";       // "Octopus Blue"
+  var RED = "#f34335";        // recording color
 
-  // A lit button means that thing is currently ON, matching
-  // the round button. Called from renderButton so every
-  // control is repainted from one place.
-  function paintButton(el, on, offColor) {
+  // ----- Typography -----
+  var FONT_SIZE = "1.35em";   // every button label
+  var FONT_ICON = "1.6rem";   // the voice button's ■/● only,
+                              // slightly larger than the words
+
+  // ----- Button colors -----
+  var BTN_BG = BLACK;         // button background
+  var BTN_TEXT = OFF_WHITE;   // button label text
+  var BTN_ON_BG = BLUE;       // an ON button's fill
+  var BTN_ON_TEXT = BLACK;    // an ON button's label
+  var BTN_REC_BG = RED;       // the voice button's fill while
+                              // recording is on - red, the
+                              // universal recording color
+  var BTN_REC_TEXT = OFF_WHITE; // circle glyph while recording
+
+  // ----- Button parameters -----
+  var BUTTON_WIDTH = 65;      // px - outer size (border-box)
+  var BUTTON_HEIGHT = 33;     // px
+
+  // ----- Control panel layout & geometry -----
+  var PANEL_BOTTOM_PX = 0;   // from the bottom screen edge
+  var PANEL_RIGHT_PX = 6;    // from the right screen edge
+  var PANEL_RADIUS = 10;      // px - the panel box (and the
+                              // settings box, same family)
+  var BUTTON_RADIUS = 8;      // px - the buttons inside it
+  var PANEL_PAD = 6;          // px - around and between buttons
+
+  // ----- Border parameters -----
+  function edgeBorder() {
+    return "1px solid " + MED_GRAY;
+  }
+
+  // THE one look for a panel button. Fixed outer size
+  // (border-box, so the border eats inwards and nothing in
+  // the row shifts), label centered, colors from above.
+  // fontSize is FONT_SIZE unless the caller says otherwise
+  // (the voice button uses FONT_ICON).
+  function panelBtnCss(fontSize) {
+    return "appearance:none;-webkit-appearance:none;" +
+      "box-sizing:border-box;" +
+      "width:" + BUTTON_WIDTH + "px;" +
+      "height:" + BUTTON_HEIGHT + "px;" +
+      "display:flex;align-items:center;justify-content:center;" +
+      "padding:0;line-height:1;white-space:nowrap;" +
+      "font-size:" + (fontSize || FONT_SIZE) + ";" +
+      "border-radius:" + BUTTON_RADIUS + "px;" +
+      "background:" + BTN_BG + ";color:" + BTN_TEXT + ";" +
+      "border:" + edgeBorder() + ";" +
+      "touch-action:manipulation;" +
+      "-webkit-user-select:none;user-select:none;";
+  }
+
+  // A lit button means that thing is currently ON: the
+  // accent fill. Called from renderButton so every control
+  // is repainted from one place.
+  function paintButton(el, on) {
     if (!el) return;
-    el.style.background = on ? BUTTON_ON : BUTTON_OFF;
-    el.style.color = on ? BUTTON_TEXT_ON : offColor;
+    el.style.background = on ? BTN_ON_BG : BTN_BG;
+    el.style.color = on ? BTN_ON_TEXT : BTN_TEXT;
   }
 
   function renderButton() {
-    paintButton(practiceBtn, dryRun, AMBER);
-    paintButton(logBtn, !!(logPanel && logPanel.style.display !== "none"),
-              BLUE);
-    paintButton(clockBtn, clockModeOn(), BLUE);
-    paintButton(settingsBtn, !!(setPanel && setPanel.style.display !== "none"),
-              BLUE);
-    if (!bigBtn) return;
-    if (!running) { bigBtn.textContent = "▶"; bigBtn.style.background = BUTTON_OFF; }
-    else if (listening) { bigBtn.textContent = "●"; bigBtn.style.background = BUTTON_ON; }
-    else { bigBtn.textContent = "○"; bigBtn.style.background = BUTTON_ON; }
-  }
-
-  // The website's page furniture does not exist here, and the
-  // shared/copied code still narrates through these two names.
-  // The log is the userscript's status line - it is the panel
-  // this project asks users to paste - so the sentences land
-  // there instead of nowhere (rule 5 is about SPOKEN paths;
-  // every caller of uiStatus has already spoken or logged the
-  // urgent version).
-  function uiStatus(text) {
-    log("UI", text);
+    paintButton(practiceBtn, dryRun);
+    paintButton(logBtn, !!(logPanel && logPanel.style.display !== "none"));
+    paintButton(clockBtn, clockModeOn());
+    paintButton(settingsBtn, !!(setPanel && setPanel.style.display !== "none"));
+    if (!voiceBtn) return;
+    // The voice button turns RED while recording is ON.
+    if (!running) { voiceBtn.textContent = "■"; paintButton(voiceBtn, false); }
+    else {
+      voiceBtn.textContent = "●";
+      voiceBtn.style.background = BTN_REC_BG;
+      voiceBtn.style.color = BTN_REC_TEXT;
+    }
   }
 
   function uiGameChanged() {
@@ -3780,32 +2984,28 @@
   // only thing that ever sets dryRun true.
   function buildPracticeButton() {
     practiceBtn = document.createElement("button");
-    practiceBtn.textContent = "practice";
-    practiceBtn.style.cssText =
-      "font-size:12px;padding:6px 12px;border-radius:10px;" +
-      "background:" + BUTTON_OFF + ";color:" + AMBER + ";" +
-      "border:1px solid " + BORDER + ";";
+    practiceBtn.textContent = "pract";
+    practiceBtn.style.cssText = panelBtnCss();
     practiceBtn.addEventListener("click", function () {
       wakeSpeech();
-      primeChimes();   /* an AudioContext must be born in a gesture (w108) */
+      primeChimes();   /* an AudioContext must be born in a gesture */
       setTimeout(loadVoices, 300);
       if (dryRun) {
         dryRun = false; running = false;
         pauseMic(); clearDialogue();
         log("DRY", "practice mode OFF");
         // dryStart took over the api state; hand it back and
-        // pick the page's game up again if there is one. The
-        // website rejoins through the account API; here the
-        // URL is the account API. Guarded on the token so
+        // pick the page's game up again if there is one - the
+        // URL says which game. Guarded on the token so
         // leaving practice never raises a prompt.
         api.gameId = null; api.pos = null;
-        api.moves = []; api.over = false; api.overText = "";
+        api.moves = []; api.over = false;
         uiGameChanged();
         if (gameIdFromUrl() && storedToken()) connect();
       } else {
         // dryRun goes up FIRST so nothing in flight can
         // reconnect behind us, then dryStart owns the whole
-        // teardown (w50).
+        // teardown.
         dryRun = true; running = true;
         startListening();
         dryStart();
@@ -3814,14 +3014,10 @@
     });
   }
 
-  /* THE SETTINGS PANEL, v138: the website's two stored choices
-   * (settings.js has each one's story), presented the
-   * userscript way - a floating panel above the row. The
-   * third website choice, Show ratings, is not here: nothing
-   * in this shell draws a name, Lichess's own page does.
-   * Each flip is logged, as every settings flip has been
-   * since v135, so a pasted log says what the device was set
-   * to and when it changed. */
+  /* THE SETTINGS PANEL: the two stored choices,
+   * presented in a floating panel above the control panel.
+   * Each flip is logged, so a pasted log says what the
+   * device was set to and when it changed. */
   function settingRow(labelText, select) {
     var row = document.createElement("div");
     row.style.cssText =
@@ -3829,11 +3025,12 @@
       "gap:14px;margin:6px 0;";
     var lab = document.createElement("div");
     lab.textContent = labelText;
-    lab.style.cssText = "color:" + PANEL_LABEL + ";font-size:13px;";
+    lab.style.cssText = "color:" + OFF_WHITE + ";font-size:13px;";
     select.style.cssText =
-      "font-size:12px;padding:4px 6px;border-radius:8px;" +
-      "background:" + BUTTON_OFF + ";color:" + BLUE + ";" +
-      "border:1px solid " + BORDER + ";";
+      "font-size:12px;padding:4px 6px;" +
+      "border-radius:" + BUTTON_RADIUS + "px;" +
+      "background:" + BLACK + ";color:" + BLUE + ";" +
+      "border:" + edgeBorder() + ";";
     row.appendChild(lab);
     row.appendChild(select);
     setPanel.appendChild(row);
@@ -3854,22 +3051,24 @@
   function buildSettingsPanel() {
     setPanel = document.createElement("div");
     setPanel.style.cssText =
-      "position:fixed;right:10px;bottom:118px;z-index:99990;" +
-      "display:none;background:" + PANEL_BG + ";border:1px solid " +
-      BORDER + ";border-radius:14px;padding:10px 12px;min-width:230px;" +
+      "position:fixed;right:" + PANEL_RIGHT_PX + "px;bottom:118px;" +
+      "z-index:99990;" +
+      "display:none;background:" + BLACK + ";border:" + edgeBorder() +
+      ";border-radius:" + PANEL_RADIUS + "px;padding:10px 12px;" +
+      "min-width:230px;" +
+      "box-shadow:0 4px 14px rgba(0,0,0,0.45);" +
       "font-family:-apple-system,system-ui,sans-serif;" +
       "-webkit-user-select:none;user-select:none;";
 
     var head = document.createElement("div");
     head.textContent = "settings";
     head.style.cssText =
-      "color:" + PANEL_HEAD + ";font-size:11px;letter-spacing:.08em;" +
+      "color:" + LIGHT_GRAY + ";font-size:11px;letter-spacing:.08em;" +
       "text-transform:uppercase;margin:0 0 4px;";
     setPanel.appendChild(head);
 
     // loadStoredSettings has already run (userscript-boot), so
-    // the selects show what storage says - the return visit is
-    // the tested second use (w37).
+    // the selects show what storage says.
     var speech = makeSelect([["pieces", "Pieces"], ["squares", "Squares"]],
                             MOVE_SPEECH);
     speech.addEventListener("change", function () {
@@ -3895,9 +3094,9 @@
       try { localStorage.setItem(CONFIRM_MODE_KEY, CONFIRM_MODE); }
       catch (e) { log("ERR", "could not save confirm: " + e.message); }
       log("SET", "confirm " + CONFIRM_MODE);
-      // CHOOSING THE CHIME IS ITSELF A GESTURE (w132), so it
+      // CHOOSING THE CHIME IS ITSELF A GESTURE, so it
       // wakes the context on the spot. AND THE PICK PLAYS THE
-      // PICK (w137): three loudnesses are only choosable by
+      // PICK: three loudnesses are only choosable by
       // ear, so a chime level auditions itself - only when
       // the context is already RUNNING (a cold context
       // resumes asynchronously, and a chime scheduled into it
@@ -3920,50 +3119,52 @@
   function buildUI() {
     if (document.getElementById("voicemove-ui")) return;
 
+    // THE PANEL ITSELF: a bordered box on the study
+    // enhancer's pattern - black, one gray border around the
+    // whole thing, rounded, softly shadowed. Position config:
+    // PANEL_BOTTOM_PX / PANEL_RIGHT_PX above.
     wrapEl = document.createElement("div");
     wrapEl.id = "voicemove-ui";
     wrapEl.style.cssText =
-      "position:fixed;right:12px;bottom:12px;z-index:99999;display:flex;" +
-      "flex-direction:column;align-items:flex-end;gap:6px;" +
-      "font-family:system-ui,-apple-system,sans-serif;";
-
-    var row = document.createElement("div");
-    row.style.cssText = "display:flex;align-items:center;gap:8px;";
+      "position:fixed;right:" + PANEL_RIGHT_PX + "px;" +
+      "bottom:" + PANEL_BOTTOM_PX + "px;z-index:99999;" +
+      "display:flex;align-items:center;gap:" + PANEL_PAD + "px;" +
+      "background:" + BLACK + ";border:" + edgeBorder() + ";" +
+      "border-radius:" + PANEL_RADIUS + "px;" +
+      "padding:" + PANEL_PAD + "px;" +
+      "box-shadow:0 4px 14px rgba(0,0,0,0.45);" +
+      "font-family:system-ui,-apple-system,sans-serif;" +
+      "-webkit-user-select:none;user-select:none;";
 
     if (PRACTICE_MODE) buildPracticeButton();
 
     logBtn = document.createElement("button");
     logBtn.textContent = "log";
-    logBtn.style.cssText =
-      "font-size:12px;padding:6px 12px;border-radius:10px;" +
-      "background:" + BUTTON_OFF + ";color:" + BLUE + ";" +
-      "border:1px solid " + BORDER + ";";
+    logBtn.style.cssText = panelBtnCss();
 
-    bigBtn = document.createElement("button");
-    bigBtn.style.cssText =
-      "width:72px;height:72px;border-radius:50%;font-size:26px;line-height:1;" +
-      "display:flex;align-items:center;justify-content:center;padding:0;" +
-      "background:" + BUTTON_OFF + ";color:" + BLUE + ";" +
-      "border:1px solid " + BORDER + ";touch-action:manipulation;" +
-      "-webkit-user-select:none;user-select:none;";
+    // THE VOICE BUTTON. The same size as every other button;
+    // only its glyph is bigger (FONT_ICON). renderButton
+    // owns its face: ■ off, ● recording.
+    voiceBtn = document.createElement("button");
+    voiceBtn.style.cssText = panelBtnCss(FONT_ICON);
 
     clockBtn = document.createElement("button");
     clockBtn.textContent = "clock";
-    clockBtn.style.cssText = logBtn.style.cssText;
+    clockBtn.style.cssText = panelBtnCss();
     clockBtn.addEventListener("click", function () {
       toggleClockMode();
     });
 
     settingsBtn = document.createElement("button");
-    settingsBtn.textContent = "settings";
-    settingsBtn.style.cssText = logBtn.style.cssText;
+    settingsBtn.textContent = "set";
+    settingsBtn.style.cssText = panelBtnCss();
     settingsBtn.addEventListener("click", function () {
       var open = setPanel.style.display !== "none";
       if (!open) {
-        // anchor just above the tallest thing in the row -
-        // the round button
+        // anchor just above the panel (every button is one
+        // height now, so any of them names the top edge)
         try {
-          var top = bigBtn.getBoundingClientRect().top;
+          var top = voiceBtn.getBoundingClientRect().top;
           setPanel.style.bottom =
             Math.max(60, window.innerHeight - top + 8) + "px";
         } catch (e) {}
@@ -3974,48 +3175,49 @@
 
     buildSettingsPanel();
 
-    if (practiceBtn) row.appendChild(practiceBtn);
-    row.appendChild(logBtn);
-    row.appendChild(clockBtn);
-    row.appendChild(settingsBtn);
-    row.appendChild(bigBtn);
-    wrapEl.appendChild(row);
+    if (practiceBtn) wrapEl.appendChild(practiceBtn);
+    wrapEl.appendChild(logBtn);
+    wrapEl.appendChild(clockBtn);
+    wrapEl.appendChild(settingsBtn);
+    wrapEl.appendChild(voiceBtn);
     document.body.appendChild(wrapEl);
 
-    // BUTTON POSITIONING IS A CLOSED CASE — leave this alone.
-    // The row is plain position:fixed, bottom/right. iOS
+    // PANEL POSITIONING IS A CLOSED CASE — leave this alone.
+    // The panel is plain position:fixed, bottom/right. iOS
     // rubber-band overscroll can leave it sitting low until
     // the next real page interaction or reload; that is a
     // cosmetic iOS quirk and the accepted cost. Two fixes
-    // were tried and REMOVED (v75, v76); do not reopen
-    // without a fundamentally different approach.
+    // were tried and REMOVED; do not reopen without a
+    // fundamentally different approach.
 
     /* ---- debug panel ---- */
 
     logPanel = document.createElement("div");
     logPanel.style.cssText =
       "position:fixed;left:8px;right:8px;top:8px;bottom:110px;z-index:99998;" +
-      "display:none;flex-direction:column;background:rgba(12,12,11,.97);" +
-      "border:1px solid " + BORDER + ";border-radius:12px;overflow:hidden;";
+      "display:none;flex-direction:column;background:rgba(22,21,18,.97);" +
+      "border:" + edgeBorder() + ";" +
+      "border-radius:" + PANEL_RADIUS + "px;overflow:hidden;";
     var verLabel = document.createElement("div");
     verLabel.textContent = "Audioplay " + VERSION;
     verLabel.style.cssText =
-      "color:" + AMBER + ";font-size:12px;padding:6px 4px;margin-left:auto;" +
+      "color:" + BLUE + ";font-size:" + FONT_SIZE +
+      ";padding:6px 4px;margin-left:auto;" +
       "font-family:system-ui,sans-serif;";
 
     var bar = document.createElement("div");
     bar.style.cssText =
-      "display:flex;gap:8px;padding:8px;border-bottom:1px solid " + BORDER + ";" +
+      "display:flex;gap:8px;padding:8px;border-bottom:" + edgeBorder() + ";" +
       "font-family:system-ui,sans-serif;";
-    // "token" is the userscript's door to the stored token
-    // (manageToken, userscript-lichess) - the button the
-    // website deliberately does not have.
+    // "token" is the one door to the stored token
+    // (manageToken).
     ["token", "copy", "clear", "close"].forEach(function (name) {
       var b = document.createElement("button");
       b.textContent = name;
-      b.style.cssText =
-        "font-size:12px;padding:6px 12px;border-radius:8px;background:" +
-        BUTTON_OFF + ";color:" + BLUE + ";border:1px solid " + BORDER + ";";
+      // The one button style in the whole script - fixed
+      // size, so the copy feedback below must fit it (glyphs,
+      // not words).
+      b.style.cssText = panelBtnCss();
       b.addEventListener("click", function () {
         if (name === "token") {
           manageToken();
@@ -4024,9 +3226,12 @@
         if (name === "copy") {
           try {
             navigator.clipboard.writeText(LOG.join("\n"));
-            b.textContent = "copied";
+            b.textContent = "✓";
             setTimeout(function () { b.textContent = "copy"; }, 1200);
-          } catch (e) { b.textContent = "no clipboard"; }
+          } catch (e) {
+            b.textContent = "✗";
+            setTimeout(function () { b.textContent = "copy"; }, 1200);
+          }
         } else if (name === "clear") { LOG.length = 0; logBody.textContent = ""; }
         else {
           logPanel.style.display = "none";
@@ -4040,7 +3245,7 @@
 
     logBody = document.createElement("pre");
     logBody.style.cssText =
-      "margin:0;padding:8px;flex:1;overflow:auto;color:" + LOG_TEXT +
+      "margin:0;padding:8px;flex:1;overflow:auto;color:" + LIGHT_GRAY +
       ";font-size:11px;" +
       "line-height:1.35;white-space:pre-wrap;word-break:break-word;" +
       "font-family:ui-monospace,Menlo,monospace;-webkit-overflow-scrolling:touch;";
@@ -4052,39 +3257,36 @@
     logBtn.addEventListener("click", function () {
       var open = logPanel.style.display !== "none";
       logPanel.style.display = open ? "none" : "flex";
-      // log.js repaints only while this is true (w53), so the
-      // toggle owns it and the open case paints once, here
       logPanelVisible = !open;
       if (!open) paintLog();
       renderButton();
     });
 
-    bigBtn.addEventListener("click", function () {
+    voiceBtn.addEventListener("click", function () {
       wakeSpeech();
-      primeChimes();   /* an AudioContext must be born in a gesture (w108) */
+      primeChimes();   /* an AudioContext must be born in a gesture */
       setTimeout(loadVoices, 300);
       running = !running;
       if (running) {
         // practice survives the voice button in BOTH
-        // directions (w90); the practice button is what
-        // ends it.
+        // directions; the practice button is what ends it.
         startListening();
-        if (dryRun) speak("voice on.");
-        // THE FIRST TAP OF A GAME IS THE CONNECT (delta 2's
-        // userscript half): sign-in does not exist here, so
-        // the connection belongs to the first tap - which is
-        // also the gesture the token prompt needs. Already
-        // connected to this page's game, the tap is only the
-        // mic: ensureStream restarts a stream only if it has
-        // actually gone quiet (w81).
+        if (dryRun) speak("voice play on.");
+        // THE FIRST TAP OF A GAME IS THE CONNECT: sign-in
+        // does not exist here, so the connection belongs to
+        // the first tap - which is also the gesture the
+        // token prompt needs. Already connected to this
+        // page's game, the tap is only the mic: ensureStream
+        // restarts a stream only if it has actually gone
+        // quiet.
         else if (api.gameId && api.gameId === gameIdFromUrl() && !api.over) {
           ensureStream();
         } else {
           connect();
         }
       } else {
-        // VOICE OFF TEARS DOWN NO NETWORK (w50, the website's
-        // delta 2): listening and being connected are
+        // VOICE OFF TEARS DOWN NO NETWORK: listening and
+        // being connected are
         // different things. The stream keeps announcing; the
         // page-watcher in userscript-boot is what tears down,
         // when the game page itself goes away.
@@ -4094,12 +3296,12 @@
         // signal, and the user just pressed it. Speaking
         // after being switched off is the wrong last word
         // from a thing that has been told to stop.
-        log("UI", "voice play off");
+        log(" UI", "voice play off.");
       }
       renderButton();
     });
     renderButton();
-    log("UI", "ready");
+    log(" UI", "ready.");
   }
   /*========= EMBEDDED CHESS RULES / LEGAL MOVE GENERATOR ==========*/
 
@@ -4115,12 +3317,7 @@
    *
    * Position(startFen?) with .legalMoves, .applyUci, .findUci,
    * .sanOf, .uciOf, .apply, .clone, .load, .inCheck, .turn.
-   * (This advertised ".san", which has never been the name -
-   * it is sanOf - and ".isGameOver", which exists but has no
-   * caller anywhere: dialogue.js asks !legalMoves().length
-   * directly. A doc comment naming methods that are not there
-   * is worse than no doc comment, because it is checked by
-   * nobody and believed by everybody. w54.) */
+   */
   function makeRules() {
     "use strict";
 
@@ -4130,19 +3327,17 @@
     var ROOK = [16, 1, -16, -1];
     var ROYAL = [17, 16, 15, 1, -17, -16, -15, -1];
 
-    /* the two slider families, built once. attacked() used to
-     * write these as literals in its own body, so every call
-     * allocated two arrays purely to be read twice (w53). */
+    /* the two slider families, built once so attacked() does
+     * not allocate two arrays per call purely to read them
+     * twice. */
     var BISHOPQ = ["b", "q"], ROOKQ = ["r", "q"];
 
     /* Does a slider of one of `types` sit on a clear ray from
-     * `sq`? Lifted out of attacked() (w53): it was a closure
-     * declared INSIDE the hottest predicate in the program, so
-     * a new function object was allocated on every call - and
-     * attacked() is called at least once per pseudo-move, which
-     * is once per clone, which is a million times in a perft.
-     * It closed over sq/by/d/i/p; they are parameters and
-     * locals now, which is also why it can be read on its own.
+     * `sq`? Lifted out of attacked(), the hottest predicate in
+     * the program: a closure declared inside it would allocate
+     * a new function object on every call - and attacked() is
+     * called at least once per pseudo-move, which is once per
+     * clone, which is a million times in a perft.
      */
     function raySees(b, sq, by, dirs, types) {
       for (var m = 0; m < dirs.length; m++) {
@@ -4201,16 +3396,15 @@
       this.full = parseInt(parts[5] || "1", 10);
     };
 
-    /* THE HOTTEST FUNCTION IN THE FILE, and it used to parse a
-     * FEN (w53). legalMoves clones once per pseudo-move to test
-     * the king - about 35 times per position, and perft alone
-     * does it a million times - and every one of those went
-     * through new Position(START), which fills a 128-slot array
-     * and then splits and regexes the start FEN character by
-     * character, before the six lines below overwrite every
-     * field it just set. Object.create skips the constructor
-     * entirely; the fields are all assigned here anyway, so
-     * nothing is left undefined. */
+    /* THE HOTTEST FUNCTION IN THE FILE. legalMoves clones once
+     * per pseudo-move to test the king - about 35 times per
+     * position, and perft alone does it a million times - so
+     * this must not go through new Position(START), which
+     * fills a 128-slot array and then parses the start FEN
+     * character by character only to be overwritten.
+     * Object.create skips the constructor entirely; the fields
+     * are all assigned here anyway, so nothing is left
+     * undefined. */
     Position.prototype.clone = function () {
       var p = Object.create(Position.prototype);
       p.board = this.board.slice();
@@ -4231,7 +3425,7 @@
 
     /* is square `sq` attacked by side `by` */
     Position.prototype.attacked = function (sq, by) {
-      var b = this.board, i, j, p;    /* `d` left with raySees */
+      var b = this.board, i, j, p;
       /* pawns */
       var pd = by === "w" ? [-17, -15] : [17, 15];
       for (j = 0; j < 2; j++) {
@@ -4248,7 +3442,7 @@
         i = sq + ROYAL[j];
         if (onBoard(i)) { p = b[i]; if (p && typeOf(p) === "k" && colorOf(p) === by) return true; }
       }
-      /* sliders - see raySees, lifted out of here at w53 */
+      /* sliders - see raySees */
       if (raySees(b, sq, by, BISHOP, BISHOPQ)) return true;
       if (raySees(b, sq, by, ROOK, ROOKQ)) return true;
       return false;
@@ -4454,8 +3648,7 @@
     };
 
     /* legalList is optional and is passed by anything that has
-     * already generated one (w53) - see applyUci, which used to
-     * make the list here and then make it AGAIN inside sanOf. */
+     * already generated one - see applyUci. */
     Position.prototype.findUci = function (uci, legalList) {
       var moves = legalList || this.legalMoves();
       for (var i = 0; i < moves.length; i++) {
@@ -4474,12 +3667,11 @@
     };
 
     Position.prototype.applyUci = function (uci) {
-      /* ONE LIST, USED TWICE (w53). findUci generated the legal
-       * moves and threw them away, then sanOf generated the
-       * same list again from the same untouched position -
-       * doubling the cost of every move replayed from the
-       * stream, which is how the board is rebuilt after any
-       * reconnect. */
+      /* ONE LIST, USED TWICE. Generating the legal moves is
+       * the expensive step, and every move replayed from the
+       * stream comes through here - which is how the board is
+       * rebuilt after any reconnect - so findUci and sanOf
+       * share one list. */
       var moves = this.legalMoves();
       var m = this.findUci(uci, moves);
       if (!m) return null;
@@ -4500,13 +3692,13 @@
     };
   }
 
-  /*========================== CLOCK MODE ==========================*/
+  /* ========================= CLOCK MODE ======================== */
 
   // A full-screen, pure black overlay showing the two
-  // clocks, SIDE BY SIDE (v97), AND NOTHING ELSE (w110):
+  // clocks, SIDE BY SIDE, AND NOTHING ELSE:
   // yours on the side set by PLAYER_ON_LEFT_OF_CLOCK,
   // theirs on the other, the side to move drawn HEAVIER
-  // (weight, not brightness, since v81/v82; red still
+  // (weight, not brightness; red still
   // means under a minute). On an OLED panel black pixels
   // are OFF, so in a dark room the display reduces to two
   // faint numbers. Everything else — the mic, speech, the
@@ -4515,35 +3707,24 @@
   // (remainingMs, api.pos.turn), and it touches nothing
   // outside itself.
   //
-  // TEXT ON THIS SCREEN IS A CLOSED CASE NOW (w110,
-  // owner's decision). The move row (v73, off at v92, a
-  // switch from v124) and the v129 message strip - with
-  // its question stickiness, sentence-casing and two-way
-  // channel routing in speak() - were built so the screen
-  // could carry what the voice then need not say. Real
-  // games settled it the other way: the owner caught
-  // himself reading the overlay, eyes off the physical
-  // board, which is the exact motion this program exists
-  // to remove. All of it was deleted at w110, switches and
-  // all; the voice is the one channel, and this screen is
-  // numbers. The machinery is in git at w109 if text is
-  // ever argued back - argue with the sentence above
-  // first.
+  // TEXT ON THIS SCREEN IS A CLOSED CASE. On-screen text
+  // pulls the eyes off the physical board, which is the
+  // exact motion this program exists to remove; real games
+  // settled it. The voice is the one channel, and this
+  // screen is numbers. If text is ever argued back, argue
+  // with that sentence first.
   //
-  // In: the "clock" button, and ONLY the button (v98).
+  // In: the "clock" button, and ONLY the button.
   // Out: tap anywhere on it.
   //
-  // THIS FILE PAINTS FROM CODE, AND THAT IS THE EXCEPTION,
-  // NOT THE RULE (w54). Rule 6 says the stylesheet owns what a
+  // THIS FILE PAINTS FROM CODE. The stylesheet owns what a
   // state looks like and the code only says which state is
-  // current - and everywhere else it now does, including the
-  // two page buttons that were breaking it. Here the whole
-  // overlay is built from cssText and its colours are set on
-  // the elements: red under a minute, dim for the side not to
-  // move. It is left that way ON PURPOSE and the reason is
-  // worth stating, because an undocumented exception is
-  // indistinguishable from an oversight - which is how this
-  // one got reported in the first place.
+  // current. Here the whole overlay is built from cssText
+  // and its colours are set on the elements: red under a
+  // minute, dim for the side not to move. It is left that
+  // way ON PURPOSE and the reason is worth stating, because
+  // an undocumented exception is indistinguishable from an
+  // oversight.
   //
   //   - the overlay is a SECOND RENDERER. It shares no markup
   //     with the page, sits outside .panel, and is created and
@@ -4574,14 +3755,13 @@
     return !!(clockOverlay && clockOverlay.style.display !== "none");
   }
 
-  // One number only (v78): ticking seconds drew the eye,
-  // so above a minute just the whole minutes remain,
-  // changing once a minute — and under a minute the number
-  // becomes the seconds and the number turns red
-  // (LOW_TIME_COLOR). Since w133 the voice can say the same
-  // reading ON DEMAND — "clock" or "time", speakClockTimes
-  // below — in these same units; nothing speaks it
-  // unprompted (see the spoken-clock note in header.js).
+  // One number only: ticking seconds draw the eye, so above
+  // a minute just the whole minutes remain, changing once a
+  // minute — and under a minute the number becomes the
+  // seconds and the number turns red (LOW_TIME_COLOR). The
+  // voice can say the same reading ON DEMAND — "clock" or
+  // "time", speakClockTimes below — in these same units;
+  // nothing speaks it unprompted.
   function clockDigits(ms) {
     if (ms == null) return "--";
     if (ms < 0) ms = 0;
@@ -4597,7 +3777,7 @@
       "display:flex;flex-direction:row;touch-action:none;" +
       "-webkit-user-select:none;user-select:none;cursor:default;";
     clockHalves = {};
-    // the halves are LEFT and RIGHT (v97). Which one is
+    // the halves are LEFT and RIGHT. Which one is
     // yours is PLAYER_ON_LEFT_OF_CLOCK, read at paint time,
     // so "flip clock" is a repaint and never a rebuild.
     ["left", "right"].forEach(function (k) {
@@ -4605,8 +3785,8 @@
       half.style.cssText =
         "flex:1;display:flex;flex-direction:column;" +
         "align-items:center;justify-content:center;";
-      // weight is set by paintClockHalf every tick (v81:
-      // it is the turn signal), so the value here is only
+      // weight is set by paintClockHalf every tick (it is
+      // the turn signal), so the value here is only
       // what shows for the instant before the first paint
       var time = document.createElement("div");
       time.style.cssText =
@@ -4625,7 +3805,7 @@
   }
 
   // The size the bare digits may have, for the widest
-  // reading seen so far this session (v97). Monotonic: the
+  // reading seen so far this session. Monotonic: the
   // count only ever grows, so a game that ticks 100 -> 99
   // does not resize back up and the number never moves
   // under the eye while it is being read.
@@ -4650,12 +3830,12 @@
     var ms = remainingMs(color);
     var digits = clockDigits(ms);
     var active = api.pos && !api.over && api.pos.turn === color;
-    // one color for everything (v82); red is the only
+    // one color for everything; red is the only
     // exception and means "under a minute". The turn is
     // carried by weight alone, so low-and-waiting reads
     // both facts at once.
     var col = ms != null && ms < 60000 ? LOW_TIME_COLOR : TEXT_COLOR;
-    // the clock alone carries the turn (v88)
+    // the clock alone carries the turn
     var wt = active ? ACTIVE_WEIGHT : IDLE_WEIGHT;
     if (h.time.textContent !== digits) {
       h.time.textContent = digits;
@@ -4690,18 +3870,16 @@
   // OVERLAY_TICK_MS, so the overlay is never disturbed —
   // which matters, because it cannot be retaken without
   // another tap. CONFIRMED in use.
-  // AND IT SAYS WHICH SIDE (w54). This repainted and said
-  // nothing, which is fine while you are looking at the
-  // overlay and is silence everywhere else - and "flip clock"
-  // is a VOICE command, reachable with the overlay down, where
-  // the repaint is invisible and nothing else happens at all.
-  // That is constraint 5: silence reads as "not heard", so the
-  // user says it again, and flips it back.
+  // AND IT SAYS WHICH SIDE. A silent repaint is fine while
+  // you are looking at the overlay - and "flip clock" is a
+  // VOICE command, reachable with the overlay down, where
+  // the repaint is invisible and nothing else happens at
+  // all. That is constraint 5: silence reads as "not heard",
+  // so the user says it again, and flips it back.
   //
   // It answers with the new state rather than "flipped",
   // because a confirmation has to carry information to earn
-  // its airtime - the rule the whole sound arc ended in (see
-  // the chimes tombstone in header.js).
+  // its airtime.
   function flipClockSides() {
     PLAYER_ON_LEFT_OF_CLOCK = !PLAYER_ON_LEFT_OF_CLOCK;
     var side = PLAYER_ON_LEFT_OF_CLOCK ? "left" : "right";
@@ -4710,15 +3888,13 @@
     speak("your clock on the " + side + ".");
   }
 
-  // THE SPOKEN CLOCK, back on demand at w133 (owner's
-  // reversal - the whole story is the spoken-clock note in
-  // header.js). "clock" or "time", said alone, answers with
-  // both times, the player's own color FIRST - the number
-  // the asker almost always wants - in the overlay's own
-  // units: whole minutes, floored, exactly as the screen
+  // THE SPOKEN CLOCK. "clock" or "time", said alone, answers
+  // with both times, the player's own color FIRST - the
+  // number the asker almost always wants - in the overlay's
+  // own units: whole minutes, floored, exactly as the screen
   // shows them, and the seconds once a side is under a
   // minute. ON DEMAND ONLY: nothing here fires unprompted,
-  // and the v92 refusal of a low-time alert still stands.
+  // and there is deliberately no low-time alert.
   function spokenClockReading(ms) {
     if (ms < 0) ms = 0;
     var s = Math.floor(ms / 1000);
@@ -4732,7 +3908,7 @@
     var theirs = mine === "w" ? "b" : "w";
     var myMs = remainingMs(mine), oppMs = remainingMs(theirs);
     // no game, or a game without clocks (correspondence):
-    // rule 5, the refusal is said, not implied
+    // the refusal is said, not implied
     if (myMs == null || oppMs == null) {
       speak("no clock running.");
       return;
@@ -4748,7 +3924,7 @@
         return;
       }
       navigator.wakeLock.request("screen").then(function (lock) {
-        // THE REQUEST CAN OUTLIVE THE MODE (w63). Enter, tap
+        // THE REQUEST CAN OUTLIVE THE MODE. Enter, tap
         // straight out, and this promise resolves with the
         // overlay already down: release() found null and did
         // nothing, then the lock landed here - held forever,
@@ -4783,13 +3959,12 @@
     }
   });
 
-  // NO FULLSCREEN (v108). The overlay fills the viewport
-  // under Safari's toolbar. It used to request fullscreen
-  // for a black edge-to-edge screen, and the price was the
-  // layout-viewport corruption in the header tombstone —
-  // paid on every EXIT, curable only by force-quitting
-  // Safari. Losing the toolbar's strip of screen is the
-  // cheaper trade. Tapping the overlay exits.
+  // NO FULLSCREEN. The overlay fills the viewport under
+  // Safari's toolbar. Requesting fullscreen for a black
+  // edge-to-edge screen costs layout-viewport corruption on
+  // every EXIT, curable only by force-quitting Safari.
+  // Losing the toolbar's strip of screen is the cheaper
+  // trade. Tapping the overlay exits.
   function enterClockMode() {
     if (!clockOverlay) buildClockOverlay();
     clockOverlay.style.display = "flex";
@@ -4816,15 +3991,7 @@
     else enterClockMode();
   }
 
-  /*======================= BOOT (USERSCRIPT) ======================\
-   *
-   *  The website's boot signs in and watches the account
-   *  event stream; this one watches lichess.org for a game
-   *  page, which is the userscript's one surviving DOM
-   *  dependency (constraint 2 is about game STATE - the
-   *  moves, the clocks - and every one of those still comes
-   *  from the Board API alone).
-   *================================================================*/
+  /*======================= BOOT ======================*/
 
   var booted = false, lastPath = "";
 
@@ -4833,8 +4000,9 @@
    * phone/tablet layouts and zen mode render different
    * subsets. Zen mode hides things with CSS, so the elements
    * still exist either way. */
-  var PAGE_MARKERS = [".round__app", "main.round", "cg-board", ".cg-wrap",
-                      "#main-wrap .round", "main .rclock"];
+  var PAGE_MARKERS = [".round__app", "main.round", "cg-board",
+                      ".cg-wrap", "#main-wrap .round",
+                      "main .rclock"];
 
   function gamePageMarker() {
     for (var i = 0; i < PAGE_MARKERS.length; i++) {
@@ -4843,12 +4011,9 @@
     return null;
   }
 
-  // The boot line still says what this build has switched on,
-  // so a pasted log names its configuration (v135's rule: the
-  // flips were logged, the starting state never was). The
-  // website's line carries ratings too; nothing here draws a
-  // rating, so the line carries only what this shell can act
-  // on.
+  // The boot line says what this build has switched on, so a
+  // pasted log names its configuration (the flips are logged;
+  // the starting state is named here).
   function settingsSummary() {
     return "moves=" + MOVE_SPEECH +
            " confirm=" + CONFIRM_MODE +
@@ -4862,13 +4027,13 @@
       booted = true;
       lastPath = path;
       buildUI();
-      log("UI", "game page detected via " + gamePageMarker());
+      log(" UI", "game page detected via " + gamePageMarker());
     } else if (isGame && booted && path !== lastPath) {
       lastPath = path;
-      log("UI", "navigated to " + path);
+      log(" UI", "navigated to " + path);
       // A NEW GAME PAGE IS A NEW GAME. Practice is left
       // alone - it is not this page's game, and the practice
-      // button is what ends it (w90). Otherwise: reconnect if
+      // button is what ends it. Otherwise: reconnect if
       // the user had engaged - voice on, or a connection
       // already made. Never on a cold path change, because
       // connect() may raise the token prompt and a prompt
@@ -4876,7 +4041,7 @@
       if (!dryRun) {
         var wasConnected = !!api.gameId && api.gameId !== "PRACTICE";
         api.myColor = null; api.pos = null; api.moves = [];
-        api.movesBefore = 0; api.over = false; api.overText = "";
+        api.movesBefore = 0; api.over = false;
         if (running || wasConnected) connect();
       }
     } else if (!isGame && booted) {
@@ -4885,7 +4050,7 @@
       if (dryRun) {
         // leaving the page ends practice too: its button is
         // gone with the UI, and a half-state with dryRun up
-        // and no way to see it is the w90 shape.
+        // and no way to see it must not exist.
         dryRun = false;
         log("DRY", "practice mode OFF (left the game page)");
       }
@@ -4901,7 +4066,7 @@
       stopPolling();
       try { if (streamAbort) streamAbort.abort(); } catch (e) {}
       api.gameId = null; api.pos = null; api.moves = [];
-      api.over = false; api.overText = "";
+      api.over = false;
       var ui = document.getElementById("voicemove-ui");
       if (ui) ui.remove();
       if (setPanel) { try { setPanel.remove(); } catch (e) {} setPanel = null; }
@@ -4914,18 +4079,15 @@
   var mo = new MutationObserver(function () { tick(); });
   mo.observe(document.documentElement, { childList: true, subtree: true });
   setInterval(tick, 1000);
-
-  scrubDeadStorage();   /* the w111 audit; on THIS origin it also
-                           deletes the pre-GM era's stranded
-                           localStorage token, which is rule 4's
-                           whole point */
+  scrubDeadStorage();   /* deletes any stranded pre-extension
+                           localStorage token */
   loadStoredSettings(); /* before any buildUI: the selects and the
-                           first announcement read these (w120) */
+                           first announcement read these */
   declareAudioSession();
   startStallWatch();
   loadStoredToken();    /* async (GM storage); cached by the time
                            a human can reach the button */
   tick();
-  log("UI", "script loaded " + VERSION);
+  log(" UI", "script loaded " + VERSION);
   log("SET", "loaded: " + settingsSummary());
 })();

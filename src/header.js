@@ -61,23 +61,27 @@
    *  (userscript-frozen.sha256), not its buildability.
    *
    *  AMENDED AT v138 (owner's request, 19 Aug 2026): the
-   *  userscript is IN PRINT AGAIN, as the backup that still
-   *  works if the website's hosting ever goes away - but not
-   *  as the old line continued. It is a second BUILD of the
-   *  same src/ pipeline: manifest-userscript.txt wraps the
-   *  shared files in a userscript shell (userscript-header,
-   *  userscript-lichess, userscript-ui, userscript-boot) and
-   *  build.js writes the committed root lichess_audioplay.js,
-   *  which the harness rebuilds and compares so it can never
-   *  fall behind src/ (the w18 shape). So the paragraph
-   *  above needs one correction: the pipeline files serve
-   *  BOTH builds now, and a change to them ships twice.
-   *  Everything else stands - the w-series is still the only
-   *  history line (the userscript's v-number names the
-   *  artifact, not a fork of the behaviour), us-header.js is
-   *  still history not authority, and the frozen v137 stays
-   *  sha-guarded in frozen-userscript/ as the last of the
-   *  line that was actually maintained by hand.
+   *  userscript came BACK IN PRINT, as the backup that still
+   *  works if the website's hosting ever goes away - rebuilt
+   *  from these same src/ files through a second manifest,
+   *  with the harness holding artifact and sources in
+   *  lockstep.
+   *
+   *  AND UN-COUPLED AT w138 (owner's decision, 21 Aug 2026).
+   *  The owner took the built userscript and carried it
+   *  forward BY HAND - v139-v141, edited directly in the
+   *  artifact - and ruled that the two no longer have to
+   *  move in lockstep. So the root lichess_audioplay.js is
+   *  now maintained on its own: edit the FILE, bump its
+   *  v-number, commit it. It is not built from src/ any
+   *  more; the userscript shell sources and
+   *  manifest-userscript.txt are gone (in git at w137), and
+   *  no check compares the artifact to this pipeline. These
+   *  src/ files serve ONLY the website again, and when the
+   *  userscript learns something worth keeping, it is ported
+   *  here the ordinary way - by hand, as w138 itself was.
+   *  The frozen v137 stays sha-guarded in frozen-userscript/
+   *  as the record of the previous hand-maintained era.
    *================================================================*/
 
   /*=================== HARD CONSTRAINTS ===========================
@@ -465,7 +469,9 @@
    * minutes, seconds under a minute (speakClockTimes,
    * clock.js). Asking is the user's own interruption at a
    * moment of their choosing, which is exactly what the
-   * v92 alert was not.
+   * v92 alert was not. (At w138 the owner's own vocabulary
+   * trim narrowed the ask to bare "time"; "clock" is not a
+   * command word any more.)
    *
    * THE SPOKEN "CLOCK MODE" IS GONE (v98), and with it
    * classifyClockMode. It could not go fullscreen — Safari
@@ -475,9 +481,9 @@
    * used again. (v108 removed fullscreen altogether, so
    * that particular asymmetry no longer exists; the phrase
    * stays deleted on the separate ground below.) The clock
-   * vocabulary is "flip clock" and, since w133, bare
-   * "clock"/"time" asking for the remaining times (see the
-   * spoken-clock note above). Anything that changes the
+   * vocabulary is bare "flip" and bare "time" (both
+   * one-word since w138; see the spoken-clock note
+   * above). Anything that changes the
    * SCREEN is now a tap, and anything spoken either answers
    * or rearranges — a cleaner line than the one it replaced.
    * SPOKEN "SILENT MODE" WENT THE SAME WAY one version
