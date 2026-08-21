@@ -464,11 +464,12 @@ const sleep = ms =>
   // w111: the storage scrub. Every name a previous era
   // wrote on this origin is removed on boot - including
   // the two old token keys, whose stranded credentials are
-  // the point, the settings blob (w117), and the ratings
-  // choice (dead at w138 with its setting) - and current
-  // keys are untouched.
+  // the point, and (since w117) the settings blob - and
+  // current keys are untouched. (audioplay.ratings is a
+  // LIVE key again since w139, so it belongs with the kept.)
   const scrubbed = vm.runInContext(`
     localStorage.setItem("audioplay.token", "CURRENT");
+    localStorage.setItem("audioplay.ratings", "on");
     localStorage.setItem("audioplay.movespeech", "squares");
     localStorage.setItem("audioplay_lichess_token", "OLD");
     localStorage.setItem("audioplay.lichess.token", "OLDER");
@@ -477,23 +478,24 @@ const sleep = ms =>
     localStorage.setItem("audioplay.web.rated", "x");
     localStorage.setItem("audioplay.web.timecontrol", "x");
     localStorage.setItem("audioplay.settings", '{"showRatings":true}');
-    localStorage.setItem("audioplay.ratings", "on");
     scrubDeadStorage();
     var left = ["audioplay_lichess_token", "audioplay.lichess.token",
                 "audioplay.lichess.verifier", "audioplay.web.opponent",
                 "audioplay.web.rated", "audioplay.web.timecontrol",
-                "audioplay.settings", "audioplay.ratings"]
+                "audioplay.settings"]
       .filter(function (k) { return localStorage.getItem(k) !== null; });
     var kept = [localStorage.getItem("audioplay.token"),
+                localStorage.getItem("audioplay.ratings"),
                 localStorage.getItem("audioplay.movespeech")];
     localStorage.removeItem("audioplay.token");
+    localStorage.removeItem("audioplay.ratings");
     localStorage.removeItem("audioplay.movespeech");
     [left.length].concat(kept);
   `, sandbox);
-  check("the scrub removes every dead key - audioplay.ratings " +
-        "included - and keeps the live ones (" + scrubbed + ")",
+  check("the scrub removes every dead key and keeps the live " +
+        "ones - w120's flat keys included (" + scrubbed + ")",
         scrubbed[0] === 0 && scrubbed[1] === "CURRENT" &&
-        scrubbed[2] === "squares");
+        scrubbed[2] === "on" && scrubbed[3] === "squares");
 
   // ---- w10/w12/w76/w77: one account button; the sign-out ----
   // is a question first. At rest the signed-in button is the
@@ -749,19 +751,19 @@ const sleep = ms =>
   check("boot logs the configuration (" +
         bootLine.slice(bootLine.indexOf("loaded:")).slice(0, 40) + "...)",
         /loaded:/.test(bootLine) &&
+        /ratings=(on|off)/.test(bootLine) &&
         // w120: the announcement style is a stored choice, so
         // a pasted log must say which one the device speaks
         /moves=(pieces|squares)/.test(bootLine) &&
         // w131: how a move is confirmed is a stored choice too
         /confirm=(chime|voice|none)/.test(bootLine) &&
         // the dead switch names must NOT be in the boot line:
-        // a name reappearing here means a setting crept back -
-        // ratings joined the dead names at w138
-        !/confirmMine|guardPawnPushes|ratings=/.test(bootLine) &&
+        // a name reappearing here means a setting crept back
+        !/confirmMine|guardPawnPushes/.test(bootLine) &&
         /voice=(system|\S+)/.test(bootLine));
-  check("and the ratings setting is gone whole (w138)",
-        vm.runInContext('typeof SHOW_RATINGS === "undefined" && ' +
-                        'typeof RATINGS_KEY === "undefined"', sandbox));
+  check("and ratings default off (w117, owner's order)",
+        /ratings=off/.test(bootLine) &&
+        vm.runInContext("SHOW_RATINGS", sandbox) === false);
   check("and moves default pieces - what every game before " +
         "w120 spoke",
         /moves=pieces/.test(bootLine) &&
@@ -1380,26 +1382,27 @@ const sleep = ms =>
         vm.runInContext(
           'settingsBtn.style.background === BUTTON_OFF', sandbox));
 
-  // the row carries the two choices, showing the loaded
-  // values - pieces and chime are the shipped defaults
-  check("the row holds the two selects at their defaults (" +
+  // the row carries the stored choices, showing the loaded
+  // values - off, pieces and chime are the shipped defaults
+  // (the ratings select left at w138 and RETURNED at w139:
+  // the owner ruled its deletion a userscript-shaped
+  // overstep on a page that has a player row to act on)
+  check("the row holds the selects at their defaults (" +
         vm.runInContext('document.getElementById("setSpeech").value',
                         sandbox) + ")",
+        vm.runInContext('document.getElementById("setRatings").value',
+                        sandbox) === "off" &&
         vm.runInContext('document.getElementById("setSpeech").value',
                         sandbox) === "pieces" &&
         vm.runInContext('document.getElementById("setConfirm").value',
                         sandbox) === "chime");
-  // w138: the ratings choice is gone whole - no select in
-  // the row, no label in the instructions panel. A control
-  // reappearing here means the setting crept back. (The
-  // template's comments may still tell the story; markup is
-  // what is checked.)
-  check("the ratings select is gone from the row (w138)",
-        !/setRatings/.test(tmpl) &&
-        !/Show ratings &mdash;/.test(tmpl));
-  // the instructions read in the body's own colour, not the
-  // furniture dim (owner's report: whole paragraphs at
-  // --dim were hard to read)
+  // w126: the ratings label says what it toggles - beside a
+  // Rated/Casual control, bare "Ratings" read as being about
+  // the game - and the instructions read in the body's own
+  // colour, not the furniture dim (owner's report: whole
+  // paragraphs at --dim were hard to read)
+  check("the ratings label says Show ratings",
+        /<label>Show ratings <select id="setRatings">/.test(tmpl));
   check("the instructions text is body-coloured",
         /\.hint \{ color: var\(--text\)/.test(tmpl));
 
@@ -2853,6 +2856,7 @@ const sleep = ms =>
     ' document.getElementById("nameBottom").innerHTML', sandbox);
   vm.runInContext(`
     api.gameId = "P1"; api.over = false; api.myId = "me"; dryRun = false;
+    SHOW_RATINGS = true;   /* set for the test; the shipped default is off */
     handleGameFull({
       white: { id: "me", name: "pawn76", rating: 1500 },
       black: { id: "maia1", name: "maia1", title: "BOT", rating: 1900 },
@@ -2863,10 +2867,7 @@ const sleep = ms =>
   const shown = playersHtml();
   check("both players are named under the board (" + shown + ")",
         /pawn76/.test(shown) && /maia1/.test(shown));
-  // w138: the rating is never shown - the Show ratings
-  // setting is gone whole (settings.js has the tombstone)
-  check("without their ratings (w138)",
-        !/1500/.test(shown) && !/1900/.test(shown));
+  check("with their ratings", /1500/.test(shown) && /1900/.test(shown));
   check("and the title, since a BOT is worth knowing about",
         /BOT/.test(shown));
   // w105: the renderer says WHICH kind of title it is; the
@@ -2926,6 +2927,17 @@ const sleep = ms =>
           'LOG.filter(function (l) { return /on the other side/.test(l); })' +
           '.length', sandbox) >= 1);
 
+  // OFF LEAVES THE NUMBERS OUT, and the flip repaints on the
+  // spot - the setting's whole effect is something already
+  // on screen. w75: names are unconditional, so the row can
+  // never be empty while a game is on - only the rating
+  // comes and goes.
+  vm.runInContext("SHOW_RATINGS = false; renderPlayers();", sandbox);
+  check("ratings off still leaves the names (" + playersHtml() + ")",
+        /pawn76/.test(playersHtml()) && !/1500/.test(playersHtml()));
+  vm.runInContext("SHOW_RATINGS = true; renderPlayers();", sandbox);
+  check("and back on restores the numbers", /1500/.test(playersHtml()));
+
   // A Lichess AI opponent has aiLevel and NO name at all - the
   // shape that would otherwise render "undefined".
   vm.runInContext(`
@@ -2948,35 +2960,70 @@ const sleep = ms =>
         (playersHtml() || "empty") + ")", playersHtml() === "");
   vm.runInContext("dryRun = false;", sandbox);
 
-  // ---- w69/w75/w117/w120/w138: the rating's long walk,
-  // ended ----
+  // ---- w69/w75/w117/w120: the rating's long walk ----
   // w69 split ratings off but nested, w71 freed them, w72
   // chained them to showPlayers, w75 deleted the chain, w117
-  // deleted the panel around the one switch left, w120 made
-  // it a stored choice on the Settings row, and w138 deleted
-  // the choice whole: the rating never renders, whatever an
-  // old save says. Driven with a stale "on" in storage - the
-  // exact state that would steer behaviour if the dead
-  // switch ever read from anywhere again.
+  // deleted the panel around the one switch left, and w120
+  // made it a stored choice again on the Settings row -
+  // owner's default still OFF. (w138 deleted the choice in
+  // the v141 sync; w139 restored it - the owner ruled the
+  // deletion a userscript overstep.) The render is driven
+  // both ways, and the shipped default is left in force at
+  // the end.
   vm.runInContext(`
     api.gameId = "P3"; api.over = false;
-    localStorage.setItem("audioplay.ratings", "on");
-    loadStoredSettings();
+    SHOW_RATINGS = false;
     handleGameFull({
       white: { id: "me", name: "pawn76", rating: 1500 },
       black: { id: "maia1", name: "maia1", title: "BOT", rating: 1900 },
       state: { moves: "" } });
     uiGameChanged();
-    localStorage.removeItem("audioplay.ratings");
   `, sandbox);
   await sleep(40);
   const noRatings = playersHtml();
-  check("a stale ratings=on in storage moves nothing: names, " +
-        "no numbers (" + noRatings + ")",
+  check("off (the shipped default) keeps names, drops numbers (" +
+        noRatings + ")",
         /pawn76/.test(noRatings) && /maia1/.test(noRatings) &&
         !/1500/.test(noRatings) && !/1900/.test(noRatings));
   check("but not the title - a BOT is not a rating",
         /BOT/.test(noRatings));
+  // THE FLIP IS THE SELECT'S (w120), driven through the
+  // built control: the change handler owns the variable, the
+  // storage write, and the repaint - so the numbers appear
+  // with no render call from here.
+  vm.runInContext(`
+    var sel = document.getElementById("setRatings");
+    sel.value = "on"; sel.on_change();
+  `, sandbox);
+  check("flipping the Ratings select brings the numbers back",
+        /1500/.test(playersHtml()) && /1900/.test(playersHtml()));
+  check("and remembers the choice under its flat key",
+        sandbox.localStorage.getItem("audioplay.ratings") === "on");
+  vm.runInContext(`
+    var sel = document.getElementById("setRatings");
+    sel.value = "off"; sel.on_change();
+  `, sandbox);
+  check("and off again, off the same select",
+        !/1500/.test(playersHtml()) &&
+        sandbox.localStorage.getItem("audioplay.ratings") === "off");
+  // a return visit reads the stored choice; junk reads as
+  // the default (the rated dropdown's rule, w99)
+  vm.runInContext(`
+    localStorage.setItem("audioplay.ratings", "on");
+    loadStoredSettings();
+  `, sandbox);
+  check("a later visit restores ratings from storage",
+        vm.runInContext("SHOW_RATINGS", sandbox) === true);
+  vm.runInContext(`
+    localStorage.setItem("audioplay.ratings", "junk");
+    loadStoredSettings();
+  `, sandbox);
+  check("junk in storage reads as ratings off",
+        vm.runInContext("SHOW_RATINGS", sandbox) === false);
+  vm.runInContext(`
+    localStorage.removeItem("audioplay.ratings");
+    loadStoredSettings(); renderPlayers();
+  `, sandbox);
 
   // ---- w69: the game id is for the log, not the panel ----
   heard();
@@ -3051,36 +3098,60 @@ const sleep = ms =>
         /still signed out/i.test(auth2));
   vm.runInContext("postAction = __realPA; authGone = false;", sandbox);
 
-  // w138 REVERSED w128: practice has NO clock any more. The
-  // running ten-minute pair and its banking machinery
-  // (bankPracticeClock) went out with the owner's own trim -
-  // practice has no referee and nothing ends it on time, so
-  // the honest value is null. What w60 taught still holds
-  // one field over: a real game's stale clock must not leak
-  // into practice, and nulling IS the not-leaking.
+  // 124/w128: practice never inherits a real game's clock
+  // anchor - it RE-anchors. A stale anchor used to arrive
+  // minutes old and flag white on entry; now dryStart plants
+  // a fresh one, because the practice clock is REAL since
+  // w128 (w60 froze it at 10:00, w127 nulled it to dashes,
+  // and the owner wanted what a game has: a clock that runs).
+  // (w138's v141 sync nulled it again and w139 restored it:
+  // the userscript has no rail for a practice clock to run
+  // on, this page does, and the owner said so.)
   vm.runInContext(`
-    api.wtime = 300000; api.btime = 300000;
     api.clockAt = Date.now() - 300000;   // a real game, 5 min ago
     dryRun = true; running = true;
     dryStart();
   `, sandbox);
   await sleep(40); heard();
-  check("practice nulls the clocks - no leak from the real game",
-        vm.runInContext("api.wtime", sandbox) === null &&
-        vm.runInContext("api.btime", sandbox) === null &&
-        vm.runInContext("api.clockAt", sandbox) === null &&
-        vm.runInContext('remainingMs("w")', sandbox) === null);
-  check("and the banking machinery is gone with the clock",
-        vm.runInContext('typeof bankPracticeClock === "undefined"',
-                        sandbox));
+  check("practice re-anchors the clock, dropping the stale one",
+        vm.runInContext("Date.now() - api.clockAt", sandbox) < 2000);
+  check("and starts at ten minutes each, not draining before " +
+        "both have moved (the live game's own ply gate)",
+        vm.runInContext('remainingMs("w")', sandbox) === 600000 &&
+        vm.runInContext('remainingMs("b")', sandbox) === 600000);
   vm.runInContext("uiGameChanged();", sandbox);
   const phCell = (id) => vm.runInContext(
     'document.getElementById("' + id + '").innerHTML', sandbox);
-  check("the rail shows its placeholders in practice (" +
-        phCell("clockBottom").replace(/</g, "[") + ")",
-        /00:00/.test(phCell("clockTop")) &&
-        /00:00/.test(phCell("clockBottom")) &&
-        /class="cbox idle"/.test(phCell("clockTop")));
+  check("the rail shows the practice clocks, turn colour and " +
+        "all (" + phCell("clockBottom").replace(/</g, "[") + ")",
+        /10:00/.test(phCell("clockTop")) &&
+        /10:00/.test(phCell("clockBottom")) &&
+        // white to move at the start, and yours is the bottom
+        /cbox turn/.test(phCell("clockBottom")) &&
+        /idle/.test(phCell("clockTop")));
+  // two plies in, the mover's think drains through the same
+  // remainingMs a live game uses, and the banking writes it
+  // back the way the server does for a real game
+  const banked = vm.runInContext(`
+    (function () {
+      api.moves = ["e2e4", "e7e5"];
+      api.clockAt = Date.now() - 3000;     // white thinking 3s
+      var draining = remainingMs("w");
+      bankPracticeClock();                 // white's move applies
+      var after = { w: api.wtime, anchorAge: Date.now() - api.clockAt };
+      api.moves = []; api.wtime = 600000; api.btime = 600000;
+      api.clockAt = Date.now();
+      return { draining: draining, w: after.w,
+               anchorAge: after.anchorAge };
+    })()
+  `, sandbox);
+  check("the practice clock drains while thinking (" +
+        banked.draining + ")",
+        banked.draining <= 597100 && banked.draining >= 595000);
+  check("and the move banks it and resets the anchor (" +
+        banked.w + ")",
+        banked.w <= 597100 && banked.w >= 595000 &&
+        banked.anchorAge < 1000);
   // the no-game rail still shows its shape (w129, third
   // placeholder and the keeper: w127's "-:--" was short,
   // w128's "--:--" still sat off centre because a hyphen is

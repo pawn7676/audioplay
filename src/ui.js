@@ -581,9 +581,9 @@
     var parts = [(pl.title
       ? '<span class="' + titleCls + '">' + esc(pl.title) + "</span> " : "") +
       esc(pl.name)];
-    // (the rating is never shown since w138 - the Show
-    // ratings switch died with the setting; settings.js has
-    // the tombstone)
+    if (SHOW_RATINGS && pl.rating != null) {
+      parts.push('<span class="rating">' + esc(pl.rating) + "</span>");
+    }
     // THE NAME ROW NEVER DIMS (w81). w72's idle class was
     // mirrored here from the clocks, and on the device the
     // waiting side's name and rating sank below readable -
@@ -863,7 +863,7 @@
     renderButton();
   }
 
-  // Two stored choices, each under its own flat audioplay.*
+  // The stored choices, each under its own flat audioplay.*
   // key (the w111 scheme) - NEVER the old blob, which stays
   // dead and scrubbed (settings.js has the story). The
   // selects show the loaded values, so a return visit is the
@@ -874,12 +874,22 @@
   // changed.
   function wireSettings() {
     var row = el("settingsRow");
-    var speech = el("setSpeech");
+    var ratings = el("setRatings"), speech = el("setSpeech");
     var confirm = el("setConfirm");
-    if (!row || !speech || !confirm) return;
+    if (!row || !ratings || !speech || !confirm) return;
     row.style.display = "none";
+    ratings.value = SHOW_RATINGS ? "on" : "off";
     speech.value = MOVE_SPEECH;
     confirm.value = CONFIRM_MODE;
+    ratings.addEventListener("change", function () {
+      SHOW_RATINGS = ratings.value === "on";
+      try { localStorage.setItem(RATINGS_KEY, SHOW_RATINGS ? "on" : "off"); }
+      catch (e) { log("ERR", "could not save ratings: " + e.message); }
+      log("SET", "ratings " + (SHOW_RATINGS ? "on" : "off"));
+      // the setting's whole effect is something already on
+      // screen, so the flip repaints on the spot
+      renderPlayers();
+    });
     speech.addEventListener("change", function () {
       if (speech.value === "pieces" || speech.value === "squares") {
         MOVE_SPEECH = speech.value;

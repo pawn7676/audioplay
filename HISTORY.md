@@ -4094,3 +4094,27 @@ What v141 learned, now here:
   draws the result; the userscript never did) but
   lastSanW/lastSanB and myRemainingMs - assigned or defined
   everywhere, read nowhere - are gone.
+
+### w139
+
+THE OWNER DREW THE LINE ON w138 (his review, first look at
+the merged sync): two of the v141 deletions were oversteps.
+The practice clock and the Show ratings choice were dropped
+from the userscript because the userscript has nowhere for
+them to act - no rail for a clock to run on, no player row
+for a rating to sit beside. This page has both, and both
+were useful here. So both come back exactly as they stood
+at w137: the running ten-minute practice clock with its
+banking (w128, the owner's own ask - now on its fourth
+draft), and the Show ratings select with its stored key
+(w120), which spent one version on the dead-keys list and
+leaves it by the list's own rule - a name leaves only when
+it is reused.
+
+The rule this earns, for the next port: the userscript's
+trims are not automatically the website's. What v141
+deleted because the SHELL could not use it stays here if
+the page can; what it deleted because the FEATURE was wrong
+(the fuzzy matcher, the synonym commands) stays deleted
+everywhere. Ask which kind a deletion is before carrying it
+across.

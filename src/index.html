@@ -599,11 +599,14 @@
        outside-tap closer, no stored blob - just this row,
        shown and hidden by the Settings button in the row
        above it, which is its own exit (the w69 lesson) and
-       wears the lit green while the row is open. Two
+       wears the lit green while the row is open. Three
        choices, wired by wireSettings in ui.js, each stored
-       under its own flat key (the w111 scheme; the third,
-       Show ratings, died at w138 - settings.js has the
-       tombstone):
+       under its own flat key (the w111 scheme):
+       Show ratings ("Ratings" until w126: beside a
+       Rated/Casual control, the short label read as being
+       about the GAME) shows the numbers beside the players'
+       names - deleted at w138 in the v141 sync, restored at
+       w139 (settings.js has that story);
        Moves spoken is the announcement style, named
        for WHAT is announced since both speak NATO - Pieces
        "bishop charlie 4", Squares "foxtrot 1, charlie 4"
@@ -618,6 +621,10 @@
        display:none inline like #challengeOther below: the
        markup state is closed, code owns the toggle. -->
   <div class="row" id="settingsRow" style="display:none">
+    <label>Show ratings <select id="setRatings">
+      <option value="off">Off</option>
+      <option value="on">On</option>
+    </select></label>
     <label>Moves spoken <select id="setSpeech">
       <option value="pieces">Pieces</option>
       <option value="squares">Squares</option>
@@ -766,6 +773,8 @@
   random legal reply, sending nothing to Lichess. Useful for
   practicing phrasings.</p>
   <p class="hint"><b>7. Settings</b><br>
+  Show ratings &mdash; Display the player and opponent
+  ratings.<br>
   Moves spoken &mdash; Choose how the opponent's moves are
   spoken to you: Piece ("knight charlie 6", "queen takes
   delta 5 check") or Squares ("bravo 8 charlie 6", "delta 8
