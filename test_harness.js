@@ -2927,12 +2927,14 @@ const sleep = ms =>
           'LOG.filter(function (l) { return /on the other side/.test(l); })' +
           '.length', sandbox) >= 1);
 
-  // ---- w139: the tag column lines up ----
+  // ---- w139/w140: the tag column lines up ----
   // UI is the one two-letter tag, and its lines sat a column
   // left of everyone else's in a pasted log (owner's report,
   // reading a real session). log() pads short tags to three
   // characters, so callers write "UI" and the column holds.
-  // Asked of the built lines, not the source.
+  // Padded on the RIGHT since w140 (owner's pick): tags are
+  // left-aligned, so every tag starts flush after the
+  // timestamp. Asked of the built lines, not the source.
   const tagAlign = vm.runInContext(`
     (function () {
       log("UI", "align check");
@@ -2941,13 +2943,14 @@ const sleep = ms =>
       LOG.length = LOG.length - 2;
       return { ui: ui, set: set,
                sameCol: ui.indexOf("align check") ===
-                        set.indexOf("align check") };
+                        set.indexOf("align check"),
+               sameStart: ui.indexOf("UI") === set.indexOf("SET") };
     })()
   `, sandbox);
-  check("a UI line's message starts where a SET line's does (" +
-        tagAlign.ui.slice(8) + ")",
-        tagAlign.sameCol === true &&
-        /^\d\d:\d\d:\d\d   UI  /.test(tagAlign.ui));
+  check("a UI line's message starts where a SET line's does, " +
+        "and the tags start flush (" + tagAlign.ui.slice(8) + ")",
+        tagAlign.sameCol === true && tagAlign.sameStart === true &&
+        /^\d\d:\d\d:\d\d  UI   /.test(tagAlign.ui));
 
   // OFF LEAVES THE NUMBERS OUT, and the flip repaints on the
   // spot - the setting's whole effect is something already

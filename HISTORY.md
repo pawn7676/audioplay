@@ -4125,3 +4125,12 @@ everyone else's lines. log() now pads short tags to the
 three-character column, so every message starts in the same
 place and the call sites still write "UI" as the tag list
 spells it.
+
+### w140
+
+THE TAG PADS ON THE RIGHT (owner's pick, weighing the two).
+w139 right-aligned the short tag - " UI" - and left-aligned
+reads better: a label column is scanned by its left edge, so
+every tag now starts flush after the timestamp, and the
+ragged right edge vanishes into the gap before the message.
+One space moved; the messages align exactly as before.
