@@ -2927,6 +2927,28 @@ const sleep = ms =>
           'LOG.filter(function (l) { return /on the other side/.test(l); })' +
           '.length', sandbox) >= 1);
 
+  // ---- w139: the tag column lines up ----
+  // UI is the one two-letter tag, and its lines sat a column
+  // left of everyone else's in a pasted log (owner's report,
+  // reading a real session). log() pads short tags to three
+  // characters, so callers write "UI" and the column holds.
+  // Asked of the built lines, not the source.
+  const tagAlign = vm.runInContext(`
+    (function () {
+      log("UI", "align check");
+      log("SET", "align check");
+      var ui = LOG[LOG.length - 2], set = LOG[LOG.length - 1];
+      LOG.length = LOG.length - 2;
+      return { ui: ui, set: set,
+               sameCol: ui.indexOf("align check") ===
+                        set.indexOf("align check") };
+    })()
+  `, sandbox);
+  check("a UI line's message starts where a SET line's does (" +
+        tagAlign.ui.slice(8) + ")",
+        tagAlign.sameCol === true &&
+        /^\d\d:\d\d:\d\d   UI  /.test(tagAlign.ui));
+
   // OFF LEAVES THE NUMBERS OUT, and the flip repaints on the
   // spot - the setting's whole effect is something already
   // on screen. w75: names are unconditional, so the row can

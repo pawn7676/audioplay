@@ -4118,3 +4118,10 @@ the page can; what it deleted because the FEATURE was wrong
 (the fuzzy matcher, the synonym commands) stays deleted
 everywhere. Ask which kind a deletion is before carrying it
 across.
+
+And one small thing from the same reading of a real log:
+the UI tag - the only two-letter tag - sat a column left of
+everyone else's lines. log() now pads short tags to the
+three-character column, so every message starts in the same
+place and the call sites still write "UI" as the tag list
+spells it.
