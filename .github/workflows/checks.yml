@@ -68,20 +68,8 @@ jobs:
       - name: the page still builds
         run: node build.js manifest.txt "$RUNNER_TEMP/page.html"
 
-      # The userscript is the one COMMITTED build artifact
-      # (v138): there is no deploy step to generate it for the
-      # person installing it, so the file itself ships in the
-      # repo - which brings back the w18 hazard of a committed
-      # build falling behind its sources. The harness already
-      # rebuilds and compares; this step repeats the check
-      # under its own name so a drift fails CI with a line
-      # that says what to do.
-      - name: the userscript matches its sources
-        run: |
-          node build.js manifest-userscript.txt "$RUNNER_TEMP/userscript.js"
-          cmp "$RUNNER_TEMP/userscript.js" lichess_audioplay.js || {
-            echo "lichess_audioplay.js is stale: run"
-            echo "  node build.js manifest-userscript.txt lichess_audioplay.js"
-            echo "and commit it with the src/ change."
-            exit 1
-          }
+      # There is no userscript step any more (w138): the
+      # committed lichess_audioplay.js is maintained BY HAND
+      # and is not built from src/, so there are no sources
+      # for it to fall behind. The harness guards only the
+      # frozen v137 artifact in frozen-userscript/.

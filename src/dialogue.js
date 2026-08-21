@@ -171,10 +171,9 @@
     var uci = api.pos.uciOf(c.m);
 
     if (dryRun) {
-      bankPracticeClock();   /* w128: your think drained your clock */
       api.pos.apply(c.m);
       api.moves.push(uci);
-      api.lastSan = c.san; api.lastSanW = c.san;
+      api.lastSan = c.san;
       api.lastUci = uci;
       busy = false;
       log("DRY", "you play " + uci + " = " + c.san + " (not sent)");
@@ -272,7 +271,6 @@
   }
 
   function handleTranscripts(rawList) {
-    nearMissLogged = {};  // one near-miss line per utterance (v116)
     var transcripts = dedupeTranscripts(rawList);
     var primary = transcripts[0] || "";
     var dropped = (rawList ? rawList.length : 0) - transcripts.length;
@@ -321,8 +319,8 @@
     }
 
     if (cmd === "repeat") { repeatLast(); return; }
-    if (cmd === "clock") { speakClockTimes(); return; }
-    if (classifyFlipClock(primary)) { flipClockSides(); return; }
+    if (cmd === "time") { speakClockTimes(); return; }
+    if (cmd === "flip") { flipClockSides(); return; }
 
     if (cmd === "resign") { confirmAction = "resign";
       speak("Resign the game?"); return; }

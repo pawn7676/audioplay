@@ -403,22 +403,33 @@ const sleep = ms =>
   vm.runInContext("enterClockMode();", sandbox);
   check("clock mode reports on",
         vm.runInContext("clockModeOn()", sandbox) === true);
-  // FLIP CLOCK ANSWERS (w54). This used to assert only that a
-  // string was absent from the log - which a throw inside
-  // speak() would have crashed the harness over anyway, so it
-  // proved almost nothing, and it never checked the flip
-  // happened. It is a VOICE command reachable with the overlay
-  // down, where the repaint is invisible: the spoken answer is
-  // the only thing that reaches the user at all.
+  // FLIP ANSWERS (w54; the bare word since w138). This used
+  // to assert only that a string was absent from the log -
+  // which a throw inside speak() would have crashed the
+  // harness over anyway, so it proved almost nothing, and it
+  // never checked the flip happened. It is a VOICE command
+  // reachable with the overlay down, where the repaint is
+  // invisible: the spoken answer is the only thing that
+  // reaches the user at all.
   heard();
   const sideBefore = vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox);
-  say("flip clock");
+  say("flip");
   await sleep(120);
   const flipSaid = heard().join(" | ");
-  check("flip clock actually flips the sides",
+  check("flip actually flips the sides",
         vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox) !== sideBefore);
   check("and says which side is yours now (" + flipSaid + ")",
         /your clock on the (left|right)/i.test(flipSaid));
+  // AND THE OLD PHRASE IS DEAD (w138): "flip clock" carries
+  // a word the grammar no longer knows, so it must do
+  // nothing - not flip, not speak. (Stray-talk silence is
+  // the correct refusal: no square in it.)
+  const sideBefore2 = vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox);
+  say("flip clock");
+  await sleep(120);
+  heard();
+  check('"flip clock" is not a command any more',
+        vm.runInContext("PLAYER_ON_LEFT_OF_CLOCK", sandbox) === sideBefore2);
   vm.runInContext("exitClockMode(true);", sandbox);
   check("tap leaves clock mode",
         vm.runInContext("clockModeOn()", sandbox) === false);
@@ -453,11 +464,11 @@ const sleep = ms =>
   // w111: the storage scrub. Every name a previous era
   // wrote on this origin is removed on boot - including
   // the two old token keys, whose stranded credentials are
-  // the point, and (since w117) the settings blob - and
-  // current keys are untouched.
+  // the point, the settings blob (w117), and the ratings
+  // choice (dead at w138 with its setting) - and current
+  // keys are untouched.
   const scrubbed = vm.runInContext(`
     localStorage.setItem("audioplay.token", "CURRENT");
-    localStorage.setItem("audioplay.ratings", "on");
     localStorage.setItem("audioplay.movespeech", "squares");
     localStorage.setItem("audioplay_lichess_token", "OLD");
     localStorage.setItem("audioplay.lichess.token", "OLDER");
@@ -466,24 +477,23 @@ const sleep = ms =>
     localStorage.setItem("audioplay.web.rated", "x");
     localStorage.setItem("audioplay.web.timecontrol", "x");
     localStorage.setItem("audioplay.settings", '{"showRatings":true}');
+    localStorage.setItem("audioplay.ratings", "on");
     scrubDeadStorage();
     var left = ["audioplay_lichess_token", "audioplay.lichess.token",
                 "audioplay.lichess.verifier", "audioplay.web.opponent",
                 "audioplay.web.rated", "audioplay.web.timecontrol",
-                "audioplay.settings"]
+                "audioplay.settings", "audioplay.ratings"]
       .filter(function (k) { return localStorage.getItem(k) !== null; });
     var kept = [localStorage.getItem("audioplay.token"),
-                localStorage.getItem("audioplay.ratings"),
                 localStorage.getItem("audioplay.movespeech")];
     localStorage.removeItem("audioplay.token");
-    localStorage.removeItem("audioplay.ratings");
     localStorage.removeItem("audioplay.movespeech");
     [left.length].concat(kept);
   `, sandbox);
-  check("the scrub removes every dead key and keeps the live " +
-        "ones - w120's two flat keys included (" + scrubbed + ")",
+  check("the scrub removes every dead key - audioplay.ratings " +
+        "included - and keeps the live ones (" + scrubbed + ")",
         scrubbed[0] === 0 && scrubbed[1] === "CURRENT" &&
-        scrubbed[2] === "on" && scrubbed[3] === "squares");
+        scrubbed[2] === "squares");
 
   // ---- w10/w12/w76/w77: one account button; the sign-out ----
   // is a question first. At rest the signed-in button is the
@@ -739,19 +749,19 @@ const sleep = ms =>
   check("boot logs the configuration (" +
         bootLine.slice(bootLine.indexOf("loaded:")).slice(0, 40) + "...)",
         /loaded:/.test(bootLine) &&
-        /ratings=(on|off)/.test(bootLine) &&
         // w120: the announcement style is a stored choice, so
         // a pasted log must say which one the device speaks
         /moves=(pieces|squares)/.test(bootLine) &&
         // w131: how a move is confirmed is a stored choice too
         /confirm=(chime|voice|none)/.test(bootLine) &&
         // the dead switch names must NOT be in the boot line:
-        // a name reappearing here means a setting crept back
-        !/confirmMine|guardPawnPushes/.test(bootLine) &&
+        // a name reappearing here means a setting crept back -
+        // ratings joined the dead names at w138
+        !/confirmMine|guardPawnPushes|ratings=/.test(bootLine) &&
         /voice=(system|\S+)/.test(bootLine));
-  check("and ratings default off (w117, owner's order)",
-        /ratings=off/.test(bootLine) &&
-        vm.runInContext("SHOW_RATINGS", sandbox) === false);
+  check("and the ratings setting is gone whole (w138)",
+        vm.runInContext('typeof SHOW_RATINGS === "undefined" && ' +
+                        'typeof RATINGS_KEY === "undefined"', sandbox));
   check("and moves default pieces - what every game before " +
         "w120 spoke",
         /moves=pieces/.test(bootLine) &&
@@ -1048,21 +1058,20 @@ const sleep = ms =>
   // reverse is already caught (build.js exits on MISSING), so
   // this is the direction with no guard.
   //
-  // TWO MANIFESTS SINCE v138: the website's and the
-  // userscript's (manifest-userscript.txt). A source earns its
-  // keep by being in at least one build; a file in neither is
+  // ONE MANIFEST AGAIN SINCE w138: the userscript is
+  // maintained by hand at the repo root and has no manifest,
+  // so src/ serves only the website build. A source earns
+  // its keep by being in the build; a file outside it is
   // the orphan this check exists to name.
-  const manifestNames = [].concat(
-    ...["manifest.txt", "manifest-userscript.txt"].map(mf =>
-      fs.readFileSync(mf, "utf8").split("\n")
-        .map(s => s.trim())
-        .filter(s => s && !s.startsWith("#"))
-        .map(s => s.replace(/^@template /, ""))));
+  const manifestNames = fs.readFileSync("manifest.txt", "utf8").split("\n")
+    .map(s => s.trim())
+    .filter(s => s && !s.startsWith("#"))
+    .map(s => s.replace(/^@template /, ""));
   const srcFiles = fs.readdirSync("src")
     .filter(f => /\.(js|html)$/.test(f));
   const missingFromManifest = srcFiles.filter(f => manifestNames.indexOf(f) < 0);
   const missingFromSrc = manifestNames.filter(f => srcFiles.indexOf(f) < 0);
-  check("every file in src/ is named in a manifest (" +
+  check("every file in src/ is named in the manifest (" +
         srcFiles.length + " files)" +
         (missingFromManifest.length ? " MISSING: " + missingFromManifest : ""),
         missingFromManifest.length === 0);
@@ -1212,12 +1221,14 @@ const sleep = ms =>
           sandbox) === true);
 
   // ---- w29: the voice button is a labelled pill ----
+  // (its on-state class is .rec since w138 - the recording
+  // red - not the .on green the account button keeps)
   const btnState = () => vm.runInContext(`
     (function () {
       return { text: bigBtn.textContent,
                bg: bigBtn.style.background,
                primary: bigBtn.classList.contains("primary"),
-               on: bigBtn.classList.contains("on") };
+               on: bigBtn.classList.contains("rec") };
     })()
   `, sandbox);
   // THE STATE IS A CLASS, THE COLOUR IS THE STYLESHEET'S (w54).
@@ -1246,7 +1257,10 @@ const sleep = ms =>
         !offBtn.bg && !onBtn.bg);
   check("and the stylesheet is what gives those two states colour",
         /\.panel button\.primary[^}]*var\(--blue\)/.test(tmpl) &&
-        /\.panel button\.on\b[^}]*var\(--button-on\)/.test(tmpl));
+        // w138: the on-state is the recording red, not the
+        // shared green - red is the universal recording
+        // colour, and this button means "the room is heard"
+        /\.panel button\.rec\b[^}]*#f34335/.test(tmpl));
   vm.runInContext("listening = false; renderButton();", sandbox);
   check("running but mic paused reads as on, not off",
         /^\u25CB On$/.test(btnState().text));
@@ -1367,21 +1381,25 @@ const sleep = ms =>
           'settingsBtn.style.background === BUTTON_OFF', sandbox));
 
   // the row carries the two choices, showing the loaded
-  // values - pieces and off are the shipped defaults
+  // values - pieces and chime are the shipped defaults
   check("the row holds the two selects at their defaults (" +
         vm.runInContext('document.getElementById("setSpeech").value',
                         sandbox) + ")",
-        vm.runInContext('document.getElementById("setRatings").value',
-                        sandbox) === "off" &&
         vm.runInContext('document.getElementById("setSpeech").value',
-                        sandbox) === "pieces");
-  // w126: the ratings label says what it toggles - beside a
-  // Rated/Casual control, bare "Ratings" read as being about
-  // the game - and the instructions read in the body's own
-  // colour, not the furniture dim (owner's report: whole
-  // paragraphs at --dim were hard to read)
-  check("the ratings label says Show ratings",
-        /<label>Show ratings <select id="setRatings">/.test(tmpl));
+                        sandbox) === "pieces" &&
+        vm.runInContext('document.getElementById("setConfirm").value',
+                        sandbox) === "chime");
+  // w138: the ratings choice is gone whole - no select in
+  // the row, no label in the instructions panel. A control
+  // reappearing here means the setting crept back. (The
+  // template's comments may still tell the story; markup is
+  // what is checked.)
+  check("the ratings select is gone from the row (w138)",
+        !/setRatings/.test(tmpl) &&
+        !/Show ratings &mdash;/.test(tmpl));
+  // the instructions read in the body's own colour, not the
+  // furniture dim (owner's report: whole paragraphs at
+  // --dim were hard to read)
   check("the instructions text is body-coloured",
         /\.hint \{ color: var\(--text\)/.test(tmpl));
 
@@ -1693,43 +1711,22 @@ const sleep = ms =>
   check("frozen userscript artifact untouched (v137)",
         canonSha === frozen);
 
-  // THE LIVE USERSCRIPT (v138) IS GUARDED THE OPPOSITE WAY:
-  // not a frozen sha but a rebuild-and-compare, the exact
-  // check checks.yml ran for the committed index.html before
-  // deploy.yml removed the committed copy. The userscript has
-  // no deploy step - the committed root artifact IS what the
-  // owner installs - so the committed copy can exist, and the
-  // one hazard of a committed build (falling behind src/, the
-  // w18 shape) is answered by rebuilding it here on every run.
+  // THE LIVE USERSCRIPT IS NOT REBUILT OR COMPARED ANY MORE
+  // (w138): the owner carried the artifact forward by hand
+  // (v139-v141, edited directly in the root file) and ruled
+  // that the userscript and the website no longer move in
+  // lockstep. There are no sources for the artifact to fall
+  // behind, so the w18 hazard the old rebuild-and-compare
+  // guarded against cannot arise. What is still worth
+  // asking of the file is what the Userscripts app needs:
+  // the metadata block on top, or it installs as nothing.
   {
-    const cp = require("child_process");
-    const os = require("os");
-    const rebuilt = require("path").join(
-      fs.mkdtempSync(require("path").join(os.tmpdir(), "audioplay-")),
-      "userscript-rebuild.js");
-    let built = false;
-    try {
-      cp.execFileSync("node",
-        ["build.js", "manifest-userscript.txt", rebuilt],
-        { stdio: "pipe" });
-      built = true;
-    } catch (e) {
-      console.log("  build.js said: " + String(e.stderr || e.message).trim());
-    }
-    check("the userscript build runs (manifest-userscript.txt)", built);
-    const same = built &&
-      fs.readFileSync(rebuilt, "utf8") ===
-      fs.readFileSync("lichess_audioplay.js", "utf8");
-    check("committed lichess_audioplay.js matches a fresh build " +
-          "(rebuild after editing src/, then commit both)", same);
     const head = fs.readFileSync("lichess_audioplay.js", "utf8")
       .slice(0, 600);
-    // the Userscripts app reads the metadata block from the
-    // top of the file; a manifest reorder that buried it
-    // would ship an artifact that installs as nothing
     check("the artifact opens with the ==UserScript== block",
           head.indexOf("// ==UserScript==") === 0);
-    check("and it says @version 138", /@version\s+138\b/.test(head));
+    check("and it carries a @version number",
+          /@version\s+\d+\b/.test(head));
   }
 
   async function setBoard(fen) {
@@ -2856,7 +2853,6 @@ const sleep = ms =>
     ' document.getElementById("nameBottom").innerHTML', sandbox);
   vm.runInContext(`
     api.gameId = "P1"; api.over = false; api.myId = "me"; dryRun = false;
-    SHOW_RATINGS = true;   /* a code constant since w117; set for the test */
     handleGameFull({
       white: { id: "me", name: "pawn76", rating: 1500 },
       black: { id: "maia1", name: "maia1", title: "BOT", rating: 1900 },
@@ -2867,7 +2863,10 @@ const sleep = ms =>
   const shown = playersHtml();
   check("both players are named under the board (" + shown + ")",
         /pawn76/.test(shown) && /maia1/.test(shown));
-  check("with their ratings", /1500/.test(shown) && /1900/.test(shown));
+  // w138: the rating is never shown - the Show ratings
+  // setting is gone whole (settings.js has the tombstone)
+  check("without their ratings (w138)",
+        !/1500/.test(shown) && !/1900/.test(shown));
   check("and the title, since a BOT is worth knowing about",
         /BOT/.test(shown));
   // w105: the renderer says WHICH kind of title it is; the
@@ -2927,19 +2926,6 @@ const sleep = ms =>
           'LOG.filter(function (l) { return /on the other side/.test(l); })' +
           '.length', sandbox) >= 1);
 
-  // OFF LEAVES THE ROW OUT, not blank-but-present, and the
-  // flip repaints on the spot - the setting's whole effect is
-  // something already on screen. (Ratings off too here, so the
-  // row is genuinely empty; their independence has its own
-  // tests below.)
-  // w75: names are unconditional now, so the row can never be
-  // empty while a game is on - only the rating comes and goes.
-  vm.runInContext("SHOW_RATINGS = false; renderPlayers();", sandbox);
-  check("ratings off still leaves the names (" + playersHtml() + ")",
-        /pawn76/.test(playersHtml()) && !/1500/.test(playersHtml()));
-  vm.runInContext("SHOW_RATINGS = true; renderPlayers();", sandbox);
-  check("and back on restores the numbers", /1500/.test(playersHtml()));
-
   // A Lichess AI opponent has aiLevel and NO name at all - the
   // shape that would otherwise render "undefined".
   vm.runInContext(`
@@ -2962,68 +2948,35 @@ const sleep = ms =>
         (playersHtml() || "empty") + ")", playersHtml() === "");
   vm.runInContext("dryRun = false;", sandbox);
 
-  // ---- w69/w75/w117/w120: the rating's long walk ----
+  // ---- w69/w75/w117/w120/w138: the rating's long walk,
+  // ended ----
   // w69 split ratings off but nested, w71 freed them, w72
   // chained them to showPlayers, w75 deleted the chain, w117
-  // deleted the panel around the one switch left, and w120
-  // made it a stored choice again on the Settings row -
-  // owner's default still OFF. The render is driven both
-  // ways, and the shipped default is left in force at the
-  // end.
+  // deleted the panel around the one switch left, w120 made
+  // it a stored choice on the Settings row, and w138 deleted
+  // the choice whole: the rating never renders, whatever an
+  // old save says. Driven with a stale "on" in storage - the
+  // exact state that would steer behaviour if the dead
+  // switch ever read from anywhere again.
   vm.runInContext(`
     api.gameId = "P3"; api.over = false;
-    SHOW_RATINGS = false;
+    localStorage.setItem("audioplay.ratings", "on");
+    loadStoredSettings();
     handleGameFull({
       white: { id: "me", name: "pawn76", rating: 1500 },
       black: { id: "maia1", name: "maia1", title: "BOT", rating: 1900 },
       state: { moves: "" } });
     uiGameChanged();
+    localStorage.removeItem("audioplay.ratings");
   `, sandbox);
   await sleep(40);
   const noRatings = playersHtml();
-  check("off (the shipped default) keeps names, drops numbers (" +
-        noRatings + ")",
+  check("a stale ratings=on in storage moves nothing: names, " +
+        "no numbers (" + noRatings + ")",
         /pawn76/.test(noRatings) && /maia1/.test(noRatings) &&
         !/1500/.test(noRatings) && !/1900/.test(noRatings));
   check("but not the title - a BOT is not a rating",
         /BOT/.test(noRatings));
-  // THE FLIP IS THE SELECT'S NOW (w120), driven through the
-  // built control: the change handler owns the variable, the
-  // storage write, and the repaint - so the numbers appear
-  // with no render call from here.
-  vm.runInContext(`
-    var sel = document.getElementById("setRatings");
-    sel.value = "on"; sel.on_change();
-  `, sandbox);
-  check("flipping the Ratings select brings the numbers back",
-        /1500/.test(playersHtml()) && /1900/.test(playersHtml()));
-  check("and remembers the choice under its flat key",
-        sandbox.localStorage.getItem("audioplay.ratings") === "on");
-  vm.runInContext(`
-    var sel = document.getElementById("setRatings");
-    sel.value = "off"; sel.on_change();
-  `, sandbox);
-  check("and off again, off the same select",
-        !/1500/.test(playersHtml()) &&
-        sandbox.localStorage.getItem("audioplay.ratings") === "off");
-  // a return visit reads the stored choice; junk reads as
-  // the default (the rated dropdown's rule, w99)
-  vm.runInContext(`
-    localStorage.setItem("audioplay.ratings", "on");
-    loadStoredSettings();
-  `, sandbox);
-  check("a later visit restores ratings from storage",
-        vm.runInContext("SHOW_RATINGS", sandbox) === true);
-  vm.runInContext(`
-    localStorage.setItem("audioplay.ratings", "junk");
-    loadStoredSettings();
-  `, sandbox);
-  check("junk in storage reads as ratings off",
-        vm.runInContext("SHOW_RATINGS", sandbox) === false);
-  vm.runInContext(`
-    localStorage.removeItem("audioplay.ratings");
-    loadStoredSettings(); renderPlayers();
-  `, sandbox);
 
   // ---- w69: the game id is for the log, not the panel ----
   heard();
@@ -3098,57 +3051,36 @@ const sleep = ms =>
         /still signed out/i.test(auth2));
   vm.runInContext("postAction = __realPA; authGone = false;", sandbox);
 
-  // 124/w128: practice never inherits a real game's clock
-  // anchor - it RE-anchors. A stale anchor used to arrive
-  // minutes old and flag white on entry; now dryStart plants
-  // a fresh one, because the practice clock is REAL since
-  // w128 (w60 froze it at 10:00, w127 nulled it to dashes,
-  // and the owner wanted what a game has: a clock that runs).
+  // w138 REVERSED w128: practice has NO clock any more. The
+  // running ten-minute pair and its banking machinery
+  // (bankPracticeClock) went out with the owner's own trim -
+  // practice has no referee and nothing ends it on time, so
+  // the honest value is null. What w60 taught still holds
+  // one field over: a real game's stale clock must not leak
+  // into practice, and nulling IS the not-leaking.
   vm.runInContext(`
+    api.wtime = 300000; api.btime = 300000;
     api.clockAt = Date.now() - 300000;   // a real game, 5 min ago
     dryRun = true; running = true;
     dryStart();
   `, sandbox);
   await sleep(40); heard();
-  check("practice re-anchors the clock, dropping the stale one",
-        vm.runInContext("Date.now() - api.clockAt", sandbox) < 2000);
-  check("and starts at ten minutes each, not draining before " +
-        "both have moved (the live game's own ply gate)",
-        vm.runInContext('remainingMs("w")', sandbox) === 600000 &&
-        vm.runInContext('remainingMs("b")', sandbox) === 600000);
+  check("practice nulls the clocks - no leak from the real game",
+        vm.runInContext("api.wtime", sandbox) === null &&
+        vm.runInContext("api.btime", sandbox) === null &&
+        vm.runInContext("api.clockAt", sandbox) === null &&
+        vm.runInContext('remainingMs("w")', sandbox) === null);
+  check("and the banking machinery is gone with the clock",
+        vm.runInContext('typeof bankPracticeClock === "undefined"',
+                        sandbox));
   vm.runInContext("uiGameChanged();", sandbox);
   const phCell = (id) => vm.runInContext(
     'document.getElementById("' + id + '").innerHTML', sandbox);
-  check("the rail shows the practice clocks, turn colour and " +
-        "all (" + phCell("clockBottom").replace(/</g, "[") + ")",
-        /10:00/.test(phCell("clockTop")) &&
-        /10:00/.test(phCell("clockBottom")) &&
-        // white to move at the start, and yours is the bottom
-        /cbox turn/.test(phCell("clockBottom")) &&
-        /idle/.test(phCell("clockTop")));
-  // two plies in, the mover's think drains through the same
-  // remainingMs a live game uses, and the banking writes it
-  // back the way the server does for a real game
-  const banked = vm.runInContext(`
-    (function () {
-      api.moves = ["e2e4", "e7e5"];
-      api.clockAt = Date.now() - 3000;     // white thinking 3s
-      var draining = remainingMs("w");
-      bankPracticeClock();                 // white's move applies
-      var after = { w: api.wtime, anchorAge: Date.now() - api.clockAt };
-      api.moves = []; api.wtime = 600000; api.btime = 600000;
-      api.clockAt = Date.now();
-      return { draining: draining, w: after.w,
-               anchorAge: after.anchorAge };
-    })()
-  `, sandbox);
-  check("the practice clock drains while thinking (" +
-        banked.draining + ")",
-        banked.draining <= 597100 && banked.draining >= 595000);
-  check("and the move banks it and resets the anchor (" +
-        banked.w + ")",
-        banked.w <= 597100 && banked.w >= 595000 &&
-        banked.anchorAge < 1000);
+  check("the rail shows its placeholders in practice (" +
+        phCell("clockBottom").replace(/</g, "[") + ")",
+        /00:00/.test(phCell("clockTop")) &&
+        /00:00/.test(phCell("clockBottom")) &&
+        /class="cbox idle"/.test(phCell("clockTop")));
   // the no-game rail still shows its shape (w129, third
   // placeholder and the keeper: w127's "-:--" was short,
   // w128's "--:--" still sat off centre because a hyphen is
@@ -3195,28 +3127,32 @@ const sleep = ms =>
   `, sandbox);
   // w133 REVERSED the w100/w118 deletion (owner's ruling,
   // 17 Aug 2026 - the story is the spoken-clock note in
-  // header.js): bare "clock" or "time" SPEAKS both times on
-  // demand, the player's own color first, floored whole
-  // minutes and bare seconds under a minute - the overlay's
-  // own units. Black is mid-think here, so the extrapolated
-  // second may tick once between fixture and answer.
-  say("clock");
+  // header.js): bare "time" SPEAKS both times on demand,
+  // the player's own color first, floored whole minutes and
+  // bare seconds under a minute - the overlay's own units.
+  // Black is mid-think here, so the extrapolated second may
+  // tick once between fixture and answer.
+  say("time");
   await sleep(80);
   const clkSaid = heard().join(" | ");
-  check("bare clock speaks both times, mine first (" +
+  check("bare time speaks both times, mine first (" +
         (clkSaid || "silence") + ")",
         /^white 10 minutes, black 4[45] seconds\.$/.test(clkSaid));
   check("and it moved nothing",
         vm.runInContext("api.moves.length", sandbox) === 3);
-  say("time");
+  // w138: "clock" left the vocabulary - the w133 trim's last
+  // synonym. Stray talk now: no answer, nothing moved.
+  say("clock");
   await sleep(80);
-  check('"time" is the other accepted word for it',
-        /^white 10 minutes, black 4[45] seconds\.$/
-          .test(heard().join(" | ")));
+  const clockWordSaid = heard().join(" | ");
+  check('"clock" is stray talk since w138 (' +
+        (clockWordSaid || "silence") + ")",
+        clockWordSaid === "" &&
+        vm.runInContext("api.moves.length", sandbox) === 3);
   // mine-first is the player's color, not white: same
   // position asked for as black must lead with black
   vm.runInContext('api.myColor = "b";', sandbox);
-  say("clock");
+  say("time");
   await sleep(80);
   const clkAsBlack = heard().join(" | ");
   check("asked as black, black is said first (" + clkAsBlack + ")",
@@ -3894,15 +3830,13 @@ const sleep = ms =>
     (function () {
       api.pos = new RULES.Position(); api.moves = []; api.myColor = "w";
       api.over = false; armedUci = "STALEARM";
-      api.lastSan = "STALE"; api.lastSanW = "STALE"; api.lastSanB = "STALE";
+      api.lastSan = "STALE";
       syncMoves("e2e4 e7e5 a1a8", false);      // a1a8 is not legal
-      return { last: api.lastSan, w: api.lastSanW, b: api.lastSanB,
-               armed: armedUci };
+      return { last: api.lastSan, armed: armedUci };
     })()
   `, sandbox);
-  check("a resync refreshes the move rows (" + resync.w + "/" + resync.b + ")",
-        resync.last !== "STALE" && resync.w !== "STALE" &&
-        resync.b !== "STALE");
+  check("a resync refreshes lastSan (" + resync.last + ")",
+        resync.last !== "STALE");
   check("and drops an arm that named the old position", !resync.armed);
 
   // ---- being connected is not the same as listening ----
@@ -4242,12 +4176,13 @@ const sleep = ms =>
   vm.runInContext("bigBtn.on_click();", sandbox);   /* voice back ON */
   check("voice back on leaves practice standing too",
         vm.runInContext("dryRun === true && running === true", sandbox));
-  // w92: mid-practice, voice-on says "voice on" - not the
-  // sign-in ask, which assumes a real game is coming and is a
+  // w92: mid-practice, voice-on says so - not the sign-in
+  // ask, which assumes a real game is coming and is a
   // non-sequitur beside a practice board that needs no token
+  // (the wording is "voice play on." since w138)
   const backOn = heard().join(" | ");
-  check("and says voice on, not the sign-in ask (" + backOn + ")",
-        /voice on/i.test(backOn) && !/sign in/i.test(backOn));
+  check("and says voice play on, not the sign-in ask (" + backOn + ")",
+        /voice play on/i.test(backOn) && !/sign in/i.test(backOn));
   vm.runInContext("fetch = __realFetchW90;", sandbox);
   heard();
 
@@ -4431,265 +4366,10 @@ const sleep = ms =>
     api.gameId = null; running = false;
   `, sandbox);
 
-  /* ============== THE v138 USERSCRIPT BUILD, DRIVEN ==============
-   *
-   * A second sandbox, shaped like lichess.org instead of like
-   * our page: a location whose pathname can become a game URL,
-   * a querySelector that can grow a game marker, GM storage
-   * with a token already in it, and no template ids at all.
-   * The shared pipeline is exhaustively tested above through
-   * the website build; what THIS section proves is the shell -
-   * that the same files, wrapped the userscript way, boot on a
-   * game page, wire the button to the connect, keep the token
-   * out of everything readable, and tear down when the game
-   * page goes away. Asked of the built DOM, never grepped
-   * (w27/w28). */
-  {
-    const US_TOKEN = "lip_TESTTOKENSECRET1234";
-    const usElements = {};
-    function usEl(tag) {
-      const el = {
-        tagName: String(tag || "").toUpperCase(),
-        style: {}, textContent: "", value: "",
-        children: [], parentNode: null,
-        _listeners: {},
-        addEventListener(name, fn) {
-          const list = this._listeners[name] || (this._listeners[name] = []);
-          list.push(fn);
-          const self = this;
-          this["on_" + name] = function (ev) {
-            list.slice().forEach(f => f.call(self, ev));
-          };
-        },
-        appendChild(c) {
-          if (!c) return c;
-          const i = this.children.indexOf(c);
-          if (i >= 0) this.children.splice(i, 1);
-          this.children.push(c);
-          c.parentNode = this;
-          return c;
-        },
-        // remove() really removes, because the teardown test's
-        // whole question is "is the UI gone" - a no-op stub
-        // would pass it forever (the w27 shape)
-        remove() {
-          if (this.parentNode) {
-            const i = this.parentNode.children.indexOf(this);
-            if (i >= 0) this.parentNode.children.splice(i, 1);
-            this.parentNode = null;
-          }
-          if (this._id) delete usElements[this._id];
-        },
-        getBoundingClientRect() {
-          return { width: 100, height: 100, top: 500, bottom: 600,
-                   left: 40, right: 140 };
-        },
-        scrollTop: 0, scrollHeight: 0
-      };
-      Object.defineProperty(el, "id", {
-        get() { return el._id || ""; },
-        set(v) { el._id = v; usElements[v] = el; },
-        enumerable: true
-      });
-      return el;
-    }
-    // seeded under the key the INSTALLED v137 has been using,
-    // because that continuity is the claim: v138 installed
-    // over v137 must find the token where it already is
-    const usGm = { store: { "audioplay_lichess_token": US_TOKEN } };
-    const us = {
-      console, setTimeout, clearTimeout, setInterval, clearInterval,
-      Promise, JSON, Math, Date, Array, Object, String, Number, RegExp,
-      parseInt, parseFloat, isNaN, encodeURIComponent, decodeURIComponent,
-      TextEncoder, TextDecoder, Uint8Array, AbortController,
-      navigator: { clipboard: { writeText() {} } },
-      localStorage: (() => {
-        const s = { "audioplay.confirm": "chime-loud" };  // the return
-                                                          // visit is the
-                                                          // tested second
-                                                          // use (w37)
-        return { getItem: k => (k in s ? s[k] : null),
-                 setItem: (k, v) => { s[k] = String(v); },
-                 removeItem: k => { delete s[k]; },
-                 __all__: s };
-      })(),
-      location: { pathname: "/", search: "", href: "" },
-      fetch: (url) => Promise.reject(new Error("no network in harness: " + url)),
-      speechSynthesis: { getVoices: () => [], cancel() {},
-                         speak(u) { if (u.onend) setTimeout(u.onend, 1); },
-                         speaking: false, paused: false, pending: false,
-                         resume() {} },
-      SpeechSynthesisUtterance: function (t) { this.text = t; },
-      MutationObserver: function () { this.observe = () => {}; },
-      GM: {
-        getValue: (k, d) => Promise.resolve(k in usGm.store ? usGm.store[k] : d),
-        setValue: (k, v) => { usGm.store[k] = v; return Promise.resolve(); },
-        deleteValue: (k) => { delete usGm.store[k]; return Promise.resolve(); }
-      },
-      prompt: () => null,
-      alert: () => {},
-      innerHeight: 800,
-      __gameMarker: null,
-      document: {
-        readyState: "complete",
-        visibilityState: "visible",
-        hidden: false,
-        getElementById: id => usElements[id] || null,
-        querySelector(sel) {
-          return us.__gameMarker && sel === us.__gameMarker
-            ? usEl("div") : null;
-        },
-        querySelectorAll: () => [],
-        createElement: tag => usEl(tag),
-        body: usEl("body"),
-        documentElement: usEl("html"),
-        addEventListener() {}
-      }
-    };
-    us.window = us;
-    us.self = us;
-    us.addEventListener = function () {};
-    vm.createContext(us);
-
-    const usOrder = fs.readFileSync("manifest-userscript.txt", "utf8")
-      .split("\n").map(s => s.trim())
-      .filter(s => s && !s.startsWith("#") && !s.startsWith("@"))
-      .filter(s => s !== "userscript-header.js" && s !== "closure-footer.js");
-    vm.runInContext(usOrder
-      .map(f => fs.readFileSync("src/" + f, "utf8")).join(""),
-      us, { filename: "concat(manifest-userscript)" });
-    await sleep(60);          // GM.getValue resolves; boot lines land
-
-    check("userscript: VERSION is v138 at runtime (" +
-          vm.runInContext("VERSION", us) + ")",
-          vm.runInContext("VERSION", us) === "v138");
-    const usBootLog = vm.runInContext("LOG.join('\\n')", us);
-    check("userscript: the boot line names the build",
-          usBootLog.indexOf("script loaded v138") >= 0);
-    check("userscript: the token came from extension storage",
-          usBootLog.indexOf("token loaded from extension storage") >= 0 &&
-          vm.runInContext("storedToken()", us) === US_TOKEN);
-    check("userscript: the stored confirm choice was loaded (w37: " +
-          "the return visit is the second use)",
-          vm.runInContext("CONFIRM_MODE", us) === "chime-loud");
-    check("userscript: no UI before a game page",
-          vm.runInContext("document.getElementById('voicemove-ui')", us) === null);
-
-    // capture speech the same way the website sandbox does
-    vm.runInContext(`
-      var __spoken = [];
-      speak = function (t) { __spoken.push(t); };
-      speakWhenAudioSettled = function (t) { __spoken.push(t); };
-    `, us);
-    const usHeard = () => vm.runInContext("__spoken.splice(0)", us).join(" | ");
-
-    // ---- a game page appears ----
-    us.__gameMarker = ".round__app";
-    vm.runInContext("location.pathname = '/abcdEFGH'; tick();", us);
-    check("userscript: game page detected builds the UI",
-          !!vm.runInContext("document.getElementById('voicemove-ui')", us));
-    check("userscript: the round button and its row exist",
-          vm.runInContext(
-            "!!bigBtn && !!logBtn && !!clockBtn && !!settingsBtn && !!practiceBtn",
-            us));
-
-    // ---- the first tap connects (and fails honestly here:
-    // the harness has no network, and rule 5 says the failure
-    // must be spoken, not swallowed) ----
-    vm.runInContext("bigBtn.on_click();", us);
-    await sleep(120);
-    check("userscript: the tap turned voice on",
-          vm.runInContext("running", us) === true);
-    check("userscript: the tap tried this page's game (" +
-          vm.runInContext("String(api.gameId)", us) + ")",
-          vm.runInContext("api.gameId", us) === "abcdEFGH");
-    check("userscript: the failed connect was spoken",
-          /could not connect/i.test(usHeard()));
-
-    // voice off: no teardown, no last word (delta 2)
-    vm.runInContext("bigBtn.on_click();", us);
-    check("userscript: the second tap turned voice off",
-          vm.runInContext("running", us) === false);
-    check("userscript: and said nothing about it",
-          usHeard() === "");
-
-    // ---- practice drives the shared pipeline end to end ----
-    vm.runInContext("practiceBtn.on_click();", us);
-    await sleep(60);
-    check("userscript: practice mode is on",
-          vm.runInContext("dryRun && running && api.gameId === 'PRACTICE'", us));
-    check("userscript: practice announced itself",
-          /practice mode/i.test(usHeard()));
-    // the refusals first, while it is still white to move on
-    // the fresh practice board - after a move plays, black is
-    // to move for 1.6 real seconds and every refusal would be
-    // the (correct) "black to move." instead
-    vm.runInContext("handleTranscripts(['echo seven echo four']);", us);
-    await sleep(60);
-    check("userscript: a whole but illegal move is named as such",
-          /not a legal move/i.test(usHeard()));
-    vm.runInContext("handleTranscripts(['echo two banana']);", us);
-    await sleep(60);
-    check("userscript: a damaged move-shaped hearing gets Say again",
-          /say again/i.test(usHeard()));
-    vm.runInContext(
-      "handleTranscripts(['echo two echo four']);", us);
-    await sleep(60);
-    check("userscript: a four-item move played (" +
-          vm.runInContext("String(api.moves)", us) + ")",
-          vm.runInContext("api.moves[0]", us) === "e2e4");
-    check("userscript: the confirm spoke its fallback " +
-          "(no WebAudio in the sandbox)",
-          /okay/i.test(usHeard()));
-    vm.runInContext("handleTranscripts(['golf one foxtrot three']);", us);
-    await sleep(60);
-    check("userscript: a move spoken out of turn gets the true answer",
-          /black to move/i.test(usHeard()));
-
-    // ---- the clock layer, in this build's clothes ----
-    vm.runInContext("handleTranscripts(['clock']);", us);
-    await sleep(60);
-    check("userscript: bare clock speaks both practice times (w133)",
-          /white 10 minutes, black 10 minutes/i.test(usHeard()));
-    vm.runInContext("handleTranscripts(['flip clock']);", us);
-    await sleep(60);
-    check("userscript: flip clock answers with the new side",
-          /your clock on the right/i.test(usHeard()));
-    vm.runInContext("clockBtn.on_click();", us);
-    check("userscript: the clock button raises the overlay",
-          vm.runInContext("clockModeOn()", us) === true);
-    vm.runInContext("clockOverlay.on_click();", us);
-    check("userscript: tapping the overlay exits clock mode",
-          vm.runInContext("clockModeOn()", us) === false);
-
-    // ---- the settings selects are live and remembered ----
-    const flip = vm.runInContext(`
-      (function () {
-        var speechSel = setPanel.children[1].children[1];
-        speechSel.value = "squares";
-        speechSel.on_change();
-        return { mode: MOVE_SPEECH,
-                 stored: localStorage.getItem(MOVE_SPEECH_KEY) };
-      })()
-    `, us);
-    check("userscript: the moves-spoken select changes the setting",
-          flip.mode === "squares");
-    check("userscript: and stores it", flip.stored === "squares");
-
-    // ---- leaving the game page tears everything down ----
-    us.__gameMarker = null;
-    vm.runInContext("location.pathname = '/'; tick();", us);
-    check("userscript: leaving the page removes the UI",
-          vm.runInContext("document.getElementById('voicemove-ui')", us) === null);
-    check("userscript: and ends practice with it",
-          vm.runInContext("!dryRun && !running", us));
-
-    // ---- rule 4, asked of everything readable ----
-    const usAll = vm.runInContext(
-      "LOG.join(' ') + ' ' + __spoken.join(' ')", us);
-    check("userscript: the token reaches no log line and no speech",
-          usAll.indexOf(US_TOKEN) < 0);
-  }
+  /* (The v138-userscript-build section lived here and left at
+   * w138: the userscript is maintained by hand at the repo
+   * root now, not built from src/, so there is no second
+   * build of these files to drive. It is in git at w137.) */
 
   console.log(pass + " passed, " + fail + " failed");
   process.exit(fail ? 1 : 0);

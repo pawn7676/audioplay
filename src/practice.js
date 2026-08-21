@@ -58,33 +58,21 @@
     api.pos = new RULES.Position();
     api.moves = [];
     api.over = false; api.overText = "";
-    api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+    api.lastSan = "";
     api.lastUci = "";
-    // THE PRACTICE CLOCK IS REAL (w128, owner's ask, third
-    // draft of this block). w60 froze it at 10:00 - a
-    // placeholder in the data, right when the only clock on
-    // screen was the opt-in overlay. w127 read the frozen
-    // number as fake and nulled it to dashes - and the owner
-    // wanted the opposite: a clock that RUNS, like a game's.
-    // So: ten minutes each, and the same remainingMs that
-    // drains a live game's clock drains this one - same ply
-    // gating (nothing moves until both sides have played),
-    // same turn colours, same red under a minute. What a
-    // server does for a real game, bankPracticeClock below
-    // does here: the mover's drained value is written back
-    // as their move applies, and the anchor resets. One
-    // honest difference is left: nothing ends a practice
-    // game on time. A flag sits at red 0:00 while play goes
-    // on - practice has no referee, and losing on time is
-    // not what practice is FOR.
-    api.wtime = 600000;
-    api.btime = 600000;
-    api.clockAt = Date.now();
-    // still re-anchored here explicitly (the w60 lesson): a
-    // real game's stale anchor must never leak into practice
-    // - it used to arrive minutes old and flag white on
-    // entry. The banking resets it per move once play
-    // starts; this covers the entry itself.
+    // PRACTICE HAS NO CLOCK (w138, reversing w128). The
+    // running ten-minute clock and its banking machinery
+    // (bankPracticeClock) went out with the owner's own trim
+    // of the userscript: practice has no referee and nothing
+    // ends it on time, so a draining number was theatre.
+    // Null is the honest value - the rail shows its
+    // placeholder, and "time" answers "no clock running.",
+    // which is the truth. Nulled here explicitly (the w60
+    // lesson): a real game's stale clock must never leak
+    // into practice.
+    api.wtime = null;
+    api.btime = null;
+    api.clockAt = null;
     api.movesBefore = 0;
     // AND NOBODY IS PLAYING (w68). Exactly the w60 hazard one
     // field over: play a real game, then practice, and the
@@ -94,27 +82,6 @@
     api.players = { w: null, b: null };
     log("DRY", "practice mode ON - nothing will be sent to Lichess");
     speakWhenAudioSettled("Practice mode. You are white.");
-  }
-
-  // What the server does for a real game's clock, done here
-  // for practice (w128): at the moment a move applies, the
-  // MOVER's clock stops - their drained value is banked into
-  // wtime/btime - and the anchor resets so remainingMs
-  // starts draining the other side. Called with the mover
-  // still to move (before pos.apply), because remainingMs
-  // reads api.pos.turn to decide whose clock is running.
-  // Clamped at zero: a flagged practice clock shows 0:00 and
-  // play continues (see the dryStart note).
-  function bankPracticeClock() {
-    if (api.gameId !== "PRACTICE" || api.over || !api.pos) return;
-    var mover = api.pos.turn;
-    var left = remainingMs(mover);
-    if (left != null) {
-      if (left < 0) left = 0;
-      if (mover === "w") api.wtime = left;
-      else api.btime = left;
-    }
-    api.clockAt = Date.now();
   }
 
   function dryOpponentReply() {
@@ -133,10 +100,9 @@
     var m = legal[Math.floor(Math.random() * legal.length)];
     var san = api.pos.sanOf(m);
     var uci = api.pos.uciOf(m);
-    bankPracticeClock();   /* the opponent's think drained their clock */
     api.pos.apply(m);
     api.moves.push(uci);
-    api.lastSan = san; api.lastSanB = san;
+    api.lastSan = san;
     api.lastUci = uci;
     log("DRY", "opponent plays random legal move " + uci + " = " + san);
     speak(moveToSpeech(san, uci) + ".");

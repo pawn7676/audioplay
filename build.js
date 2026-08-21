@@ -16,9 +16,10 @@
  *
  * This is the project's whole build system. It began so the
  * userscript and website could share section files; the
- * userscript is frozen (see frozen-userscript/) and the one
- * remaining job is turning per-section sources into ONE
- * uploadable file. It must never grow transforms,
+ * userscript is maintained by hand at the repo root now
+ * (lichess_audioplay.js, not built from src/ since w138),
+ * and the one remaining job is turning per-section sources
+ * into ONE deployable page. It must never grow transforms,
  * minification, or dependencies. */
 "use strict";
 const fs = require("fs");

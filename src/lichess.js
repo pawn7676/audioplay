@@ -29,14 +29,13 @@
    *  of them. Read the provenance above for WHY something
    *  looks the way it does; do not treat it as a constraint.
    *
-   *  (Amended v138: the copying REVERSED direction. The
-   *  revived userscript's Lichess layer, userscript-lichess.js,
-   *  is cut FROM this file - token and URL deltas aside, its
-   *  handlers are this file's handlers. This file still
-   *  evolves on its own merits, exactly as w54 says; a fix to
-   *  a shared block is just owed a re-copy into the twin, and
-   *  the harness's rebuild check will not let the artifact
-   *  ship stale.)
+   *  (Amended v138, and again at w138: the revived
+   *  userscript's Lichess layer was briefly cut FROM this
+   *  file and rebuilt beside it - then the owner took the
+   *  artifact by hand (v139-v141) and un-coupled the two.
+   *  The userscript is its own file at the repo root now,
+   *  nothing is re-copied in either direction, and this
+   *  file evolves on its own merits, exactly as w54 says.)
    *
    *  VERSION is assigned here rather than where it is
    *  declared: the w-series is the only version line, and
@@ -44,7 +43,7 @@
    *  is what stops it being set in two places again.
    *================================================================*/
 
-  VERSION = "w137";
+  VERSION = "w138";
 
   var RULES = makeRules();
 
@@ -83,7 +82,10 @@
                           // game already underway (w83: the pair's
                           // sum is the true ply count, which is
                           // what says whether the clocks run)
-    lastSan: "", lastSanW: "", lastSanB: "",
+    lastSan: "",          // (lastSanW/lastSanB left at w138:
+                          // assigned everywhere, read nowhere -
+                          // the clock-mode move rows that read
+                          // them died at w110)
     lastUci: "",          // the same move as lastSan, in the
                           // coordinates the nato speech style
                           // reads (w120); cleared and resynced
@@ -371,7 +373,7 @@
       log("MOV", "move list diverged - rebuilding");
       api.pos = new RULES.Position();
       api.moves = [];
-      api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+      api.lastSan = "";
       api.lastUci = "";
       armedUci = null;      /* it named a move in the old list */
       announce = false;
@@ -388,7 +390,7 @@
          * last announced before it - and the arm survived,
          * pointing at a move in a position that no longer
          * exists, ready to read back against the wrong one. */
-        api.lastSan = ""; api.lastSanW = ""; api.lastSanB = "";
+        api.lastSan = "";
         api.lastUci = "";
         armedUci = null;
         for (var j = 0; j < list.length; j++) {
@@ -396,8 +398,6 @@
           if (!rr) { log("ERR", "resync failed at " + list[j]); break; }
           api.lastSan = rr.san;
           api.lastUci = list[j];
-          if (rr.move.color === "w") api.lastSanW = rr.san;
-          else api.lastSanB = rr.san;
         }
         api.moves = list.slice();
         return;
@@ -406,8 +406,6 @@
       var moverIsMine = (res.move.color === api.myColor);
       api.lastSan = res.san;
       api.lastUci = list[i];
-      if (res.move.color === "w") api.lastSanW = res.san;
-      else api.lastSanB = res.san;
       log("MOV", colorWord(res.move.color) + " " + list[i] + " = " + res.san +
           (announce ? "" : " (catch-up)"));
       if (announce && !moverIsMine) {
@@ -556,8 +554,6 @@
     }
     return base;
   }
-
-  function myRemainingMs() { return remainingMs(api.myColor); }
 
   /* stated in colors, never "you" or "they" */
   function resultSpoken(s2) {
@@ -1023,8 +1019,6 @@
           api.moves.push(g.lastMove);
           api.lastSan = res.san;
           api.lastUci = g.lastMove;
-          if (res.move.color === "w") api.lastSanW = res.san;
-          else api.lastSanB = res.san;
           if (res.move.color !== api.myColor) {
             speak(moveToSpeech(res.san, g.lastMove) + ".");
           }
