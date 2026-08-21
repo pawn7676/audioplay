@@ -81,13 +81,19 @@
    * above stay barred.
    *------------------------------------------------------*/
 
-  // (SHOW_RATINGS is GONE at w138, and this time for good:
-  // a code constant w117-w119, a stored Settings-row choice
-  // w120-w137, and the owner's own trim of the userscript
-  // dropped it - a rating is a number he stopped wanting to
-  // see, and a switch nobody flips is apparatus. The names
-  // still show beside the board; the rating never does. The
-  // stored key is dead and scrubDeadStorage removes it.)
+  // The opponent's rating, shown beside their name. OFF is
+  // the owner's default (w117): a rating is a fact about a
+  // person, not the position - never a fair-play question
+  // (constraint 1 is about MOVE CHOICE) - but it is also a
+  // number he stopped wanting to see. A code constant from
+  // w117 to w119; a stored choice again since w120, flipped
+  // from the Settings row. (Deleted at w138 in the v141
+  // sync, RESTORED at w139: the userscript has no player
+  // row for it to act on, this page does, and the owner
+  // called the deletion an overstep. The userscript's trims
+  // are not automatically the website's.)
+  var SHOW_RATINGS = false;
+  var RATINGS_KEY = "audioplay.ratings";
 
   // HOW A MOVE IS ANNOUNCED (w120, owner's design; two-way
   // since w126) - the Settings row's other choice. Named for
@@ -153,9 +159,11 @@
     // the defaults are RESTATED, not assumed: this function's
     // contract is stored-or-default whatever the variables
     // held before it ran, so calling it IS a settings reload
+    SHOW_RATINGS = false;
     MOVE_SPEECH = "pieces";
     CONFIRM_MODE = "chime";
     try {
+      SHOW_RATINGS = localStorage.getItem(RATINGS_KEY) === "on";
       var s = localStorage.getItem(MOVE_SPEECH_KEY);
       if (s === "pieces" || s === "squares") {
         MOVE_SPEECH = s;
@@ -170,7 +178,8 @@
   /* THE STORAGE AUDIT (w111, owner's request): every key
    * this program keeps is named audioplay.<what it is> -
    * token, verifier, panels, opponent, rated, timecontrol,
-   * since w120 movespeech, and since w131 confirm -
+   * since w120 ratings and movespeech, and since w131
+   * confirm -
    * and storage holds NOTHING else of ours. This list is
    * every name a previous era wrote on this origin, removed
    * on boot so no dead key sits behind the program to
@@ -194,10 +203,11 @@
    *                             the panel died at w117 and
    *                             settings are code constants
    *                             again
-   *   audioplay.ratings         the Show-ratings choice,
-   *                             w120-w137; the setting died
-   *                             at w138 (see the tombstone
-   *                             above)
+   *
+   * (audioplay.ratings sat on this list for the one version
+   * its setting was deleted, w138, and LEFT it at w139 when
+   * the setting was restored - the reuse case the note
+   * below names.)
    *
    * A name leaves this list only if it is reused - never
    * because the scrub "must have run by now": storage is
@@ -210,8 +220,7 @@
                 "audioplay.web.opponent",
                 "audioplay.web.rated",
                 "audioplay.web.timecontrol",
-                "audioplay.settings",
-                "audioplay.ratings"];
+                "audioplay.settings"];
     var gone = [];
     try {
       dead.forEach(function (k) {

@@ -47,6 +47,14 @@
   }
 
   function log(tag, msg) {
+    // The tag column is three characters wide - every tag
+    // above is three letters except UI, whose lines sat one
+    // column left of everyone else's in a pasted log (w139,
+    // owner's report). Padded HERE, not at the call sites,
+    // so a caller writes the tag as the list above spells it
+    // and alignment is nobody's job twice.
+    tag = String(tag);
+    while (tag.length < 3) tag = " " + tag;
     var t = new Date().toTimeString().slice(0, 8);
     var line = t + "  " + tag + "  " + msg;
     LOG.push(line);

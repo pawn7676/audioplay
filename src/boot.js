@@ -25,7 +25,8 @@
   // read. If a setting joins that a pasted log would need, it
   // joins HERE too.
   function settingsSummary() {
-    return "moves=" + MOVE_SPEECH +
+    return "ratings=" + (SHOW_RATINGS ? "on" : "off") +
+           " moves=" + MOVE_SPEECH +
            " confirm=" + CONFIRM_MODE +
            (VOICE_NAME ? " voice=" + VOICE_NAME : " voice=system");
   }
