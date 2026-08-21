@@ -52,9 +52,15 @@
     // column left of everyone else's in a pasted log (w139,
     // owner's report). Padded HERE, not at the call sites,
     // so a caller writes the tag as the list above spells it
-    // and alignment is nobody's job twice.
+    // and alignment is nobody's job twice. Padded on the
+    // RIGHT (w140, owner's pick over w139's leading space):
+    // left-aligned, every tag starts flush in the same
+    // column after the timestamp - a label column reads by
+    // its left edge - while a right-aligned "UI" floated one
+    // space in and read like a sub-item. The ragged right
+    // edge disappears into the gap before the message.
     tag = String(tag);
-    while (tag.length < 3) tag = " " + tag;
+    while (tag.length < 3) tag = tag + " ";
     var t = new Date().toTimeString().slice(0, 8);
     var line = t + "  " + tag + "  " + msg;
     LOG.push(line);
