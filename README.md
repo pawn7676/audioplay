@@ -59,7 +59,9 @@ Beside them: `audioplay.html` (the layout), `audioplay.css`
 only in hybrid and keys modes), `pieces.svg` (the twelve
 piece pictures, drawn by board.js), `icon.png` (the
 home-screen icon) and this README, which the page doesn't
-load.
+load. `index.html` is the site's front door: it only sends
+the short address on to audioplay.html (without it,
+GitHub Pages shows this README there instead).
 
 ## How the three modes differ
 
