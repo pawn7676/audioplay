@@ -1,0 +1,420 @@
+<!doctype html>
+
+<!-- audioplay.html - eyes-free voice chess on Lichess:
+     moves spoken (voice mode) or typed (hybrid mode), with
+     everything said back; or silent keyboard chess (keys
+     mode).
+
+     The page's layout. The look is in audioplay.css (and
+     keys.css for typing), the program in the .js files
+     loaded at the bottom, and the piece pictures in
+     pieces.svg. The project's notes are in README.md. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- No zoom lock: iOS ignores it anyway, and elsewhere it
+     takes pinch-zoom away from people who need it. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audioplay</title>
+<!-- The icon: a cream knight on near black, for the iPad
+     home screen. iOS rounds the corners itself, so icon.png
+     is a plain opaque 180x180 square. Two tags, because one
+     tag naming both uses is not reliably honoured. -->
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="audioplay.css">
+<link rel="stylesheet" href="keys.css">
+</head>
+<body>
+
+<!-- The board, always open. Beside it: the opponent's clock
+     and name at the top, yours at the bottom (ui.js fills
+     these in). On a narrow screen the two bars go above and
+     below the board. -->
+<div class="panel" id="panelBoard">
+  <div id="boardRow">
+    <canvas id="mini" width="1152" height="1152"></canvas>
+    <div id="boardSide">
+      <div class="sideBlock" id="sideTop">
+        <div class="sideClock" id="clockTop"></div>
+        <div class="sideName" id="nameTop"></div>
+      </div>
+      <div class="sideGap"></div>
+      <div class="sideBlock" id="sideBottom">
+        <div class="sideName" id="nameBottom"></div>
+        <div class="sideClock" id="clockBottom"></div>
+        <!-- Hybrid and keys modes: what you are typing,
+             and under it the latest message or question
+             (hybrid mode: what was last said), hung below
+             your clock (keys.css). keys.js fills these
+             in. -->
+        <div id="keysPage" hidden>
+          <div class="keysEntry" id="keysEntryPage"></div>
+          <div class="keysNote" id="keysNotePage"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- The controls, wired up by ui.js. The button row is in
+     reading order: Microphone first, the account button
+     last, away from the button pressed every game.
+     Practice only shows when PRACTICE_MODE is on in
+     settings.js. -->
+<div class="panel" id="panelLichess">
+  <div id="panelControls">
+    <button id="btnVoice" class="primary">▶ Microphone</button>
+    <button id="btnSettings">Settings</button>
+    <button id="btnClock">Clock</button>
+    <button id="btnLog">Log</button>
+    <button id="btnPractice" hidden>Practice</button>
+    <button id="btnSignIn" class="primary">Sign in with Lichess</button>
+  </div>
+  <div id="lichessLine">Sign in to play.</div>
+  <div class="row">
+    <!-- Time control presets, plus a Custom box that takes
+         the same "minutes+increment" form. No bullet or
+         blitz presets: Lichess won't pair them for this kind
+         of app (a blitz challenge can still be typed into
+         Custom). -->
+    <span id="timeRow">
+    <button class="tc" data-tc="10+0">10+0</button>
+    <button class="tc" data-tc="10+5">10+5</button>
+    <button class="tc" data-tc="15+10">15+10</button>
+    <button class="tc" data-tc="30+0">30+0</button>
+    <button class="tc" data-tc="30+20">30+20</button>
+    <input id="timeCustom" type="text"
+           inputmode="numeric" placeholder="Custom" size="7">
+    </span>
+    <select id="seekRated">
+      <option value="casual">Casual</option>
+      <option value="rated">Rated</option>
+    </select>
+  </div>
+  <div class="row">
+    <button id="btnSeek" disabled>Find an opponent</button>
+    <button id="btnSeekCancel" disabled>Cancel seek</button>
+  </div>
+  <div class="row">
+    <label>Opponent <select id="challengeWho">
+      <option value="maia1">maia1 (easiest)</option>
+      <option value="maia5">maia5</option>
+      <option value="maia9">maia9 (strongest)</option>
+      <option value="other">Someone else</option>
+    </select></label>
+    <input id="challengeOther" class="whoin" type="text"
+      placeholder="Lichess name" hidden
+      autocapitalize="off" autocorrect="off" spellcheck="false">
+    <label>I play <select id="challengeColour">
+      <option value="random">Random</option>
+      <option value="white">White</option>
+      <option value="black">Black</option>
+    </select></label>
+    <button id="btnChallenge" disabled>Challenge</button>
+  </div>
+</div>
+
+<div class="panel" id="panelInstructions">
+
+  <!-- The user manual. Starts folded; whether it is open
+       is remembered. -->
+  <details>
+  <summary>Instructions</summary>
+  <p class="hint"><b>1. Sign In</b><br>
+  Tap "Sign in with Lichess". Signing in happens on
+  lichess.org, so this site never sees your password.
+  Lichess asks you to let this site:<br>
+  - play your games<br>
+  - send challenges (to the maia bots or another
+  player)<br>
+  The site never accepts challenges: ones sent to you
+  are ignored here, and you can answer them on
+  Lichess.<br>
+  To sign out, tap your name, then tap "Sign out?". This
+  also ends the site's access on Lichess.</p>
+  <p class="hint"><b>2. Choose How to Play</b><br>
+  In Settings, set "Play by" to one of three modes:<br>
+  <b>Voice</b> &mdash; Speak your moves (see 4 and 5), and
+  the page speaks back: your opponent's moves, offers and
+  the result. Your own move is confirmed as the Confirm
+  setting says. Tap the Microphone button to turn the
+  microphone on; tap again to turn it off. If necessary,
+  you can turn on microphone access in Safari with Page
+  Menu &rarr; Website Settings &rarr; Microphone &rarr;
+  Allow.<br>
+  <b>Hybrid</b> &mdash; Type your moves on a hardware
+  keyboard (see 6 and 7), and the page speaks back just as
+  in Voice Mode. What it says is also printed beside the
+  board, under what you type, until the next move; a
+  question stays until you answer it. Clock View (see 9)
+  shows just the clocks. The page can only make sound
+  after you tap it or press a key, so do one before your
+  opponent's first move (tapping Clock is enough).<br>
+  <b>Keyboard</b> &mdash; Type your moves, in silence:
+  nothing is spoken and nothing chimes. Your opponent's
+  moves, offers and the result are shown under your clock
+  instead. In Clock View, each side's last move is shown
+  under its clock, what you type under yours, and
+  messages along the bottom.<br>
+  In Hybrid and Keyboard Modes, the microphone stays off
+  and the Microphone button is greyed out. In every mode,
+  you can also tap a piece to move (see 8).</p>
+  <p class="hint"><b>3. Start a Game</b><br>
+  Pick a time control, or type your own into Custom as
+  minutes+increment (for example 20+10), and choose Casual
+  or Rated. Then either:<br>
+  - Tap "Find an opponent" to play a random player.
+  Rapid and longer games are accepted.<br>
+  - Pick a maia bot under "Opponent", or "Someone else"
+  and type a Lichess name, choose your color, and tap
+  "Challenge". Blitz and longer games are accepted. If
+  the challenge is declined, the page says so.<br>
+  A game you start in the Lichess app or on lichess.org
+  is joined here automatically, unless it is too fast for
+  this site.<br>
+  While a game is on, or a seek or challenge is waiting,
+  the screen stays awake, in Board View and Clock View
+  alike (see 9). If the connection to Lichess drops, the
+  page opens it again by itself, and says "reconnected",
+  with any move your opponent made in the meantime.</p>
+  <p class="hint"><b>4. Speak Your Move (Voice Mode)</b><br>
+  With the microphone on (see 2), say the starting square
+  and then the ending square, using the NATO alphabet for
+  the letters:<br>
+  A = alpha<br>
+  B = bravo<br>
+  C = charlie<br>
+  D = delta<br>
+  E = echo<br>
+  F = foxtrot<br>
+  G = golf<br>
+  H = hotel<br>
+  Examples:<br>
+  - "echo 2 echo 4"<br>
+  - "bravo 8 charlie 6"<br>
+  - "echo 1 golf 1" (white castles short)<br>
+  - "echo 8 charlie 8" (black castles long)<br>
+  - "hotel 7 hotel 8" (a pawn reaching the last rank
+  becomes a queen)<br>
+  - "alpha 2 alpha 1 equals knight" (to promote to
+  anything else, say "equals" and the piece)<br>
+  Say only the squares: no piece names (except after
+  "equals"), and not "takes", "check" or "castles". A
+  move with any of these words in it isn't accepted.<br>
+  If the page didn't catch a move, it says "Say again."
+  If it heard a move clearly but the move isn't legal, it
+  says "That is not a legal move."</p>
+  <p class="hint"><b>5. Voice Commands</b><br>
+  "repeat" &mdash; Say the last move again.<br>
+  "time" &mdash; Say the time left for each player.<br>
+  "resign" &mdash; Asks "Resign the game?"<br>
+  "draw" &mdash; Asks "Offer a draw?"<br>
+  "yes" / "no" &mdash; Answer a question: your own resign
+  or draw, your opponent's draw offer or takeback
+  request, or claiming the win when your opponent has
+  left.<br>
+  "cancel" &mdash; Same as "no".<br>
+  "flip" &mdash; Swap which side of Clock View your clock
+  is on.<br>
+  "memo" &mdash; Say "memo" and then a comment, in one
+  breath, and the comment is written into the log. Useful
+  for reporting problems.</p>
+  <p class="hint"><b>6. Type Your Move (Hybrid and
+  Keyboard Modes)</b><br>
+  Type the move's two squares, then press Enter. Each file
+  can be a letter or a number (a=1 to h=8), and the two
+  can be mixed (h283 is h2h3):<br>
+  - e2e4 or 5254<br>
+  - g1f3 or 7163<br>
+  - e1g1 or 5171 (white castles short)<br>
+  - e7e8 or 5758 (a pawn reaching the last rank becomes a
+  queen)<br>
+  - e7e8n or 57584 (to promote to anything else, add q, r,
+  b or n, or 1, 2, 3 or 4)<br>
+  Entries are four characters long; a fifth is only taken
+  when the move is a promotion. A key that can't go in the
+  next place, such as a letter where a rank belongs, is
+  ignored. Backspace deletes a character, Escape
+  clears.<br>
+  An entry that can't be played is cleared, so you type
+  the next one from scratch. What you typed and the reason
+  show in red until your next key. In Hybrid the reason is
+  also spoken: "That is not a legal move.", or "Enter
+  again." for an unfinished entry.<br>
+  Typing into the Custom time or Lichess name box goes to
+  that box, not the game: tap an empty part of the page
+  first.</p>
+  <p class="hint"><b>7. Typed Commands</b><br>
+  Each is ended with Enter, like a move.<br>
+  91 &mdash; Asks "Resign the game?"<br>
+  92 &mdash; Asks "Offer a draw?"<br>
+  93 &mdash; Repeat the last move.<br>
+  94 &mdash; The time left for each player.<br>
+  95 &mdash; Flip: swap which side of Clock View your
+  clock is on.<br>
+  1 / 0 &mdash; Yes / no: to your own question, your
+  opponent's draw offer or takeback request, or claiming
+  the win when your opponent has left. While a question is
+  open, it must be answered before you can move.</p>
+  <p class="hint"><b>8. Tap To Move</b><br>
+  You can also move by tapping the piece and then the
+  square it goes to. Don't drag the piece. A pawn tapped
+  to the last rank always becomes a queen; to promote to
+  anything else, say or type the move. Tapping is quicker
+  than speaking or typing, which helps when you are low
+  on time.</p>
+  <p class="hint"><b>9. The Buttons</b><br>
+  <b>Microphone</b> &mdash; Turns the microphone on or
+  off (Voice Mode only).<br>
+  <b>Settings</b> &mdash; Opens the Settings menu,
+  described below.<br>
+  <b>Clock</b> &mdash; Switches from Board View, the
+  ordinary page with the board and these buttons, to
+  Clock View: a black screen with just the two clocks,
+  the side to move in bolder digits (Keyboard Mode adds
+  the moves and messages: see 2). The screen stays awake
+  while it is up. Tap anywhere to go back to Board
+  View.<br>
+  <b>Log</b> &mdash; Everything heard and done, kept
+  across reloads. "Copy" puts the full text on the
+  clipboard; "Clear" empties it. Tap anywhere else to
+  close it.<br>
+  <b>Practice</b> &mdash; A game as white against random
+  legal moves, with nothing sent to Lichess. Useful for
+  practicing moves and commands. Finding an opponent and
+  challenging are switched off until you tap Practice
+  again.<br>
+  <b>Your name</b> &mdash; The account button. Tap it,
+  then tap "Sign out?" to sign out.</p>
+  <p class="hint"><b>10. Settings</b><br>
+  Tap Settings to open the menu. Tap anywhere outside it,
+  or press Escape, to close it.<br>
+  <b>Play by</b> &mdash; Voice, Hybrid or Keyboard Mode
+  (see 2).<br>
+  <b>Show ratings</b> &mdash; Show player ratings beside
+  the names.<br>
+  <b>Moves spoken</b> &mdash; How your opponent's moves
+  are spoken to you: Squares ("bravo 8, charlie 6",
+  "delta 8, delta 5, check") or Pieces ("knight charlie
+  6", "queen takes delta 5, check").<br>
+  <b>Confirm</b> &mdash; How your own move is confirmed:
+  a chime (quiet, standard or loud), Voice, or None.<br>
+  Keyboard Mode greys out Moves spoken and Confirm, since
+  nothing is spoken.</p>
+  <p class="hint"><b>11. Select a Better Voice</b><br>
+  The page speaks (in Voice and Hybrid Modes) using your
+  device's system voice. On an iPhone or iPad, you can get
+  a better voice in Settings &rarr; Accessibility &rarr;
+  Spoken Content &rarr; Voices &rarr; English. Choose a
+  Premium or Enhanced voice (Ava is a good one).</p>
+  </details>
+</div>
+
+<!-- The Settings menu, opened by the Settings button: the
+     page dims, and a tap anywhere outside the menu (or
+     Escape) closes it. ui.js places it just above the
+     button row. Play by comes first: it picks how you play,
+     and Keyboard (keys mode) greys out the speech settings.
+     The menu has .panel so its buttons look like the
+     page's. -->
+<div id="settingsBackdrop" hidden>
+  <div class="panel" id="settingsMenu">
+    <div class="menuTitle">Settings</div>
+    <div class="menuRow">
+      <span class="menuLabel">Play by</span>
+      <select id="setInput">
+        <option value="voice">Voice</option>
+        <option value="hybrid">Hybrid</option>
+        <option value="keys">Keyboard</option>
+      </select>
+    </div>
+    <label class="menuRow">
+      <span class="menuLabel">Show ratings</span>
+      <span class="switch">
+        <input type="checkbox" id="setRatings">
+        <span class="slider"></span>
+      </span>
+    </label>
+    <div id="voiceSettings">
+      <div class="menuRow">
+        <span class="menuLabel">Moves spoken</span>
+        <span class="segmented" id="setSpeech">
+          <button data-speech="squares">SQUARES</button>
+          <button data-speech="pieces">PIECES</button>
+        </span>
+      </div>
+      <div class="menuRow">
+        <span class="menuLabel">Confirm</span>
+        <select id="setConfirm">
+          <option value="chime-quiet">Chime quiet</option>
+          <option value="chime">Chime standard</option>
+          <option value="chime-loud">Chime loud</option>
+          <option value="voice">Voice</option>
+          <option value="none">None</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- The log, opened by the Log button: everything heard
+     and done. log.js keeps it; ui.js shows it. A tap
+     anywhere on it but Copy or Clear closes it, as a tap
+     closes Clock View. -->
+<div id="logPanel" hidden>
+  <div id="logBar">
+    <button id="logCopy">Copy</button>
+    <button id="logClear">Clear</button>
+  </div>
+  <pre id="logBody"></pre>
+</div>
+
+<!-- Clock View, opened by the Clock button: the two clocks
+     side by side on black, over Board View (the rest of
+     the page). clock.js fills them in.
+     #keysClock is keys mode only (hybrid mode shows just
+     the clocks): each side's last move under its clock,
+     what you are typing under yours, and the latest
+     message along the bottom (keys.js). -->
+<div id="clockView" hidden>
+  <div class="clockTime" id="clockLeft"></div>
+  <div class="clockTime" id="clockRight"></div>
+  <div id="keysClock" hidden>
+    <div class="keysCol">
+      <div class="keysMove" id="keysMoveLeft"></div>
+      <div class="keysEntry" id="keysEntryLeft"></div>
+    </div>
+    <div class="keysCol">
+      <div class="keysMove" id="keysMoveRight"></div>
+      <div class="keysEntry" id="keysEntryRight"></div>
+    </div>
+    <div class="keysNote" id="keysNoteClock"></div>
+  </div>
+</div>
+
+<!-- The program, one file per job. Order only matters for
+     code that runs as a file loads: rules.js must come
+     before lichess.js, and boot.js last. -->
+<script src="settings.js"></script>
+<script src="log.js"></script>
+<script src="stall.js"></script>
+<script src="vocabulary.js"></script>
+<script src="parsing.js"></script>
+<script src="matching.js"></script>
+<script src="dialogue.js"></script>
+<script src="practice.js"></script>
+<script src="voice.js"></script>
+<script src="chimes.js"></script>
+<script src="mic.js"></script>
+<script src="rules.js"></script>
+<script src="lichess.js"></script>
+<script src="board.js"></script>
+<script src="touch.js"></script>
+<script src="keys.js"></script>
+<script src="ui.js"></script>
+<script src="clock.js"></script>
+<script src="awake.js"></script>
+<script src="boot.js"></script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+/*  keys.css - the look of typing: hybrid and keys modes.
+ *
+ *  Loaded after audioplay.css. Everything here only shows
+ *  when typing: its boxes are hidden (by their hidden
+ *  attribute) in voice mode, and the Clock View changes
+ *  need the .keys class that ui.js puts on <body> in keys
+ *  mode only. So in voice mode the page looks exactly as
+ *  it does without this file, and hybrid mode adds only
+ *  the entry box beside the board. (Play by is in the
+ *  Settings menu, whose look is in audioplay.css.)
+ */
+
+/* ---- beside the board ---- */
+
+/* Under your clock: what you are typing, then the latest
+   message or open question (hybrid mode: what was last
+   said). Hung below your clock (it is inside
+   #sideBottom) over the empty space there, without taking
+   up any room: the board and clocks stay exactly where
+   they are in voice mode. The message may run past the
+   clocks' width, up to the board panel's right edge:
+   keys.js sets its max-width to fit (sizeKeysNote). */
+#sideBottom { position: relative; }
+#keysPage {
+  position: absolute; top: 100%; left: 0; width: max-content;
+  margin-top: 18px;
+}
+#keysPage .keysEntry {
+  display: inline-block; padding: 2px 16px; min-width: 5.5ch;
+  border-radius: 6px; background: #252420; color: var(--bright);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 2.4rem; font-weight: 400; line-height: 1.15;
+  letter-spacing: .08em;
+}
+/* the page's ordinary text size (1rem), as in the
+   Instructions */
+#keysPage .keysNote {
+  margin-top: 6px; font-size: 1rem; line-height: 1.4;
+  color: var(--bright);
+}
+
+/* Narrow screens stack everything under the board, with
+   your name and clock in one row: there the entry and the
+   message take a line of their own under that row. */
+@media (max-width: 600px) {
+  #sideBottom { flex-wrap: wrap; }
+  #keysPage { position: static; flex-basis: 100%; width: auto;
+              margin-top: 8px; }
+  #keysPage .keysNote { min-height: 1.5em; }
+}
+
+/* a refused entry: what was typed, and why */
+#keysPage .keysNote.bad { color: #e0645a; }
+
+/* hybrid mode: the refused entry itself, until the next
+   key (the reason is under it, and spoken) */
+#keysPage .keysEntry.bad { color: #e0645a; }
+
+/* ---- Clock View ---- */
+
+/* The bottom third of the screen holds the move lines and
+   the message, so the clocks shrink into the top part.
+   46vh keeps the digits clear of the move lines; three
+   digits use the same 40vw / (3 x 0.62) as audioplay.css. */
+body.keys #clockView { padding-bottom: 34vh; }
+body.keys .clockTime { font-size: min(40vw / 1.24, 46vh); }
+body.keys #clockView.wide .clockTime {
+  font-size: min(40vw / 1.86, 46vh);
+}
+
+/* Laid over the bottom of the black screen. Each half
+   lines up under its clock. */
+#keysClock {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 34vh;
+  display: flex; flex-wrap: wrap; align-content: flex-start;
+  font-family: ui-monospace, Menlo, monospace;
+  color: #a8a29a;
+}
+#keysClock .keysCol { flex: 1 1 50%; text-align: center; }
+#keysClock .keysMove {
+  font-size: 9vh; font-weight: 300; line-height: 1.15;
+  min-height: 1.15em;
+}
+
+/* your entry: brighter than the moves */
+#keysClock .keysEntry {
+  font-size: 9vh; font-weight: 500; line-height: 1.15;
+  min-height: 1.15em; color: #f2f2ef; letter-spacing: .08em;
+}
+
+#keysClock .keysNote {
+  flex: 1 1 100%; text-align: center;
+  font-family: system-ui, sans-serif;
+  font-size: 4vh; line-height: 1.3; margin-top: 1vh;
+}
+
+/* a refused entry: what was typed, and why */
+#keysClock .keysNote.bad { color: #c8583f; }
