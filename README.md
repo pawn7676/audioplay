@@ -1,4 +1,4 @@
-# audioplay
+# Audioplay
 
 Voice chess on Lichess for someone playing at a real board,
 away from the screen. Sign in with Lichess, tap Microphone,
