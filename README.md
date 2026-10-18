@@ -54,14 +54,19 @@ The scripts share one global scope. Order only matters for
 code that runs as a file loads: rules.js before lichess.js,
 boot.js last.
 
-Beside them: `audioplay.html` (the layout), `audioplay.css`
-(the look), `keys.css` (the look of typing, which shows
-only in hybrid and keys modes), `pieces.svg` (the twelve
-piece pictures, drawn by board.js), `icon.png` (the
-home-screen icon) and this README, which the page doesn't
-load. `index.html` is the site's front door: it only sends
-the short address on to audioplay.html (without it,
-GitHub Pages shows this README there instead).
+The other files:
+
+- `audioplay.html` - the layout
+- `audioplay.css` - the look
+- `keys.css` - the look of typing, which shows only in
+  hybrid and keys modes
+- `pieces.svg` - the twelve piece pictures, drawn by
+  board.js
+- `icon.png` - the home-screen icon
+- `index.html` - the site's front door: it only sends the
+  short address on to audioplay.html (without it, GitHub
+  Pages shows this README there instead)
+- `README.md` - this file, which the page doesn't load
 
 ## How the three modes differ
 
