@@ -54,19 +54,12 @@ The scripts share one global scope. Order only matters for
 code that runs as a file loads: rules.js before lichess.js,
 boot.js last.
 
-The other files:
-
-- `audioplay.html` - the layout
-- `audioplay.css` - the look
-- `keys.css` - the look of typing, which shows only in
-  hybrid and keys modes
-- `pieces.svg` - the twelve piece pictures, drawn by
-  board.js
-- `icon.png` - the home-screen icon
-- `index.html` - the site's front door: it only sends the
-  short address on to audioplay.html (without it, GitHub
-  Pages shows this README there instead)
-- `README.md` - this file, which the page doesn't load
+Beside them: `audioplay.html` (the layout), `audioplay.css`
+(the look), `keys.css` (the look of typing, which shows
+only in hybrid and keys modes), `pieces.svg` (the twelve
+piece pictures, drawn by board.js), `icon.png` (the
+home-screen icon) and this README, which the page doesn't
+load.
 
 ## How the three modes differ
 
@@ -100,27 +93,6 @@ To take the typing modes out: delete keys.js and keys.css,
 and the lines that mention them, `keysMode()`,
 `hybridMode()` or `typingMode()` in the other files.
 
-## Hosting
-
-Any host that serves static files works, except one that
-stops pages from contacting other sites. Free Neocities
-sites do exactly that (a Content-Security-Policy that
-blocks a script from fetching another site's data), and
-only a paid Supporter account lifts it. There, going to
-lichess.org and back works, since that is plain
-navigation, but every request the page itself makes fails
-with "Load failed": the sign-in can't trade its code for
-a token, and nothing else could reach Lichess either.
-GitHub Pages works, and files can be uploaded on
-github.com from the iPad, with no git.
-
-The return address for sign-in is this page's own address
-(`redirectUri()` in lichess.js), so moving to a new host
-needs no code change. If sign-in fails, the log says
-where it stopped: the address used, each try at the
-token, and, if no try got an answer, whether lichess.org
-can be reached from the page at all (a NET line).
-
 ## iPad and Safari, learned the hard way
 
 - The mic only starts after a tap, and the page can only
@@ -152,6 +124,10 @@ can be reached from the page at all (a NET line).
   didn't help.
 - Leaving fullscreen breaks the page layout until Safari
   restarts, so nothing goes fullscreen.
+- Safari's toolbar shows the page through it, and a fixed
+  overlay doesn't reach under it: with the page scrolled
+  down, the board showed behind Clock View there. So
+  Clock View scrolls to the top while it is up.
 - With the screen off the page can be suspended, which
   stops the mic and the connections to Lichess. So
   awake.js keeps the screen on while a game is on, a seek

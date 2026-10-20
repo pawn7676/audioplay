@@ -14,6 +14,14 @@
  *
  *  No fullscreen: leaving fullscreen on iOS corrupts the
  *  page layout until Safari is restarted.
+ *
+ *  Safari on the iPad shows the page through its toolbar
+ *  at the top of the screen, and Clock View, fixed to the
+ *  screen, doesn't reach under it. With the page scrolled
+ *  down, the board showed there, behind the clocks. So
+ *  Clock View scrolls the page to the top, where nothing
+ *  sits under the toolbar, and puts it back on the way
+ *  out.
  */
 
 "use strict";
@@ -22,6 +30,7 @@ var CLOCK_TICK_MS = 100;   // how often Clock View redraws
 
 var clockScreen = null, clockLeft = null, clockRight = null;
 var clockTimer = null;
+var clockScrollY = 0;   // where Board View was scrolled to
 
 function clockViewOn() {
   return !!clockScreen && !clockScreen.hidden;
@@ -108,6 +117,8 @@ function enterClockView() {
       exitClockView(true);
     });
   }
+  clockScrollY = window.scrollY;
+  window.scrollTo(0, 0);
   clockScreen.hidden = false;
   renderClockView();
   clearInterval(clockTimer);
@@ -120,6 +131,7 @@ function enterClockView() {
 function exitClockView(byTap) {
   if (!clockViewOn()) return;
   clockScreen.hidden = true;
+  window.scrollTo(0, clockScrollY);
   clearInterval(clockTimer);
   clockTimer = null;
   keepAwakeCheck();
