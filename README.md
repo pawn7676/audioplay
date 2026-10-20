@@ -19,10 +19,9 @@ Settings > Play by picks one of three ways to play:
   the clocks instead. The mic stays off and nothing is
   spoken or chimed.
 
-The page has two views, picked by the Clock button: Board
-View, the ordinary page with the board and the controls,
-and Clock View, just the two clocks on black. "Mode" is
-kept for the three ways to play above.
+The page has two views: Board View, the page with the
+chessboard and the controls, and Clock View (entered by pressing
+the "Clock" button), just the two clocks on a black screen.
 
 ## The files
 
