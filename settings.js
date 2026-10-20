@@ -37,9 +37,9 @@ var LOG_MAX = 3000;   // lines kept in the log
 // How you play, one of three (Play by in Settings):
 //   voice   moves spoken, and the page speaks back
 //   hybrid  moves typed on a keyboard, and the page
-//           speaks back, as in voice: no mic. Beside the
-//           board, the typed move and what was last said;
-//           nothing extra in Clock View (keys.js)
+//           speaks back, as in voice: no mic. On screen,
+//           the same as keys: the typed move, the moves
+//           and what was last said (keys.js)
 //   keys    moves typed on a keyboard, and the page is
 //           silent: no mic, no voice, no chime; what it
 //           would say is shown instead (keys.js).

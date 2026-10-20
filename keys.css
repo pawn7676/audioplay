@@ -1,13 +1,13 @@
 /*  keys.css - the look of typing: hybrid and keys modes.
  *
  *  Loaded after audioplay.css. Everything here only shows
- *  when typing: its boxes are hidden (by their hidden
- *  attribute) in voice mode, and the Clock View changes
- *  need the .keys class that ui.js puts on <body> in keys
- *  mode only. So in voice mode the page looks exactly as
- *  it does without this file, and hybrid mode adds only
- *  the entry box beside the board. (Play by is in the
- *  Settings menu, whose look is in audioplay.css.)
+ *  when typing (hybrid and keys modes, which look the
+ *  same): its boxes are hidden (by their hidden attribute)
+ *  in voice mode, and the Clock View changes need the
+ *  .typing class that ui.js puts on <body> when typing.
+ *  So in voice mode the page looks exactly as it does
+ *  without this file. (Play by is in the Settings menu,
+ *  whose look is in audioplay.css.)
  */
 
 /* ---- beside the board ---- */
@@ -55,6 +55,7 @@
 /* hybrid mode: the refused entry itself, until the next
    key (the reason is under it, and spoken) */
 #keysPage .keysEntry.bad { color: #e0645a; }
+#keysClock .keysEntry.bad { color: #c8583f; }
 
 /* ---- Clock View ---- */
 
@@ -62,9 +63,9 @@
    the message, so the clocks shrink into the top part.
    46vh keeps the digits clear of the move lines; three
    digits use the same 40vw / (3 x 0.62) as audioplay.css. */
-body.keys #clockView { padding-bottom: 34vh; }
-body.keys .clockTime { font-size: min(40vw / 1.24, 46vh); }
-body.keys #clockView.wide .clockTime {
+body.typing #clockView { padding-bottom: 34vh; }
+body.typing .clockTime { font-size: min(40vw / 1.24, 46vh); }
+body.typing #clockView.wide .clockTime {
   font-size: min(40vw / 1.86, 46vh);
 }
 

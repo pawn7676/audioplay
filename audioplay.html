@@ -148,9 +148,10 @@
   in Voice Mode. What it says is also printed beside the
   board, under what you type, until the next move; a
   question stays until you answer it. Clock View (see 9)
-  shows just the clocks. The page can only make sound
-  after you tap it or press a key, so do one before your
-  opponent's first move (tapping Clock is enough).<br>
+  shows the moves too, as in Keyboard Mode. The page can
+  only make sound after you tap it or press a key, so do
+  one before your opponent's first move (tapping Clock is
+  enough).<br>
   <b>Keyboard</b> &mdash; Type your moves, in silence:
   nothing is spoken and nothing chimes. Your opponent's
   moves, offers and the result are shown under your clock
@@ -158,8 +159,10 @@
   under its clock, what you type under yours, and
   messages along the bottom.<br>
   In Hybrid and Keyboard Modes, the microphone stays off
-  and the Microphone button is greyed out. In every mode,
-  you can also tap a piece to move (see 8).</p>
+  and the Microphone button is greyed out. The screen
+  looks the same in both; only the sound differs. In
+  every mode, you can also tap a piece to move (see
+  8).</p>
   <p class="hint"><b>3. Start a Game</b><br>
   Pick a time control, or type your own into Custom as
   minutes+increment (for example 20+10), and choose Casual
@@ -272,10 +275,10 @@
   <b>Clock</b> &mdash; Switches from Board View, the
   ordinary page with the board and these buttons, to
   Clock View: a black screen with just the two clocks,
-  the side to move in bolder digits (Keyboard Mode adds
-  the moves and messages: see 2). The screen stays awake
-  while it is up. Tap anywhere to go back to Board
-  View.<br>
+  the side to move in bolder digits (Hybrid and Keyboard
+  Modes add the moves and messages: see 2). The screen
+  stays awake while it is up. Tap anywhere to go back to
+  Board View.<br>
   <b>Log</b> &mdash; Everything heard and done, kept
   across reloads. "Copy" puts the full text on the
   clipboard; "Clear" empties it. Tap anywhere else to
@@ -373,10 +376,10 @@
 <!-- Clock View, opened by the Clock button: the two clocks
      side by side on black, over Board View (the rest of
      the page). clock.js fills them in.
-     #keysClock is keys mode only (hybrid mode shows just
-     the clocks): each side's last move under its clock,
-     what you are typing under yours, and the latest
-     message along the bottom (keys.js). -->
+     #keysClock is for typing (hybrid and keys modes):
+     each side's last move under its clock, what you are
+     typing under yours, and the latest message along the
+     bottom (keys.js). -->
 <div id="clockView" hidden>
   <div class="clockTime" id="clockLeft"></div>
   <div class="clockTime" id="clockRight"></div>

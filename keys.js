@@ -4,14 +4,16 @@
  *  Both are picked under Play by in Settings, and in both
  *  the mic stays off. They differ in what comes back:
  *    hybrid  everything is spoken or chimed, as in voice
- *            mode. Beside the board: what you are typing,
- *            and under it, in print, what was last said
- *            (showSpoken). Clock View shows just the
- *            clocks.
+ *            mode, and also printed (showSpoken).
  *    keys    ("Keyboard") silent. What the page would have
  *            said comes here from speak() in voice.js and
- *            is shown under your clock, and along the
- *            bottom of Clock View.
+ *            is shown instead (showMessage).
+ *  On screen the two look the same: beside the board,
+ *  what you are typing, and under it the latest message;
+ *  in Clock View, each side's last move under its clock,
+ *  what you are typing under yours, and the message along
+ *  the bottom. So a chimed move can still be checked by
+ *  eye: it appears under your clock once Lichess has it.
  *
  *  Every entry ends with Enter:
  *    e2e4 or 5254     a move, with each file a letter or
@@ -35,7 +37,7 @@
  *  one starts from scratch. In hybrid mode the reason is
  *  spoken, without reading the entry back ("That is not a
  *  legal move."), and the refused entry and the reason
- *  stay in red beside the board until the next key. In
+ *  stay in red until the next key. In
  *  keys mode what was typed and why it was refused show in
  *  red until the next key. Keys typed into a text box
  *  (Custom time, a Lichess name) are left to the box.
@@ -80,7 +82,7 @@ var keyEntry = "";   // what has been typed so far
 var keyBad = false;  // the message is a refusal (red)
 
 // Hybrid mode only: the entry just refused, shown in red
-// in the entry box until the next key (the reason is in
+// in the entry boxes until the next key (the reason is in
 // keyNote, under it).
 var keyRefused = "";
 
@@ -398,9 +400,8 @@ function lastMoves() {
 
 // Beside the board: your entry and the message. In Clock
 // View: each side's last move under its clock, your entry
-// under yours, and the message along the bottom. Hybrid
-// mode shows only the entry and the message beside the
-// board: ui.js hides the Clock View lines.
+// under yours, and the message along the bottom. The same
+// in both typing modes.
 function keysRender() {
   if (!keysEntryPage || !typingMode()) return;
   var entry = entryText(), note = noteText();
@@ -421,6 +422,8 @@ function keysRender() {
   setKeyText(keysNoteClock, note);
 
   keysEntryPage.classList.toggle("bad", !!keyRefused);
+  myEntry.classList.toggle("bad", !!keyRefused);
+  otherEntry.classList.toggle("bad", false);
   var red = keyBad && note === keyNote;
   keysNotePage.classList.toggle("bad", red);
   keysNoteClock.classList.toggle("bad", red);

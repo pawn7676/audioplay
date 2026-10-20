@@ -612,25 +612,25 @@ function wireSettingsMenu() {
 
 // Shows what the picked way of playing needs and hides the
 // rest:
-//   voice   nothing extra
-//   hybrid  your typed entry beside the board, and what
-//           was last said under it; nothing extra in
-//           Clock View
-//   keys    the entry and messages beside the board, and
-//           the move lines and messages in Clock View
-// Typing stops the mic, and keys mode also cuts off the
-// voice. Going back to voice waits for the Microphone
+//   voice          nothing extra
+//   hybrid, keys   your typed entry beside the board,
+//                  with the latest message under it; in
+//                  Clock View, each side's last move, your
+//                  entry and the message (.typing on body)
+// The two typing modes look the same; they differ only in
+// sound. Typing stops the mic, and keys mode also cuts off
+// the voice. Going back to voice waits for the Microphone
 // button, as on a fresh load. An open yes/no question
 // survives the switch, and is shown or spoken as fits.
 function applyInputMode() {
   var keys = keysMode(), typing = typingMode();
-  document.body.classList.toggle("keys", keys);
+  document.body.classList.toggle("typing", typing);
 
   // greyed out rather than hidden, so the open menu keeps
   // its size
   el("voiceSettings").classList.toggle("off", keys);
   el("keysPage").hidden = !typing;
-  el("keysClock").hidden = !keys;
+  el("keysClock").hidden = !typing;
   el("setInput").value = INPUT_MODE;
   if (typing) {
     running = false;

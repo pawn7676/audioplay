@@ -11,9 +11,9 @@ Settings > Play by picks one of three ways to play:
 - Voice: moves spoken, everything said back.
 - Hybrid: moves typed on a hardware keyboard ("e2e4" or
   "5254", then Enter), everything said back as in voice
-  mode. The mic stays off. Beside the board, the move
-  being typed and what was last said, in print; Clock
-  View shows just the clocks.
+  mode. The mic stays off. On screen, the same as
+  Keyboard: the move being typed, the moves played, and
+  what was last said, in print.
 - Keyboard (keys mode in the code): moves typed, in
   silence, with everything the page would say shown under
   the clocks instead. The mic stays off and nothing is
