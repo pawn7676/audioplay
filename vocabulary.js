@@ -54,7 +54,7 @@ var NATO = expand({
 
 // Ranks.
 var NUMS = expand({
-  1: "one won wan juan wun",
+  1: "one won wan wand juan wun",
   2: "two too tu tue tew tube",
   3: "three tree free thee",
   4: "four for fore ford forth fourth foure forde",
