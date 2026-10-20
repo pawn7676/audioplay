@@ -179,9 +179,9 @@ function pumpSpeech() {
 
   // how: "end" or "error" (the voice's own events),
   // "guard" (no word from the voice in time) or "throw".
-  // Only the guard can lead to a reset: iPadOS 27 often
-  // skips the "started" event, so a piece that ends without
-  // one is normal, not stuck.
+  // Only the guard can lead to a reset: iPadOS 27 can skip
+  // the "started" event, so a piece that ends without one
+  // is normal, not stuck.
   var advance = function (how) {
     if (settled) return;
     settled = true;
@@ -233,27 +233,43 @@ function pumpSpeech() {
                             1200 + text.length * 90);
   } catch (err) { advance("throw"); }
 
-  // No end or error came in time. If the voice says it is
-  // still speaking, only its events went missing: let the
-  // piece finish (waitUntilQuiet waits for it). If it is
-  // idle and the piece never started, the voice is stuck
-  // (Siri or a call can do this): reset it, or the page
-  // goes silent. The log line gives the voice's own state,
-  // since iOS's flags are not always right.
+  // No end or error came in time. What decides is whether
+  // the piece ever started:
+  //   - started, still speaking: only the voice's events
+  //     went missing, so let it finish (waitUntilQuiet
+  //     waits for it)
+  //   - started, now quiet: move on
+  //   - never started: the voice is stuck (Siri, a call,
+  //     or iOS jamming it). Reset it, and say the piece
+  //     once more, so an opponent's move isn't lost; a
+  //     second failure drops it.
+  // The voice's own "speaking" flag can't decide this: a
+  // stuck iOS voice reports speaking=true while nothing
+  // plays and every new piece queues behind it (seen as
+  // started=no speaking=true pending=true). The log line
+  // gives all three.
   function guardTimedOut() {
     var state = "started=" + (tStart ? "yes" : "no") +
                 " speaking=" + speechSynthesis.speaking +
                 " pending=" + speechSynthesis.pending;
-    if (speechSynthesis.speaking) {
+    if (tStart && speechSynthesis.speaking) {
       log("TTS", "no end from the voice yet (" + state +
           ") - letting it finish");
-    } else if (tStart === 0) {
-      log("TTS", "utterance never started (" + state +
-          ") - resetting speech synthesis");
-      speechSynthesis.cancel();
-      speechSynthesis.resume();
-    } else {
+      return;
+    }
+    if (tStart) {
       log("TTS", "no end from the voice (" + state + ") - moving on");
+      return;
+    }
+    log("TTS", "utterance never started (" + state +
+        ") - resetting speech synthesis, " +
+        (item.retried ? "dropping \"" + text + "\""
+                      : "then saying it again"));
+    speechSynthesis.cancel();
+    speechSynthesis.resume();
+    if (!item.retried) {
+      item.retried = true;
+      speakQueue.unshift(item);
     }
   }
 }
