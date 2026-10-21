@@ -16,7 +16,9 @@
 
 "use strict";
 
-// RULES, the rules of chess, comes from rules.js.
+// RULES, the rules of chess, comes from rules.js, which
+// audioplay.html loads from the "shared" folder next to
+// this page's folder. boot.js checks that it is there.
 
 // The account and the current game, shared by the whole
 // page. clearGame() lists the game's fields.
@@ -885,8 +887,8 @@ function joinGame(gameId) {
 // After sign-in, and after practice (which closes every
 // connection): learn who we are, watch for new games, and
 // join a game already in progress if there is one. If it
-// fails (the iPad was offline, say), the connection watch
-// tries again.
+// fails (the device was offline, say), the connection
+// watch tries again.
 var accountConnecting = false;
 
 function connectAccount() {
@@ -916,14 +918,14 @@ function connectAccount() {
 // ---- the connection watch ----
 
 // A connection can die without a word: the Wi-Fi drops for
-// a moment, or the iPad dozes, and the request just hangs,
-// with no end and no error, so nothing above notices.
-// Lichess sends a sign of life (a blank line) every few
-// seconds on both streams, so one that has sent nothing
-// for CONNECTION_QUIET_MS is taken for dead and opened
-// again. The same goes for a try that hangs, and for an
-// account that never connected (the iPad was offline when
-// the page loaded).
+// a moment, or the device dozes, and the request just
+// hangs, with no end and no error, so nothing above
+// notices. Lichess sends a sign of life (a blank line)
+// every few seconds on both streams, so one that has sent
+// nothing for CONNECTION_QUIET_MS is taken for dead and
+// opened again. The same goes for a try that hangs, and
+// for an account that never connected (the device was
+// offline when the page loaded).
 //
 // Checked every CONNECTION_WATCH_MS, and at once when the
 // page comes back into view. boot.js starts it. NET lines

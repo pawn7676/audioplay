@@ -39,7 +39,8 @@ The scripts, in the order audioplay.html loads them:
 - `voice.js` - the page's voice
 - `chimes.js` - the move-confirm chime
 - `mic.js` - speech recognition
-- `rules.js` - the rules of chess
+- `rules.js` - the rules of chess (kept in the "shared"
+  folder: see below)
 - `lichess.js` - sign-in, streams, moves, seeks
 - `board.js` - draws the board
 - `touch.js` - tap-to-move
@@ -54,6 +55,17 @@ The scripts share one global scope. Order only matters for
 code that runs as a file loads: settings.js and log.js
 first, boot.js last.
 
+rules.js is shared with other projects, so there is only
+one copy of it, and it isn't in audioplay's folder: it is
+in a folder named "shared", next to audioplay's folder.
+audioplay.html loads it as `../shared/rules.js` (".."
+means up one folder), which works the same locally and
+once published, as long as "shared" sits next to
+audioplay's folder in both places. Don't change rules.js
+for audioplay alone. If it is missing, boot.js says so on
+the status line, and the page won't sign in or play until
+it is back.
+
 The other files:
 
 - `audioplay.html` - the layout
@@ -64,8 +76,9 @@ The other files:
   board.js
 - `icon.png` - the home-screen icon
 - `index.html` - the site's front door: it only sends the
-  short address on to audioplay.html (without it, GitHub
-  Pages shows this README there instead)
+  short address on to audioplay.html (without it, some
+  hosts show this README there instead, or a list of the
+  files)
 - `README.md` - this file, which the page doesn't load
 - `LICENSE` - the GNU General Public License, version 3:
   audioplay's license
@@ -116,8 +129,10 @@ lichess.org and back works, since that is plain
 navigation, but every request the page itself makes fails
 with "Load failed": the sign-in can't trade its code for
 a token, and nothing else could reach Lichess either.
-GitHub Pages works, and files can be uploaded on
-github.com from the iPad, with no git.
+
+Publish the "shared" folder (with rules.js) on the same
+host, next to audioplay's folder, as it is locally: the
+page loads rules.js from there.
 
 The return address for sign-in is this page's own address
 (`redirectUri()` in lichess.js), so moving to a new host
@@ -168,14 +183,14 @@ can be reached from the page at all (a NET line).
   views alike. iOS drops the lock whenever the page is
   hidden; it is taken back on the next repaint tick.
 - A connection to Lichess can die without an error (a
-  Wi-Fi blip, the iPad dozing): the request just hangs.
+  Wi-Fi blip, the device dozing): the request just hangs.
   Both streams send a blank line every few seconds, so
   lichess.js reopens one that has been silent for 20
   seconds, and checks again as soon as the page is back
   in view.
 - Bluetooth headphones switch to a call mode when the mic
-  opens, which can clip words and change volume. The iPad's
-  own speaker is the tested setup.
+  opens, which can clip words and change volume. The
+  built-in speaker is the tested setup.
 - The mic's "sound" and "speech" start events no longer
   fire on iPadOS 27; results still arrive.
 - Keys from a hardware keyboard reach the page only while

@@ -23,8 +23,8 @@
      takes pinch-zoom away from people who need it. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>audioplay</title>
-<!-- The icon: a cream knight on near black, for the iPad
-     home screen. iOS rounds the corners itself, so icon.png
+<!-- The icon: a cream knight on near black, for the home
+     screen. iOS rounds the corners itself, so icon.png
      is a plain opaque 180x180 square. Two tags, because one
      tag naming both uses is not reliably honoured. -->
 <link rel="apple-touch-icon" href="icon.png">
@@ -405,7 +405,12 @@
 
 <!-- The program, one file per job. Order only matters for
      code that runs as a file loads: settings.js and log.js
-     first, and boot.js last. -->
+     first, and boot.js last.
+     rules.js is shared with other projects, so it isn't in
+     this page's folder: it is in the "shared" folder next
+     to it, and ".." (up one folder) reaches it, both
+     locally and once published. If it is missing, boot.js
+     says so on the status line. -->
 <script src="settings.js"></script>
 <script src="log.js"></script>
 <script src="stall.js"></script>
@@ -417,7 +422,7 @@
 <script src="voice.js"></script>
 <script src="chimes.js"></script>
 <script src="mic.js"></script>
-<script src="rules.js"></script>
+<script src="../shared/rules.js"></script>
 <script src="lichess.js"></script>
 <script src="board.js"></script>
 <script src="touch.js"></script>

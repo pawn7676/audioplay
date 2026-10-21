@@ -14,7 +14,9 @@ audioplay is not affiliated with or endorsed by Lichess
 ## audioplay's own code
 
 Every file not listed below - the pages (`audioplay.html`,
-`index.html`), their scripts and CSS, and the icon (`icon.png`).
+`index.html`), their scripts and CSS, and the icon (`icon.png`) -
+and `rules.js`, the rules of chess, which audioplay loads from the
+"shared" folder next to its own.
 
 Copyright (C) 2026 pawn7676
 
@@ -67,7 +69,8 @@ Lichess lists the set the same way in
 
 ## chess.js
 
-`rules.js` records each move with the same fields and flag letters as
+`rules.js` (in the "shared" folder, next to audioplay's) records
+each move with the same fields and flag letters as
 [chess.js](https://github.com/jhlywa/chess.js) (Copyright (c) 2025,
 Jeff Hlywa, BSD-2-Clause): `{from, to, piece, color, captured,
 promotion, flags}`, with flags c, e, b, p, k and q. No chess.js code

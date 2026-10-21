@@ -6,8 +6,9 @@
  *    - a game is on (practice too)
  *    - a seek or challenge is waiting for an answer
  *    - Clock View is up
- *  and is let go otherwise, so the iPad can sleep between
- *  games. It is the same in Board View and Clock View.
+ *  and is let go otherwise, so the device can sleep
+ *  between games. It is the same in Board View and Clock
+ *  View.
  *
  *  One rule, in keepAwakeCheck(). boot.js runs it on every
  *  repaint tick (twice a second), which also takes the

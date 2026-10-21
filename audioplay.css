@@ -387,7 +387,7 @@ label.menuRow { cursor: pointer; }
    the width (a digit is about 0.62em wide, so two digits
    fit at 40vw / 1.24), leaving the rest as space between
    and around them. 62vh caps the height so Safari's
-   toolbar does not clip them. Sizes tuned by eye on the
+   toolbar does not clip them. Sizes tuned by eye on an
    iPad. */
 .clockTime {
   flex: 1; display: flex; align-items: center; justify-content: center;

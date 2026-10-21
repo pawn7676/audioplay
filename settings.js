@@ -94,9 +94,10 @@ function loadStoredSettings() {
 }
 
 // The voice. Leave VOICE_NAME empty to use the system voice,
-// chosen in iPad Settings > Accessibility > Spoken Content >
-// Voices; that is the only way to get a Premium or Enhanced
-// voice. Otherwise name one: Samantha, Daniel, Karen...
+// chosen (on an iPad or iPhone) in Settings >
+// Accessibility > Spoken Content > Voices; that is the
+// only way to get a Premium or Enhanced voice. Otherwise
+// name one: Samantha, Daniel, Karen...
 var VOICE_NAME = "";
 var SPEAK_RATE = 1.0;
 var SPEAK_PITCH = 1.0;

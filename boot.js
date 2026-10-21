@@ -5,6 +5,10 @@
  *  screen lock), finish a Lichess sign-in if this load is
  *  the return from one, then connect the account if a
  *  token is stored.
+ *
+ *  First, though, it checks that rules.js has loaded: it is
+ *  the one file kept outside this page's folder (see
+ *  rulesLoaded), so the one most likely to go missing.
  */
 
 "use strict";
@@ -46,6 +50,31 @@ function repaintTick() {
   }
 }
 
+// rules.js is shared with other projects, so it lives in
+// the "shared" folder next to this page's folder, and
+// audioplay.html loads it from there. A missing script
+// file makes no error of its own, so this check is the
+// only sign of it. Without it nothing can play: joining a
+// game, practice, a seek or a challenge would all fail. So
+// the page stops here, before signing in or connecting:
+// the status line and the log say why, the controls are
+// switched off (but Log, so the log can be read), and
+// nothing else starts. Fixing it means putting rules.js
+// back and reloading.
+function rulesLoaded() {
+  if (typeof RULES !== "undefined") return true;
+  var why = "rules.js is missing - the page can't play without it " +
+            "(keep it in the \"shared\" folder, next to this page's folder).";
+  log("ERR", why);
+  uiStatus(why);
+  var controls = document.querySelectorAll(
+    "#panelLichess button, #panelLichess input, #panelLichess select");
+  Array.prototype.forEach.call(controls, function (c) {
+    if (c.id !== "btnLog") c.disabled = true;
+  });
+  return false;
+}
+
 function boot() {
   log("UI", "script loaded");
   loadStoredSettings();   // before the page is wired up
@@ -56,6 +85,7 @@ function boot() {
   initKeys();
   declareAudioSession();
   startStallWatch();
+  if (!rulesLoaded()) return;
   startConnectionWatch();
   wireKeepAwake();
   // A failed sign-in has already said why on the status
