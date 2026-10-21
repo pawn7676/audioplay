@@ -46,7 +46,7 @@ var NATO = expand({
      "charlotte shortly channel chili chilly",
   d: "delta deltas dealt delt de dee",
   e: "echo ecko eco eggo echoes aiko",
-  f: "foxtrot foxtrots foxtrott foxdrop fox ef eff " +
+  f: "fox foxtrot foxtrots foxtrott foxdrop ef eff " +
      "astra ostra otra austra oxtra",
   g: "golf golfs gulf gold goal gee call",
   h: "hotel hotels hotell motel aitch age"

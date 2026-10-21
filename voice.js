@@ -20,7 +20,7 @@
 "use strict";
 
 var SPOKEN_FILE = { a: "alpha", b: "bravo", c: "charlie", d: "delta",
-  e: "echo", f: "foxtrot", g: "golf", h: "hotel" };
+  e: "echo", f: "fox", g: "golf", h: "hotel" };
 var SPOKEN_PIECE = { K: "king", Q: "queen", R: "rook", B: "bishop", N: "knight" };
 
 var speechReady = false, speakQueue = [], speaking = false, speakGuard = null;
@@ -354,7 +354,7 @@ function sanToSpeech(san) {
 // the Moves spoken setting picks.
 function moveToSpeech(san, uci) {
   if (MOVE_SPEECH === "squares" && uci && uci.length >= 4) {
-    // "foxtrot 1, charlie 4": the same four items the
+    // "fox 1, charlie 4": the same four items the
     // player speaks. The comma gives a short pause.
     var words = spokenSquare(uci.slice(0, 2)) + ", " +
                 spokenSquare(uci.slice(2, 4));

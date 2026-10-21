@@ -63,7 +63,7 @@ var SHOW_RATINGS = false;
 var RATINGS_KEY = "audioplay.ratings";
 
 // How the opponent's moves are spoken:
-//   squares  "foxtrot 1, charlie 4" - the move's two squares
+//   squares  "fox 1, charlie 4" - the move's two squares
 //            (the default)
 //   pieces   "bishop charlie 4" - the piece and where it went
 var MOVE_SPEECH = "squares";

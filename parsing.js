@@ -4,7 +4,7 @@
  *  to-rank, with NATO words for the files.
  *
  *    "echo two echo four"       e2e4
- *    "golf one foxtrot three"   Ng1-f3 - no piece names
+ *    "golf one fox three"       Ng1-f3 - no piece names
  *    "echo one golf one"        castling is the king's move
  *    "echo seven echo eight"    promotes to a queen...
  *    "... equals knight"        ...unless a piece is named
