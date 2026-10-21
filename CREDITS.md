@@ -15,8 +15,6 @@ Audioplay is not affiliated with or endorsed by Lichess
 
 Every file not listed below - the pages (`audioplay.html`,
 `index.html`), their scripts and CSS, and the icon (`icon.png`).
-`rules.js` is a file shared with pawn7676's other projects (the
-trainer), the same file in each, under the same license.
 
 Copyright (C) 2026 pawn7676
 

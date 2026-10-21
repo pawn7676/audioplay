@@ -1,17 +1,13 @@
 /*  rules.js - the rules of chess.
  *
- *  A SHARED FILE. The same rules.js is used, unchanged, by
- *  more than one of pawn7676's projects: the trainer and
- *  Audioplay so far, and maybe more later. A change made
- *  for one project is copied into all of them, so every
- *  copy stays the same file. For that reason its comments
- *  name no project's own files; each project's README says
- *  how that project uses it.
+ *  A shared file: the same rules.js is used, unchanged, in
+ *  more than one project. So a project may not use every
+ *  part of it - toFen() and gameEnd() are there for the
+ *  projects that do. Keep every copy the same.
  *
  *  Copyright (C) 2026 pawn7676. Free software under the
  *  GNU General Public License, version 3 or later: see
- *  LICENSE and CREDITS.md, which every project keeps
- *  beside it.
+ *  LICENSE and CREDITS.md.
  *
  *  What it knows: which moves are legal and what they are
  *  called (SAN, with disambiguation and + or #), castling,
@@ -112,6 +108,8 @@ function makeRules() {
   };
 
   // ---- The position as a FEN ----
+  // (Not every project using this file calls toFen; see
+  // the top.)
   // The one place a position is written out as text - the
   // opposite of load(). All six fields: pieces, side to
   // move, castling, en passant, half-move clock, move
@@ -437,6 +435,8 @@ function makeRules() {
   };
 
   // ---- How the game ends at this position ----
+  // (Not every project using this file calls gameEnd; see
+  // the top.)
   // "mate", "stalemate", "draw" or null (play goes on).
   // "draw" here is insufficient material only: neither side
   // can ever mate, whatever is played. Repetition and the

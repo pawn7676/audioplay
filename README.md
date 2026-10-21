@@ -39,10 +39,7 @@ The scripts, in the order audioplay.html loads them:
 - `voice.js` - the page's voice
 - `chimes.js` - the move-confirm chime
 - `mic.js` - speech recognition
-- `rules.js` - the rules of chess: a file shared with
-  pawn7676's trainer, the same file in both (see its
-  header). Audioplay uses only its legal moves and move
-  names, not toFen() or gameEnd()
+- `rules.js` - the rules of chess
 - `lichess.js` - sign-in, streams, moves, seeks
 - `board.js` - draws the board
 - `touch.js` - tap-to-move
