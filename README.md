@@ -1,4 +1,4 @@
-# Audioplay
+# audioplay
 
 Voice chess on Lichess for someone playing at a real board,
 away from the screen. Sign in with Lichess, tap Microphone,
@@ -68,7 +68,7 @@ The other files:
   Pages shows this README there instead)
 - `README.md` - this file, which the page doesn't load
 - `LICENSE` - the GNU General Public License, version 3:
-  Audioplay's license
+  audioplay's license
 - `CREDITS.md` - others' work used here (the pieces,
   Lichess's colours and API, and what rules.js matches),
   with their licenses
@@ -184,12 +184,12 @@ can be reached from the page at all (a NET line).
 
 ## Credits and license
 
-Copyright (C) 2026 pawn7676. Audioplay is free software
+Copyright (C) 2026 pawn7676. audioplay is free software
 under the GNU General Public License, version 3 or later
 (`LICENSE`). The cburnett pieces, Lichess's colours and
 API, and the libraries rules.js is written to match
 (chess.js, python-chess) are credited in `CREDITS.md`,
 with their licenses. Keep `LICENSE` and `CREDITS.md` with
-Audioplay's files wherever they're published.
+audioplay's files wherever they're published.
 
-Audioplay is not affiliated with or endorsed by Lichess.
+audioplay is not affiliated with or endorsed by Lichess.
