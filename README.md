@@ -41,6 +41,8 @@ The scripts, in the order audioplay.html loads them:
 - `mic.js` - speech recognition
 - `rules.js` - the rules of chess (kept in the "shared"
   folder: see below)
+- `pieces.js` - the twelve piece pictures, drawn by
+  board.js (kept in the "shared" folder: see below)
 - `lichess.js` - sign-in, streams, moves, seeks
 - `board.js` - draws the board
 - `touch.js` - tap-to-move
@@ -55,16 +57,19 @@ The scripts share one global scope. Order only matters for
 code that runs as a file loads: settings.js and log.js
 first, boot.js last.
 
-rules.js is shared with other projects, so there is only
-one copy of it, and it isn't in audioplay's folder: it is
-in a folder named "shared", next to audioplay's folder.
-audioplay.html loads it as `../shared/rules.js` (".."
+rules.js and pieces.js are shared with other projects, so
+there is only one copy of each, and they aren't in
+audioplay's folder: they are in a folder named "shared",
+next to audioplay's folder. audioplay.html loads them as
+`../shared/rules.js` and `../shared/pieces.js` (".."
 means up one folder), which works the same locally and
 once published, as long as "shared" sits next to
-audioplay's folder in both places. Don't change rules.js
-for audioplay alone. If it is missing, boot.js says so on
-the status line, and the page won't sign in or play until
-it is back.
+audioplay's folder in both places. Don't change either
+for audioplay alone: a change reaches every project. If
+rules.js is missing, boot.js says so on the status line,
+and the page won't sign in or play until it is back. If
+pieces.js is missing, the board is drawn with no pieces
+and the log says why (an ERR line); the game still plays.
 
 The other files:
 
@@ -72,8 +77,6 @@ The other files:
 - `audioplay.css` - the look
 - `keys.css` - the look of typing, which shows only in
   hybrid and keys modes
-- `pieces.svg` - the twelve piece pictures, drawn by
-  board.js
 - `icon.png` - the home-screen icon
 - `index.html` - the site's front door: it only sends the
   short address on to audioplay.html (without it, some
@@ -130,9 +133,9 @@ navigation, but every request the page itself makes fails
 with "Load failed": the sign-in can't trade its code for
 a token, and nothing else could reach Lichess either.
 
-Publish the "shared" folder (with rules.js) on the same
-host, next to audioplay's folder, as it is locally: the
-page loads rules.js from there.
+Publish the "shared" folder (with rules.js and pieces.js)
+on the same host, next to audioplay's folder, as it is
+locally: the page loads both from there.
 
 The return address for sign-in is this page's own address
 (`redirectUri()` in lichess.js), so moving to a new host

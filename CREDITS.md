@@ -34,13 +34,16 @@ General Public License (`LICENSE`) for more details.
 
 ## Piece artwork - cburnett
 
-The chess pieces in `pieces.svg`: the cburnett set, by Colin M.L.
-Burnett ([Cburnett](https://commons.wikimedia.org/wiki/User:Cburnett)
-on Wikimedia Commons) - the same set Lichess uses. He offers it under
+The chess pieces in `pieces.js` (in the "shared" folder next to
+audioplay's, one copy for every project; its top comment gives this
+credit too): the cburnett set, by Colin M.L. Burnett
+([Cburnett](https://commons.wikimedia.org/wiki/User:Cburnett) on
+Wikimedia Commons) - the same set Lichess uses. He offers it under
 four licenses, any one of which may be chosen: GFDL 1.2 or later,
 CC BY-SA 3.0, BSD (3-clause) and GPL-2.0-or-later. It's used here
 under GPL-2.0-or-later, as GPL-3.0 with the rest of audioplay
-(`LICENSE`), arranged by pawn7676 into one grid of twelve. Source:
+(`LICENSE`, and the copy of it in "shared", beside `pieces.js`).
+Source:
 [Wikimedia Commons, SVG chess pieces](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces);
 Lichess lists the set the same way in
 [lila's COPYING.md](https://github.com/lichess-org/lila/blob/master/COPYING.md).

@@ -8,7 +8,8 @@
      The page's layout. The look is in audioplay.css (and
      keys.css for typing), the program in the .js files
      loaded at the bottom, and the piece pictures in
-     pieces.svg. The project's notes are in README.md.
+     pieces.js (in the "shared" folder, like rules.js). The
+     project's notes are in README.md.
 
      Copyright (C) 2026 pawn7676. Free software under the
      GNU General Public License, version 3 or later: see
@@ -406,11 +407,13 @@
 <!-- The program, one file per job. Order only matters for
      code that runs as a file loads: settings.js and log.js
      first, and boot.js last.
-     rules.js is shared with other projects, so it isn't in
-     this page's folder: it is in the "shared" folder next
-     to it, and ".." (up one folder) reaches it, both
-     locally and once published. If it is missing, boot.js
-     says so on the status line. -->
+     rules.js and pieces.js are shared with other projects,
+     so they aren't in this page's folder: they are in the
+     "shared" folder next to it, and ".." (up one folder)
+     reaches it, both locally and once published. If
+     rules.js is missing, boot.js says so on the status
+     line; if pieces.js is, board.js says so in the log, and
+     the board has no pieces. -->
 <script src="settings.js"></script>
 <script src="log.js"></script>
 <script src="stall.js"></script>
@@ -423,6 +426,7 @@
 <script src="chimes.js"></script>
 <script src="mic.js"></script>
 <script src="../shared/rules.js"></script>
+<script src="../shared/pieces.js"></script>
 <script src="lichess.js"></script>
 <script src="board.js"></script>
 <script src="touch.js"></script>

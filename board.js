@@ -10,9 +10,11 @@
  *  colour stops are chessground's (Lichess's board, under
  *  the GPL, version 3 or later). See CREDITS.md.
  *
- *  The piece pictures come from pieces.svg, a grid of all
- *  twelve. It is drawn once at start onto a hidden sheet at
- *  board size, and each piece is copied from its cell.
+ *  The piece pictures come from pieces.js, which is shared
+ *  with other projects, so it is in the "shared" folder next
+ *  to this page's folder (audioplay.html loads it). Each of
+ *  the twelve is drawn once at start onto a small hidden
+ *  canvas, one square in size, and copied from there.
  */
 
 "use strict";
@@ -24,11 +26,10 @@ var mini = null, miniCtx = null;
 var MINI_CELL = 144, MINI_PX = MINI_CELL * 8;
 var BOARD_FILES = "abcdefgh";
 
-// Where each piece sits in pieces.svg: white on the top
-// row, black on the bottom, columns in this order.
-var PIECE_SHEET = "pieces.svg";
-var PIECE_COL = { k: 0, q: 1, r: 2, b: 3, n: 4, p: 5 };
-var PIECE_ROW = { w: 0, b: 1 };
+// A FEN letter's piece, as pieces.js names its pictures:
+// "white-king", "black-pawn" and so on.
+var PIECE_NAMES = { k: "king", q: "queen", r: "rook",
+                    b: "bishop", n: "knight", p: "pawn" };
 
 // 0 for a light square, 1 for dark. Square 0 is the
 // top-left of the drawing.
@@ -37,36 +38,52 @@ function sqClass(i) {
   return (r + f) % 2 === 0 ? 0 : 1;
 }
 
-// The pieces at board size, or null until pieces.svg has
-// loaded (the board is drawn without pieces until then).
-// Drawing the picture onto a canvas once, then copying
-// from that, means the picture is only drawn at one size.
-var pieceSheet = null;
+// The pieces at square size, by FEN letter ("K" the white
+// king, "p" a black pawn). Each one is missing until its
+// picture has loaded (the board is drawn without it until
+// then). Drawing each picture onto a canvas once, then
+// copying from that, means it is only drawn at one size.
+var pieceArt = {};
 
+// Without pieces.js the board is drawn with no pieces, and
+// the log says why; the game itself still plays.
 function bakePieces() {
-  var img = new Image();
-  img.onerror = function () {
-    log("ERR", "piece pictures failed to load: " + PIECE_SHEET);
-  };
-  img.onload = function () {
-    var cv = document.createElement("canvas");
-    cv.width = MINI_CELL * 6; cv.height = MINI_CELL * 2;
-    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-    pieceSheet = cv;
-    renderMiniBoard();
-  };
-  img.src = PIECE_SHEET;
+  if (typeof PIECE_SVG === "undefined") {
+    log("ERR", "pieces.js is missing - no piece pictures (keep " +
+        "it in the \"shared\" folder, next to this page's folder)");
+    return;
+  }
+  ["w", "b"].forEach(function (c) {
+    Object.keys(PIECE_NAMES).forEach(function (t) {
+      var name = (c === "w" ? "white-" : "black-") + PIECE_NAMES[t];
+      var art = PIECE_SVG[name];
+      if (!art) { log("ERR", "pieces.js has no picture named " + name); return; }
+      // The picture wrapped in an <svg> of its own. Without
+      // xmlns (a label, not a download) the browser won't
+      // draw an <svg> that stands alone like this.
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' +
+                PIECE_VIEWBOX + '" width="' + MINI_CELL + '" height="' +
+                MINI_CELL + '">' + art + "</svg>";
+      var img = new Image();
+      img.onerror = function () {
+        log("ERR", "piece picture failed to load: " + name);
+      };
+      img.onload = function () {
+        var cv = document.createElement("canvas");
+        cv.width = MINI_CELL; cv.height = MINI_CELL;
+        cv.getContext("2d").drawImage(img, 0, 0, MINI_CELL, MINI_CELL);
+        pieceArt[c === "w" ? t.toUpperCase() : t] = cv;
+        renderMiniBoard();
+      };
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    });
+  });
 }
 
 // Draws one piece (a FEN letter) into the square at x, y.
 function drawPiece(p, x, y) {
-  if (!pieceSheet) return;
-  var row = PIECE_ROW[p === p.toUpperCase() ? "w" : "b"];
-  var col = PIECE_COL[p.toLowerCase()];
-  if (row == null || col == null) return;
-  miniCtx.drawImage(pieceSheet,
-                    col * MINI_CELL, row * MINI_CELL, MINI_CELL, MINI_CELL,
-                    x, y, MINI_CELL, MINI_CELL);
+  var art = pieceArt[p];
+  if (art) miniCtx.drawImage(art, x, y, MINI_CELL, MINI_CELL);
 }
 
 // Black at the bottom when you play black.
