@@ -27,6 +27,9 @@ var speechReady = false, speakQueue = [], speaking = false, speakGuard = null;
 var voicePicked = null, spokeOnce = false;
 var missLogged = null;
 
+// How often a piece being spoken is checked on (pumpSpeech).
+var BUSY_POLL_MS = 50;
+
 // iOS often reports no voices until speech has been used,
 // and does not reliably say when they arrive, so the list
 // is polled.
@@ -177,6 +180,12 @@ function pumpSpeech() {
   var tStart = 0;
   var settled = false;
 
+  // How long the voice was seen busy with this piece.
+  // iPadOS 27 can send neither "started" nor "ended" for a
+  // piece it plays in full; then this is the only sign it
+  // was spoken (see guardTimedOut).
+  var busyMs = 0, busyPoll = null;
+
   // how: "end" or "error" (the voice's own events),
   // "guard" (no word from the voice in time) or "throw".
   // Only the guard can lead to a reset: iPadOS 27 can skip
@@ -186,6 +195,7 @@ function pumpSpeech() {
     if (settled) return;
     settled = true;
     clearTimeout(speakGuard);
+    clearInterval(busyPoll);
     if (how === "guard") guardTimedOut();
 
     var ceiling = Math.max(2500, text.length * 140);
@@ -229,27 +239,37 @@ function pumpSpeech() {
       advance("error");
     };
     speechSynthesis.speak(u);
+    busyPoll = setInterval(function () {
+      if (speechSynthesis.speaking) busyMs += BUSY_POLL_MS;
+    }, BUSY_POLL_MS);
     speakGuard = setTimeout(function () { advance("guard"); },
                             1200 + text.length * 90);
   } catch (err) { advance("throw"); }
 
   // No end or error came in time. What decides is whether
-  // the piece ever started:
+  // the piece ever started, or was at least seen playing:
   //   - started, still speaking: only the voice's events
   //     went missing, so let it finish (waitUntilQuiet
   //     waits for it)
   //   - started, now quiet: move on
-  //   - never started: the voice is stuck (Siri, a call,
-  //     or iOS jamming it). Reset it, and say the piece
-  //     once more, so an opponent's move isn't lost; a
-  //     second failure drops it.
-  // The voice's own "speaking" flag can't decide this: a
-  // stuck iOS voice reports speaking=true while nothing
-  // plays and every new piece queues behind it (seen as
-  // started=no speaking=true pending=true). The log line
-  // gives all three.
+  //   - never started, but seen busy and now quiet: it
+  //     played with neither event (seen on the first
+  //     piece after the silent primer), so move on.
+  //     Saying it again was heard as a repeat: "Practice
+  //     mode. Practice mode. You are white."
+  //   - otherwise: the voice is stuck (Siri, a call, or
+  //     iOS jamming it). Reset it, and say the piece once
+  //     more, so an opponent's move isn't lost; a second
+  //     failure drops it.
+  // The voice's "speaking" flag right now can't decide
+  // this alone: a stuck iOS voice reports speaking=true
+  // while nothing plays and every new piece queues behind
+  // it (seen as started=no speaking=true pending=true).
+  // Busy earlier and quiet now is what marks a piece that
+  // really played. The log line gives all four.
   function guardTimedOut() {
     var state = "started=" + (tStart ? "yes" : "no") +
+                " busy=" + busyMs + "ms" +
                 " speaking=" + speechSynthesis.speaking +
                 " pending=" + speechSynthesis.pending;
     if (tStart && speechSynthesis.speaking) {
@@ -259,6 +279,11 @@ function pumpSpeech() {
     }
     if (tStart) {
       log("TTS", "no end from the voice (" + state + ") - moving on");
+      return;
+    }
+    if (busyMs && !speechSynthesis.speaking && !speechSynthesis.pending) {
+      log("TTS", "no events from the voice, but it played (" +
+          state + ") - moving on");
       return;
     }
     log("TTS", "utterance never started (" + state +
