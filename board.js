@@ -2,8 +2,13 @@
  *
  *  Draws the position in api.pos onto the #mini canvas, with
  *  the last move tinted, a checked king's square glowing
- *  red, and a tapped piece highlighted. Colours match
- *  lichess.org. The board flips when you play black.
+ *  red, and a tapped piece highlighted. The board flips
+ *  when you play black.
+ *
+ *  The colours are Lichess's: the squares, the last-move
+ *  and selected tints, and the check glow, whose four
+ *  colour stops are chessground's (Lichess's board, under
+ *  the GPL, version 3 or later). See CREDITS.md.
  *
  *  The piece pictures come from pieces.svg, a grid of all
  *  twelve. It is drawn once at start onto a hidden sheet at
@@ -122,7 +127,8 @@ function renderMiniBoard() {
       : (chosen ? "#636e40" : moved ? "#a8a23b" : "#b58863");
     miniCtx.fillRect(x, y, MINI_CELL, MINI_CELL);
     if (i === checkSq) {
-      // Lichess's red check glow
+      // Lichess's red check glow: chessground's colour
+      // stops (see CREDITS.md)
       var cx = x + MINI_CELL / 2, cy = y + MINI_CELL / 2;
       var halo = miniCtx.createRadialGradient(cx, cy, 0,
                                               cx, cy, MINI_CELL * 0.708);

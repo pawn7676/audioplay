@@ -16,7 +16,7 @@
 
 "use strict";
 
-var RULES = makeRules();   // rules.js must load before this file
+// RULES, the rules of chess, comes from rules.js.
 
 // The account and the current game, shared by the whole
 // page. clearGame() lists the game's fields.

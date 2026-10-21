@@ -39,7 +39,10 @@ The scripts, in the order audioplay.html loads them:
 - `voice.js` - the page's voice
 - `chimes.js` - the move-confirm chime
 - `mic.js` - speech recognition
-- `rules.js` - the rules of chess
+- `rules.js` - the rules of chess: a file shared with
+  pawn7676's trainer, the same file in both (see its
+  header). Audioplay uses only its legal moves and move
+  names, not toFen() or gameEnd()
 - `lichess.js` - sign-in, streams, moves, seeks
 - `board.js` - draws the board
 - `touch.js` - tap-to-move
@@ -51,8 +54,8 @@ The scripts, in the order audioplay.html loads them:
 - `boot.js` - starts it all
 
 The scripts share one global scope. Order only matters for
-code that runs as a file loads: rules.js before lichess.js,
-boot.js last.
+code that runs as a file loads: settings.js and log.js
+first, boot.js last.
 
 The other files:
 
@@ -67,6 +70,11 @@ The other files:
   short address on to audioplay.html (without it, GitHub
   Pages shows this README there instead)
 - `README.md` - this file, which the page doesn't load
+- `LICENSE` - the GNU General Public License, version 3:
+  Audioplay's license
+- `CREDITS.md` - others' work used here (the pieces,
+  Lichess's colours and API, and what rules.js matches),
+  with their licenses
 
 ## How the three modes differ
 
@@ -176,3 +184,15 @@ can be reached from the page at all (a NET line).
 - Keys from a hardware keyboard reach the page only while
   no text box has the focus; keys typed into the Custom
   time or name box stay in that box.
+
+## Credits and license
+
+Copyright (C) 2026 pawn7676. Audioplay is free software
+under the GNU General Public License, version 3 or later
+(`LICENSE`). The cburnett pieces, Lichess's colours and
+API, and the libraries rules.js is written to match
+(chess.js, python-chess) are credited in `CREDITS.md`,
+with their licenses. Keep `LICENSE` and `CREDITS.md` with
+Audioplay's files wherever they're published.
+
+Audioplay is not affiliated with or endorsed by Lichess.

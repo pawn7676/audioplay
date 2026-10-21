@@ -1,8 +1,26 @@
 /*  rules.js - the rules of chess.
  *
- *  Knows which moves are legal and what they are called,
- *  and nothing else: it doesn't evaluate, score, search or
- *  suggest moves. (Lichess bans move assistance.)
+ *  A SHARED FILE. The same rules.js is used, unchanged, by
+ *  more than one of pawn7676's projects: the trainer and
+ *  Audioplay so far, and maybe more later. A change made
+ *  for one project is copied into all of them, so every
+ *  copy stays the same file. For that reason its comments
+ *  name no project's own files; each project's README says
+ *  how that project uses it.
+ *
+ *  Copyright (C) 2026 pawn7676. Free software under the
+ *  GNU General Public License, version 3 or later: see
+ *  LICENSE and CREDITS.md, which every project keeps
+ *  beside it.
+ *
+ *  What it knows: which moves are legal and what they are
+ *  called (SAN, with disambiguation and + or #), castling,
+ *  en passant and promotion; how the game ends at a
+ *  position (gameEnd: mate, stalemate, or a draw by
+ *  insufficient material, by the same rule as
+ *  python-chess); and positions as FENs, both ways: read
+ *  (new Position(fen)) and written (toFen). Nothing else:
+ *  it doesn't evaluate, score, search or suggest moves.
  *
  *  Checked against the standard perft counts, which count
  *  every possible line of play to a given depth: start
@@ -14,9 +32,12 @@
  *  square is off the board exactly when (sq & 0x88) != 0.
  *  Pieces are FEN letters, upper case for white.
  *
- *  makeRules().Position(fen?) has: load, clone, kingSq,
- *  attacked, inCheck, pseudoMoves, apply, legalMoves, uciOf,
- *  sanOf, findUci, applyUci, isGameOver, and turn/board.
+ *  Load it as a plain <script>, before any script that
+ *  uses it. It makes one global, RULES = { Position,
+ *  sqName, nameSq, START }. RULES.Position(fen?) has: load,
+ *  toFen, clone, kingSq, attacked, inCheck, pseudoMoves,
+ *  apply, legalMoves, uciOf, sanOf, findUci, applyUci,
+ *  gameEnd, and turn/board.
  */
 
 "use strict";
@@ -29,7 +50,6 @@ function makeRules() {
   var BISHOP = [17, 15, -17, -15];
   var ROOK = [16, 1, -16, -1];
   var ROYAL = [17, 16, 15, 1, -17, -16, -15, -1];
-
   var BISHOPQ = ["b", "q"], ROOKQ = ["r", "q"];
 
   // Does a slider of one of `types` see `sq` along a clear
@@ -89,6 +109,48 @@ function makeRules() {
     this.ep = (parts[3] && parts[3] !== "-") ? nameSq(parts[3]) : -1;
     this.half = parseInt(parts[4] || "0", 10);
     this.full = parseInt(parts[5] || "1", 10);
+  };
+
+  // ---- The position as a FEN ----
+  // The one place a position is written out as text - the
+  // opposite of load(). All six fields: pieces, side to
+  // move, castling, en passant, half-move clock, move
+  // number. A caller that only cares about the position
+  // itself can keep the first four fields and drop the two
+  // counters.
+  // Two fields are written the way python-chess (and
+  // Lichess) write them, so the same position is always
+  // written the same way:
+  //   - castling only while that king and rook are still
+  //     at home, so a FEN with stale rights can't confuse
+  //     anything
+  //   - the en passant square only when an en passant
+  //     capture can really be played - otherwise 1.e4 c5
+  //     2.Nf3 and 1.Nf3 c5 2.e4 would be two different
+  //     positions
+  Position.prototype.toFen = function () {
+    var b = this.board, rows = [];
+    for (var r = 7; r >= 0; r--) {
+      var row = "", empty = 0;
+      for (var f = 0; f < 8; f++) {
+        var p = b[r * 16 + f];
+        if (!p) { empty++; continue; }
+        if (empty) { row += empty; empty = 0; }
+        row += p;
+      }
+      if (empty) row += empty;
+      rows.push(row);
+    }
+    var c = "";
+    if (this.castle.K && b[4] === "K" && b[7] === "R") c += "K";
+    if (this.castle.Q && b[4] === "K" && b[0] === "R") c += "Q";
+    if (this.castle.k && b[116] === "k" && b[119] === "r") c += "k";
+    if (this.castle.q && b[116] === "k" && b[112] === "r") c += "q";
+    var ep = "-";
+    if (this.ep >= 0 && this.legalMoves().some(function (m) { return m.flags.indexOf("e") >= 0; })) {
+      ep = sqName(this.ep);
+    }
+    return rows.join("/") + " " + this.turn + " " + (c || "-") + " " + ep + " " + this.half + " " + this.full;
   };
 
   // Called once per candidate move, so it skips the
@@ -151,7 +213,8 @@ function makeRules() {
   // checking whether they leave the king in check. Each is
   // {from, to, piece, color, captured, promotion, flags};
   // flags: c capture, e en passant, b pawn double step,
-  // p promotion, k/q castling.
+  // p promotion, k/q castling. (The same fields and flag
+  // letters as chess.js uses: see CREDITS.md.)
   Position.prototype.pseudoMoves = function () {
     var out = [], b = this.board, us = this.turn, them = us === "w" ? "b" : "w";
 
@@ -373,14 +436,57 @@ function makeRules() {
     return { move: m, san: san };
   };
 
-  Position.prototype.isGameOver = function () {
-    return this.legalMoves().length === 0;
+  // ---- How the game ends at this position ----
+  // "mate", "stalemate", "draw" or null (play goes on).
+  // "draw" here is insufficient material only: neither side
+  // can ever mate, whatever is played. Repetition and the
+  // 50-move rule depend on the moves before, which a
+  // position doesn't hold, so they're left out.
+  // It's the same material rule python-chess uses, so this
+  // file agrees with anything worked out with python-chess:
+  // a draw for K v K, K+N v K, and bishops that are all on
+  // squares of one color - but NOT for K+N+N v K or bishops
+  // on opposite colors, where mate is possible (see
+  // cannotMate, below).
+  Position.prototype.gameEnd = function () {
+    if (!this.legalMoves().length) return this.inCheck(this.turn) ? "mate" : "stalemate";
+    if (cannotMate(this.board, "w") && cannotMate(this.board, "b")) return "draw";
+    return null;
   };
 
-  return {
-    Position: Position,
-    sqName: sqName,
-    nameSq: nameSq,
-    START: START
-  };
+  // True if `color` could never give mate, however the game
+  // went on - even with the other side playing along. Only
+  // three cases:
+  //   - a bare king
+  //   - a king and ONE knight, when the other side has
+  //     nothing but its king and queens: any other piece of
+  //     theirs could block their own king in for a knight
+  //     mate
+  //   - a king and bishops, when every bishop on the board
+  //     stands on squares of one shade, and there's no pawn
+  //     or knight on the board - one of those could block a
+  //     king in too
+  // A pawn, rook or queen can always mate in the end.
+  function cannotMate(b, color) {
+    var mine = [], theirs = [];  // each side's pieces but the king
+    var shades = {};             // the square shades bishops stand on
+    for (var sq = 0; sq < 128; sq++) {
+      if (!onBoard(sq)) { sq += 7; continue; }
+      var t = typeOf(b[sq]);
+      if (!t || t === "k") continue;
+      (colorOf(b[sq]) === color ? mine : theirs).push(t);
+      if (t === "b") shades[((sq >> 4) + (sq & 15)) % 2] = true;
+    }
+    function only(list, types) {
+      return list.every(function (x) { return types.indexOf(x) >= 0; });
+    }
+    if (!mine.length) return true;
+    if (!only(mine, ["n", "b"])) return false;
+    if (mine.indexOf("n") >= 0) return mine.length === 1 && only(theirs, ["q"]);
+    return Object.keys(shades).length === 1 && only(theirs, ["b", "r", "q"]);
+  }
+
+  return { Position: Position, sqName: sqName, nameSq: nameSq, START: START };
 }
+
+var RULES = makeRules();

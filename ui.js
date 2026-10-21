@@ -538,8 +538,8 @@ function wireGames() {
 
 // ---- the Settings menu ----
 
-// A pop-up menu over the dimmed page, like the trainer's.
-// Starts closed on every load.
+// A pop-up menu over the dimmed page. Starts closed on
+// every load.
 function settingsMenuOpen() {
   return !!settingsBackdrop && !settingsBackdrop.hidden;
 }

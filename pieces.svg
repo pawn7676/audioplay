@@ -1,7 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 90"
      width="864" height="288">
-<!-- pieces.svg - the twelve piece pictures (the cburnett
-     set), drawn onto the board by board.js.
+<!-- pieces.svg - the twelve piece pictures, drawn onto the
+     board by board.js.
+
+     The pieces are the cburnett set, by Colin M.L. Burnett,
+     used under the GNU General Public License, version 2
+     or later (here as version 3, with the rest of
+     Audioplay: see LICENSE). Arranged into this one grid
+     by pawn7676, 2026. Details in CREDITS.md.
 
      A grid of 45x45 cells: white on the top row, black on
      the bottom, each row in the order king, queen, rook,
