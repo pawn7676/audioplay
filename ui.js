@@ -1,11 +1,12 @@
-/*  ui.js - the page: the button row, the log panel, the
- *  clocks and names beside the board, the status line,
- *  sign-in, seek and challenge.
+/*  ui.js - the page: what the board shows, the button row,
+ *  the log panel, the clocks and names beside the board, the
+ *  status line, sign-in, seek and challenge.
  *
- *  Every control is in audioplay.html and every look is in
- *  audioplay.css. This file wires the controls up and says
- *  which state is current, by setting classes (.on,
- *  .primary, .rec, .confirm, .picked) and the hidden
+ *  Every control is in audioplay.html, and every look is in
+ *  audioplay.css, on top of the house style (theme.css, in
+ *  the "shared" folder). This file wires the controls up
+ *  and says which state is current, by setting classes
+ *  (.on, .primary, .rec, .confirm, .picked) and the hidden
  *  attribute.
  *
  *  Sign-in owns the Lichess connection; the Microphone
@@ -211,6 +212,122 @@ function wireLog() {
     if (e.target.closest("button")) return;
     showLog(false);
   });
+}
+
+// ---- the board ----
+
+// The board is drawn by board.js, which is shared with other
+// projects, so it is in the "shared" folder next to this
+// page's folder, with its look (board.css) and the font of
+// its letters and numbers (theme.css); audioplay.html loads
+// all three. The lines here tell it what to show: the
+// position in api.pos (the start position before a game),
+// the last move tinted, a checked king's square glowing red,
+// and a tapped piece highlighted (touch.js). The board flips
+// when you play black. Squares are rules.js's numbers (rank
+// * 16 + file: a1 is 0, h8 is 119), and -1 is none.
+
+// Black at the bottom when you play black.
+function boardFlipped() {
+  return !!api && api.myColor === "b";
+}
+
+// Turns the board the right way up for your colour. Done
+// before every paint and every tap, so a new game's colour
+// is never missed.
+function orientBoard() {
+  BOARD.setOrientation(boardFlipped() ? "b" : "w");
+}
+
+// A square's number from its name ("e4"), or -1.
+function squareOf(name) {
+  var f = name.charCodeAt(0) - 97, r = name.charCodeAt(1) - 49;
+  return f >= 0 && f < 8 && r >= 0 && r < 8 ? r * 16 + f : -1;
+}
+
+// The last move's two squares, or null.
+function lastMoveSquares() {
+  if (!api || !api.moves || !api.moves.length) return null;
+  var uci = api.moves[api.moves.length - 1];
+  if (!uci || uci.length < 4) return null;
+  var from = squareOf(uci.slice(0, 2)), to = squareOf(uci.slice(2, 4));
+  return from >= 0 && to >= 0 ? [from, to] : null;
+}
+
+// The checked king's square, or -1.
+function checkSquare() {
+  if (!api || !api.pos || !api.pos.inCheck(api.pos.turn)) return -1;
+  return api.pos.kingSq(api.pos.turn);
+}
+
+// With no game yet, the start position is drawn, white at
+// the bottom. It is set out here rather than by rules.js, so
+// the board still shows it with rules.js missing. (Every path
+// that sets myColor also sets pos, so a flipped board with no
+// position cannot happen.)
+var startBoard = null;
+function startPosition() {
+  if (!startBoard) {
+    var b = new Array(128).fill(null), back = "rnbqkbnr";
+    for (var f = 0; f < 8; f++) {
+      b[f] = back[f].toUpperCase();   // rank 1
+      b[16 + f] = "P";                // rank 2
+      b[96 + f] = "p";                // rank 7
+      b[112 + f] = back[f];           // rank 8
+    }
+    startBoard = { board: b };
+  }
+  return startBoard;
+}
+
+// What the board shows, asked on every paint (board.js,
+// TALKING TO A PROJECT at its top).
+function describeBoard() {
+  return {
+    pos: api && api.pos ? api.pos : startPosition(),
+    lastMove: lastMoveSquares(),
+    selected: touchSelectedSq(),
+    check: checkSquare()
+  };
+}
+
+// False with board.js missing: then there is no board on the
+// page, and the log says why (an ERR line); the game itself
+// still plays.
+var boardReady = false;
+
+// Starts the board once, from boot.js. A problem the board
+// finds (pieces.js or board.css missing, say) goes in the log
+// as an ERR line.
+function initBoard() {
+  var cv = el("mini");
+  if (!cv) return;
+  if (typeof BOARD === "undefined") {
+    log("ERR", "board.js is missing - no board (keep it in the " +
+        "\"shared\" folder, next to this page's folder)");
+    return;
+  }
+  // theme.css is the house style - the font, the house
+  // colours (--bg, --panel...) - and sets --font-family;
+  // without it, that's unset.
+  if (!BOARD.cssVar("--font-family", "")) {
+    log("ERR", "theme.css is missing - the page has no house colours " +
+        "or font (keep it in the \"shared\" folder, next to this " +
+        "page's folder)");
+  }
+  boardReady = true;
+  orientBoard();
+  BOARD.init(cv, {
+    describe: describeBoard,
+    report: function (text) { log("ERR", text); }
+  });
+}
+
+// Paints the board again, the right way up.
+function renderMiniBoard() {
+  if (!boardReady) return;
+  orientBoard();
+  BOARD.render();
 }
 
 // ---- clocks, names and the status line ----
@@ -548,7 +665,7 @@ function settingsMenuOpen() {
 // button row and its left edge at the row's start, kept
 // MENU_EDGE from the screen's edges. Too tall for the
 // room above the buttons, it stops there and its rows
-// scroll under the title (audioplay.css). With less than
+// scroll under the title (theme.css). With less than
 // MENU_MIN_HEIGHT of room (the page scrolled down), it
 // takes the screen's whole height instead.
 var MENU_EDGE = 12, MENU_MIN_HEIGHT = 240;

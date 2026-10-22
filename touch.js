@@ -11,6 +11,11 @@
  *  - Nothing is spoken on success (you can see the piece
  *    move), but errors are still spoken.
  *  - The piece moves when Lichess confirms, not before.
+ *
+ *  Which square was tapped is worked out by the shared
+ *  board, board.js (in the "shared" folder); the tapped
+ *  piece's highlight is drawn by it too (describeBoard in
+ *  ui.js).
  */
 
 "use strict";
@@ -22,37 +27,27 @@ function touchActive() {
             api.pos.turn === api.myColor);
 }
 
-// The selected square as a drawing index, or -1. Clears the
-// selection if it no longer makes sense (a takeback, the
-// turn passing, a new game).
-function touchSelGridSq() {
+// The selected square, or -1. Clears the selection if it no
+// longer makes sense (a takeback, the turn passing, a new
+// game).
+function touchSelectedSq() {
   if (touchSelSq < 0) return -1;
   var p = touchActive() ? api.pos.board[touchSelSq] : null;
   var mine = p && (api.myColor === "w") === (p === p.toUpperCase());
-  if (!mine) { touchSelSq = -1; return -1; }
-  var r = 7 - (touchSelSq >> 4), f = touchSelSq & 15;
-  if (boardFlipped()) { r = 7 - r; f = 7 - f; }
-  return r * 8 + f;
-}
-
-// The tapped square, or -1. Measured against the board's
-// size on screen, not the canvas's drawing size.
-function tapTo0x88(e) {
-  var rect = mini.getBoundingClientRect();
-  if (!rect.width || !rect.height) return -1;
-  var f = Math.floor((e.clientX - rect.left) * 8 / rect.width);
-  var r = Math.floor((e.clientY - rect.top) * 8 / rect.height);
-  if (f < 0 || f > 7 || r < 0 || r > 7) return -1;
-  return gridTo0x88(r * 8 + f);
+  if (!mine) touchSelSq = -1;
+  return touchSelSq;
 }
 
 function onBoardTap(e) {
-  if (!touchActive()) return;
-  var sq = tapTo0x88(e);
+  if (!touchActive() || typeof BOARD === "undefined") return;
+  // (the right way up first, in case your colour just
+  // changed)
+  orientBoard();
+  var sq = BOARD.squareFromPoint(e.clientX, e.clientY);
   if (sq < 0) return;
   var legal = api.pos.legalMoves();
 
-  if (touchSelGridSq() >= 0 && sq !== touchSelSq) {
+  if (touchSelectedSq() >= 0 && sq !== touchSelSq) {
     var found = legal.filter(function (m) {
       return m.from === touchSelSq && m.to === sq;
     });
@@ -83,7 +78,8 @@ function onBoardTap(e) {
 // select and then immediately deselect on every tap.
 var touchWired = false;
 function initTouch() {
-  if (!mini || touchWired) return;
+  var cv = document.getElementById("mini");
+  if (!cv || touchWired) return;
   touchWired = true;
-  mini.addEventListener("click", onBoardTap);
+  cv.addEventListener("click", onBoardTap);
 }

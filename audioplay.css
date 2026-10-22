@@ -1,8 +1,18 @@
-/*  audioplay.css - the page's look.
+/*  audioplay.css - the page's own look.
+ *
+ *  It builds on the house style every project shares,
+ *  theme.css in the "shared" folder (audioplay.html loads
+ *  it first): the font, the house colours (--bg, --panel,
+ *  --border, --text, --text-muted, --bright, --accent...),
+ *  and the look of buttons, dropdowns, the switch and the
+ *  Settings menu. Here is what only audioplay has: its
+ *  layout and sizes, and its own colours (below).
  *
  *  The code marks which state is current with a class
  *  (.primary, .on, .rec, .confirm, .picked, .turn, .low,
- *  .idle, .wide); what each state looks like is here.
+ *  .idle, .wide); what each state looks like is here. A
+ *  lit button (.on, .picked) is the house's: --accent
+ *  behind, an --accent-bright edge, --bright text.
  *  The look of typing (hybrid and keys modes) is in
  *  keys.css.
  *
@@ -14,30 +24,18 @@
  */
 
 :root {
-  --bg:      #161512;
+  /* the panels the page is split into, a shade lighter
+     than the page */
   --surface: #1f1d1a;
-  --border:  #3a3530;
+
+  /* "press me": Sign in, and Microphone while off */
   --blue:    #91bddf;
-  --text:    #888888;
-  --btn-bg:  #242220;
-
-  /* "on" (lit buttons, signed in, a picked time) */
-  --button-on: #3a5a2a;
-
-  /* text on anything lit, and the clock digits */
-  --bright:  #f2f2ef;
 
   /* "Sign out?", the Practice button, player titles */
   --amber:   #d0a24c;
 
   /* the BOT title, as on lichess.org */
   --fuchsia: #c02acc;
-  --dim:     #6b6b6b;
-
-  /* the Settings menu: lighter than the panels, so it
-     stands out over the dimmed page, and its row names */
-  --menu:      #2b2a27;
-  --menu-text: #bbbbbb;
 
   /* Extra space at the top of the page in the full-screen
      home-screen web app, to clear the iPadOS status bar
@@ -66,9 +64,9 @@
 /* Wins over any display rule below, so the code can hide
    anything by setting its hidden attribute. */
 [hidden] { display: none !important; }
+/* (the page's background, text colour and font are the
+   house's, theme.css) */
 body {
-  background: var(--bg); color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-weight: 500;
   /* (--top-inset: the web app's room for the status bar,
      :root above) */
@@ -79,20 +77,20 @@ body {
 
 /* ---- buttons ---- */
 
-/* Scoped to .panel: the log panel's buttons are smaller
-   (see the log section at the end). */
-.panel button {
+/* A button's colours, edge and corners, and how a
+   disabled one is dimmed, are the house's (theme.css).
+   Here: their size, and how they react to a tap. Scoped
+   to the panels and the Settings menu: the log panel's
+   buttons are smaller (see the log section at the end). */
+.panel button, .menu button {
   touch-action: manipulation; -webkit-user-select: none; user-select: none;
-  -webkit-appearance: none; appearance: none;
-  font-family: inherit; font-size: 1rem; font-weight: 600;
-  background: var(--btn-bg); color: var(--blue);
-  border: 1px solid var(--border); border-radius: 8px;
+  font-size: 1rem; font-weight: 600;
   padding: 10px 14px; flex: 1 1 auto;
   transition: transform .08s ease, opacity .08s ease;
 }
-.panel button:active { transform: scale(.96); opacity: .5; }
-.panel button:focus, .panel button:focus-visible { outline: none; box-shadow: none; }
-.panel button:disabled { opacity: .35; }
+.panel button:active, .menu button:active { transform: scale(.96); opacity: .5; }
+.panel button:focus, .panel button:focus-visible,
+.menu button:focus, .menu button:focus-visible { outline: none; box-shadow: none; }
 
 /* press me: "Sign in", and Microphone while off */
 .panel button.primary { background: var(--blue); color: var(--bg); border-color: var(--blue); }
@@ -100,8 +98,8 @@ body {
 /* on: the account button while signed in, and Settings,
    Clock, Log and Practice while theirs is open */
 .panel button.on {
-  background: var(--button-on); color: var(--bright);
-  border-color: var(--button-on);
+  background: var(--accent); color: var(--bright);
+  border-color: var(--accent-bright);
 }
 
 /* recording: Microphone while on */
@@ -134,22 +132,23 @@ body {
 #timeRow { display: contents; }
 .panel button.tc { flex: 0 0 auto; padding: 10px 12px;
   font-variant-numeric: tabular-nums; }
-.panel button.tc.picked { background: var(--button-on);
-  color: var(--bright); border-color: var(--button-on); }
+.panel button.tc.picked { background: var(--accent);
+  color: var(--bright); border-color: var(--accent-bright); }
 
 /* the Custom box looks like the preset buttons beside it */
 #timeCustom {
   width: 5.5em; font: inherit; font-weight: 600;
-  padding: 10px 12px; border-radius: 8px; text-align: center;
-  background: var(--btn-bg); color: var(--blue);
-  border: 1px solid var(--border);
+  padding: 10px 12px; text-align: center;
+  background: var(--panel); color: var(--text);
+  border: var(--box-border-width) solid var(--border);
+  border-radius: var(--box-radius);
   -webkit-appearance: none; appearance: none;
   font-variant-numeric: tabular-nums;
 }
-#timeCustom::placeholder { color: var(--dim); font-weight: 600; }
+#timeCustom::placeholder { color: var(--text-muted); font-weight: 600; }
 #timeCustom.picked {
-  background: var(--button-on); color: var(--bright);
-  border-color: var(--button-on);
+  background: var(--accent); color: var(--bright);
+  border-color: var(--accent-bright);
 }
 
 /* ---- panels ---- */
@@ -164,11 +163,14 @@ body {
   cursor: pointer;
 }
 .panel > details > summary::marker,
-.panel > details > summary::-webkit-details-marker { color: var(--dim); font-size: 1.15em; }
+.panel > details > summary::-webkit-details-marker { color: var(--text-muted); font-size: 1.15em; }
 .panel > details:not([open]) > summary { margin-bottom: 0; }
 
 /* ---- the board ---- */
 
+/* Only the board's size and place are here. Its colours and
+   the font of its letters and numbers are in board.css and
+   theme.css, in the "shared" folder. */
 #mini {
   display: block; width: 100%; aspect-ratio: 1;
 
@@ -240,8 +242,9 @@ body {
 .sideClock .cbox.low { background: #77312b; }
 .sideClock .cbox.low.idle { background: #4e2c28; }
 
-/* the waiting side's digits dim; this is --bright at 62% */
-.sideClock .cbox.idle { color: rgba(242,242,239,.62); }
+/* the waiting side's digits dim; this is --bright
+   (theme.css, #eaeaea) at 62% */
+.sideClock .cbox.idle { color: rgba(234,234,234,.62); }
 
 /* ---- player names ---- */
 
@@ -255,116 +258,64 @@ body {
 /* the "Someone else" name box */
 input.whoin {
   width: 9em; font: inherit; font-weight: 600;
-  padding: 8px 12px; border-radius: 8px;
-  background: var(--btn-bg); color: var(--blue);
-  border: 1px solid var(--border);
+  padding: 8px 12px;
+  background: var(--panel); color: var(--text);
+  border: var(--box-border-width) solid var(--border);
+  border-radius: var(--box-radius);
   -webkit-appearance: none; appearance: none;
 }
-input.whoin::placeholder { color: var(--dim); font-weight: 600; }
+input.whoin::placeholder { color: var(--text-muted); font-weight: 600; }
 
-/* Dropdowns styled like the buttons. The arrow is a small
-   inline SVG; its colour repeats --blue, since a data URI
-   can't read a variable. */
+/* Dropdowns: the house's look (theme.css), plus an arrow
+   at the right. The arrow is a small inline SVG; its
+   colour repeats --text (#bbbbbb), since a data URI can't
+   read a variable. */
 select {
   font: inherit; font-weight: 600;
   padding: 8px 30px 8px 12px;
-  color: var(--blue);
-  background: var(--btn-bg)
-    url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2391bddf' stroke-width='1.5'/%3E%3C/svg%3E")
+  background: var(--panel)
+    url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23bbbbbb' stroke-width='1.5'/%3E%3C/svg%3E")
     no-repeat right 10px center;
-  border: 1px solid var(--border); border-radius: 8px;
-  -webkit-appearance: none; appearance: none;
 }
 
 /* ---- the Settings menu ---- */
 
-/* The backdrop dims the page and catches the tap that
-   closes the menu. Under the log panel and Clock View. */
-#settingsBackdrop {
-  position: fixed; inset: 0; z-index: 900;
-  background: rgba(0,0,0,.35);
-}
-
-/* ui.js places the menu (left, bottom, max-height) just
-   above the button row. As wide as its longest row; a menu
-   too tall for the room scrolls under its title, and
-   scrolling to its end doesn't go on to scroll the page.
-   The .panel class gives its buttons the page's look; the
-   rules here win over .panel's own padding and margin. */
+/* Its look - the panel over the dimmed page, the title
+   that stays put while the rows scroll under it, the rows
+   and the lines between them, the switch - is the house's
+   (theme.css, POP-UP MENUS). ui.js places it (left,
+   bottom, max-height) just above the button row. Here:
+   the backdrop under the log panel and Clock View, and the
+   menu's widest and its text size (a little bigger than
+   the page's, for tapping). */
+#settingsBackdrop { z-index: 900; }
 #settingsMenu {
-  position: fixed; margin: 0;
-  width: max-content; max-width: calc(100vw - 24px);
-  background: var(--menu); border: 1px solid var(--border);
-  border-radius: 8px; padding: 0 16px 6px;
-  box-shadow: 0 8px 28px rgba(0,0,0,.45);
-  overflow-y: auto; overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  max-width: calc(100vw - 24px);
   font-size: 1.1rem; line-height: 1.45;
 }
-
-/* the title stays put while the rows scroll under it */
-.menuTitle {
-  position: sticky; top: 0; z-index: 1;
-  background: var(--menu); color: var(--bright);
-  font-weight: 700; padding: 16px 0 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-/* One setting per row: its name on the left, its control
-   on the right, a line between rows. */
-.menuRow {
-  display: flex; align-items: center;
-  justify-content: space-between; gap: 24px;
-  padding: 12px 0; border-top: 1px solid var(--border);
-}
-.menuTitle + .menuRow { border-top: none; }
-.menuLabel { color: var(--menu-text); white-space: nowrap; }
-
-/* a switch's whole row is its label: a tap anywhere on it
-   flips the switch */
-label.menuRow { cursor: pointer; }
 
 /* The speech rows' wrapper doesn't count in the layout.
    Keyboard (keys mode) greys the rows out (.off) and they
    ignore taps; they stay in place so the menu keeps its
    size. */
 #voiceSettings { display: contents; }
-#voiceSettings.off .menuRow { opacity: .35; pointer-events: none; }
+#voiceSettings.off .menu-row { opacity: .35; pointer-events: none; }
 
 /* Two joined buttons, the picked side lit: SQUARES |
    PIECES. */
 .segmented { display: inline-flex; flex: none; }
-.panel .segmented button { flex: 0 0 auto; letter-spacing: .08em; }
-.panel .segmented button:first-child { border-radius: 8px 0 0 8px; }
-.panel .segmented button:last-child {
-  border-radius: 0 8px 8px 0; border-left: none;
+.segmented button { flex: 0 0 auto; letter-spacing: .08em; }
+.segmented button:first-child {
+  border-radius: var(--box-radius) 0 0 var(--box-radius);
 }
-.panel .segmented button.picked {
-  background: var(--button-on); color: var(--bright);
-  border-color: var(--button-on);
+.segmented button:last-child {
+  border-radius: 0 var(--box-radius) var(--box-radius) 0;
+  border-left: none;
 }
-
-/* The on/off switch (Show ratings), 52 x 30px: grey off,
-   green on. The checkbox inside is hidden; the slider is
-   what shows. */
-.switch {
-  position: relative; display: inline-block; flex: none;
-  width: 52px; height: 30px;
+.segmented button.picked {
+  background: var(--accent); color: var(--bright);
+  border-color: var(--accent-bright);
 }
-.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-.switch .slider {
-  position: absolute; inset: 0; cursor: pointer;
-  background: #4a4540; border-radius: 999px;
-  transition: background .15s ease;
-}
-.switch .slider::before {
-  content: ""; position: absolute;
-  width: 24px; height: 24px; left: 3px; top: 3px;
-  background: var(--bright); border-radius: 50%;
-  transition: transform .15s ease;
-}
-.switch input:checked + .slider { background: var(--button-on); }
-.switch input:checked + .slider::before { transform: translateX(22px); }
 
 /* ---- the log panel ---- */
 
@@ -384,12 +335,11 @@ label.menuRow { cursor: pointer; }
   display: flex; gap: 8px; padding: 8px;
   border-bottom: 1px solid var(--border);
 }
+/* (their colours, edge and corners are the house's,
+   theme.css) */
 #logBar button {
   font: inherit; font-size: 12px;
-  padding: 6px 12px; border-radius: 8px;
-  background: var(--btn-bg); color: var(--blue);
-  border: 1px solid var(--border);
-  -webkit-appearance: none; appearance: none;
+  padding: 6px 12px;
   touch-action: manipulation;
 }
 #logBody {

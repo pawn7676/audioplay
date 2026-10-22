@@ -43,12 +43,13 @@ The scripts, in the order audioplay.html loads them:
   folder: see below)
 - `pieces.js` - the twelve piece pictures, drawn by
   board.js (kept in the "shared" folder: see below)
+- `board.js` - draws the board (kept in the "shared"
+  folder: see below)
 - `lichess.js` - sign-in, streams, moves, seeks
-- `board.js` - draws the board
 - `touch.js` - tap-to-move
 - `keys.js` - typed moves (hybrid and keys modes), and
   keys mode's shown messages
-- `ui.js` - the page's controls
+- `ui.js` - the page's controls, and what the board shows
 - `clock.js` - Clock View and the spoken time
 - `awake.js` - keeps the screen on during a game
 - `boot.js` - starts it all
@@ -57,24 +58,44 @@ The scripts share one global scope. Order only matters for
 code that runs as a file loads: settings.js and log.js
 first, boot.js last.
 
-rules.js and pieces.js are shared with other projects, so
-there is only one copy of each, and they aren't in
-audioplay's folder: they are in a folder named "shared",
-next to audioplay's folder. audioplay.html loads them as
-`../shared/rules.js` and `../shared/pieces.js` (".."
-means up one folder), which works the same locally and
-once published, as long as "shared" sits next to
-audioplay's folder in both places. Don't change either
-for audioplay alone: a change reaches every project. If
-rules.js is missing, boot.js says so on the status line,
-and the page won't sign in or play until it is back. If
-pieces.js is missing, the board is drawn with no pieces
-and the log says why (an ERR line); the game still plays.
+Some files are shared with other projects, so there is
+only one copy of each, and they aren't in audioplay's
+folder: they are in a folder named "shared", next to
+audioplay's folder:
+
+- `rules.js` - the rules of chess
+- `pieces.js` - the piece pictures
+- `board.js` - draws the board; ui.js tells it what to
+  show (the position, the last move, check, a tapped
+  piece)
+- `board.css` - the board's colours, and the font of its
+  letters and numbers
+- `theme.css` - the house style every project shares:
+  the font (Noto Sans), the house colours, and the look
+  of buttons, dropdowns, the switch and the Settings menu
+- `NotoSans.ttf` - the font itself, with its license,
+  `NotoSans-OFL.txt`, beside it
+
+audioplay.html loads them as `../shared/rules.js` and so
+on (".." means up one folder), which works the same
+locally and once published, as long as "shared" sits next
+to audioplay's folder in both places. Don't change any of
+them for audioplay alone: a change reaches every project.
+If rules.js is missing, boot.js says so on the status
+line, and the page won't sign in or play until it is
+back. If board.js is missing there is no board; if
+pieces.js is, the board has no pieces; if board.css or
+theme.css is, the board loses its colours or the page
+its house colours and font.
+Each time the log says why (an ERR line), and the game
+still plays.
 
 The other files:
 
 - `audioplay.html` - the layout
-- `audioplay.css` - the look
+- `audioplay.css` - the page's own look, on top of
+  theme.css: its layout and sizes, the clocks, and the
+  colours only audioplay uses
 - `keys.css` - the look of typing, which shows only in
   hybrid and keys modes
 - `icon.png` - the home-screen icon
@@ -85,9 +106,9 @@ The other files:
 - `README.md` - this file, which the page doesn't load
 - `LICENSE` - the GNU General Public License, version 3:
   audioplay's license
-- `CREDITS.md` - others' work used here (the pieces,
-  Lichess's colours and API, and what rules.js matches),
-  with their licenses
+- `CREDITS.md` - others' work used here (the pieces, the
+  font, Lichess's colours and API, and what rules.js
+  matches), with their licenses
 
 ## How the three modes differ
 
@@ -133,9 +154,9 @@ navigation, but every request the page itself makes fails
 with "Load failed": the sign-in can't trade its code for
 a token, and nothing else could reach Lichess either.
 
-Publish the "shared" folder (with rules.js and pieces.js)
-on the same host, next to audioplay's folder, as it is
-locally: the page loads both from there.
+Publish the "shared" folder (with everything in it) on
+the same host, next to audioplay's folder, as it is
+locally: the page loads its shared files from there.
 
 The return address for sign-in is this page's own address
 (`redirectUri()` in lichess.js), so moving to a new host
@@ -204,10 +225,12 @@ can be reached from the page at all (a NET line).
 
 Copyright (C) 2026 pawn7676. audioplay is free software
 under the GNU General Public License, version 3 or later
-(`LICENSE`). The cburnett pieces, Lichess's colours and
-API, and the libraries rules.js is written to match
-(chess.js, python-chess) are credited in `CREDITS.md`,
-with their licenses. Keep `LICENSE` and `CREDITS.md` with
-audioplay's files wherever they're published.
+(`LICENSE`). The cburnett pieces, the Noto Sans font,
+Lichess's colours and API, and the libraries rules.js is
+written to match (chess.js, python-chess) are credited in
+`CREDITS.md`, with their licenses. Keep `LICENSE` and
+`CREDITS.md` with audioplay's files wherever they're
+published, and `NotoSans-OFL.txt` with the font in
+"shared".
 
 audioplay is not affiliated with or endorsed by Lichess.

@@ -7,7 +7,8 @@
  *  .typing class that ui.js puts on <body> when typing.
  *  So in voice mode the page looks exactly as it does
  *  without this file. (Play by is in the Settings menu,
- *  whose look is in audioplay.css.)
+ *  whose look is the house's, in theme.css in the
+ *  "shared" folder.)
  */
 
 /* ---- beside the board ---- */

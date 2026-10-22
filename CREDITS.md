@@ -4,7 +4,8 @@ audioplay's own code is free software under the GNU General Public
 License, version 3 or later (GPL-3.0-or-later; the full text is in
 `LICENSE`). It uses other people's work, listed here with their
 licenses. Wherever audioplay's files are published, keep this file
-and `LICENSE` with them.
+and `LICENSE` with them - and `NotoSans-OFL.txt` with the font, in
+the "shared" folder next to audioplay's.
 
 audioplay is not affiliated with or endorsed by Lichess
 (lichess.org).
@@ -15,8 +16,9 @@ audioplay is not affiliated with or endorsed by Lichess
 
 Every file not listed below - the pages (`audioplay.html`,
 `index.html`), their scripts and CSS, and the icon (`icon.png`) -
-and `rules.js`, the rules of chess, which audioplay loads from the
-"shared" folder next to its own.
+and the files audioplay loads from the "shared" folder next to its
+own: `rules.js` (the rules of chess), `board.js` and `board.css`
+(the board) and `theme.css` (the house style).
 
 Copyright (C) 2026 pawn7676
 
@@ -50,6 +52,17 @@ Lichess lists the set the same way in
 
 ---
 
+## Font - Noto Sans
+
+`NotoSans.ttf` (in the "shared" folder next to audioplay's, one
+copy for every project, loaded by `theme.css`), used for the
+page's text and the board's letters and numbers: Noto Sans, Copyright 2022 The Noto
+Project Authors. SIL Open Font License 1.1 - the full text, with
+its copyright notice, is in `NotoSans-OFL.txt`, beside it.
+[fonts.google.com/noto/specimen/Noto+Sans](https://fonts.google.com/noto/specimen/Noto+Sans)
+
+---
+
 ## Lichess
 
 - **The Lichess API.** Signing in, games, moves, offers, seeks and
@@ -58,13 +71,16 @@ Lichess lists the set the same way in
   lichess.org with their own Lichess accounts; audioplay never sees
   their password. No Lichess code is included.
 - **The look.** The board's colours, its last-move and selected
-  tints, and the red glow on a king in check (`board.js`) follow
-  Lichess's board, chessground. The check glow uses chessground's
-  four colour stops as they are. chessground is under
-  GPL-3.0-or-later, the same license as audioplay
+  tints, the colours and places of its letters and numbers, and
+  the red glow on a king in check (`board.js` and `board.css`, in
+  the "shared" folder) follow Lichess's board, chessground. The
+  check glow uses chessground's four colour stops as they are.
+  chessground is under GPL-3.0-or-later, the same license as
+  audioplay
   ([github.com/lichess-org/chessground](https://github.com/lichess-org/chessground)).
-  The page's dark background, the clock colours and the BOT title
-  colour (`audioplay.css`) follow lichess.org's own (lila, copyright
+  The page's dark background (`theme.css`, in the "shared" folder),
+  the clock colours and the BOT title colour (`audioplay.css`)
+  follow lichess.org's own (lila, copyright
   (c) 2012-2026 the lila authors, AGPL-3.0-or-later); only colour
   values are used, no lila code.
 

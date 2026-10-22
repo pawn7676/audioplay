@@ -6,10 +6,13 @@
      mode).
 
      The page's layout. The look is in audioplay.css (and
-     keys.css for typing), the program in the .js files
-     loaded at the bottom, and the piece pictures in
-     pieces.js (in the "shared" folder, like rules.js). The
-     project's notes are in README.md.
+     keys.css for typing), on top of the house style every
+     project shares (theme.css), and the program in the .js
+     files loaded at the bottom. The house style and the
+     board - its drawing (board.js), its look (board.css)
+     and its piece pictures (pieces.js) - are in the
+     "shared" folder, like rules.js. The project's notes are
+     in README.md.
 
      Copyright (C) 2026 pawn7676. Free software under the
      GNU General Public License, version 3 or later: see
@@ -40,6 +43,14 @@
 <script>
 if (navigator.standalone) document.documentElement.classList.add("web-app");
 </script>
+<!-- From the "shared" folder next to this page's folder
+     (one copy for every project): theme.css, the house
+     style (the font, the house colours, and the look of
+     buttons, dropdowns, the switch and the Settings menu),
+     then board.css, the board's colours. Then the page's
+     own look. -->
+<link rel="stylesheet" href="../shared/theme.css">
+<link rel="stylesheet" href="../shared/board.css">
 <link rel="stylesheet" href="audioplay.css">
 <link rel="stylesheet" href="keys.css">
 </head>
@@ -337,36 +348,37 @@ if (navigator.standalone) document.documentElement.classList.add("web-app");
      Escape) closes it. ui.js places it just above the
      button row. Play by comes first: it picks how you play,
      and Keyboard (keys mode) greys out the speech settings.
-     The menu has .panel so its buttons look like the
-     page's. -->
-<div id="settingsBackdrop" hidden>
-  <div class="panel" id="settingsMenu">
-    <div class="menuTitle">Settings</div>
-    <div class="menuRow">
-      <span class="menuLabel">Play by</span>
+     The menu's look is the house's (theme.css, with the
+     classes menu-backdrop, menu, menu-title, menu-row,
+     menu-label and switch). -->
+<div class="menu-backdrop" id="settingsBackdrop" hidden>
+  <div class="menu" id="settingsMenu">
+    <div class="menu-title">Settings</div>
+    <div class="menu-row">
+      <span class="menu-label">Play by</span>
       <select id="setInput">
         <option value="voice">Voice</option>
         <option value="hybrid">Hybrid</option>
         <option value="keys">Keyboard</option>
       </select>
     </div>
-    <label class="menuRow">
-      <span class="menuLabel">Show ratings</span>
+    <label class="menu-row">
+      <span class="menu-label">Show ratings</span>
       <span class="switch">
         <input type="checkbox" id="setRatings">
         <span class="slider"></span>
       </span>
     </label>
     <div id="voiceSettings">
-      <div class="menuRow">
-        <span class="menuLabel">Moves spoken</span>
+      <div class="menu-row">
+        <span class="menu-label">Moves spoken</span>
         <span class="segmented" id="setSpeech">
           <button data-speech="squares">SQUARES</button>
           <button data-speech="pieces">PIECES</button>
         </span>
       </div>
-      <div class="menuRow">
-        <span class="menuLabel">Confirm</span>
+      <div class="menu-row">
+        <span class="menu-label">Confirm</span>
         <select id="setConfirm">
           <option value="chime-quiet">Chime quiet</option>
           <option value="chime">Chime standard</option>
@@ -417,13 +429,14 @@ if (navigator.standalone) document.documentElement.classList.add("web-app");
 <!-- The program, one file per job. Order only matters for
      code that runs as a file loads: settings.js and log.js
      first, and boot.js last.
-     rules.js and pieces.js are shared with other projects,
-     so they aren't in this page's folder: they are in the
-     "shared" folder next to it, and ".." (up one folder)
-     reaches it, both locally and once published. If
+     rules.js, pieces.js and board.js are shared with other
+     projects, so they aren't in this page's folder: they
+     are in the "shared" folder next to it, and ".." (up one
+     folder) reaches it, both locally and once published. If
      rules.js is missing, boot.js says so on the status
-     line; if pieces.js is, board.js says so in the log, and
-     the board has no pieces. -->
+     line. If board.js is missing there is no board, and if
+     pieces.js is, the board has no pieces; either way the
+     log says so (an ERR line) and the game still plays. -->
 <script src="settings.js"></script>
 <script src="log.js"></script>
 <script src="stall.js"></script>
@@ -437,8 +450,8 @@ if (navigator.standalone) document.documentElement.classList.add("web-app");
 <script src="mic.js"></script>
 <script src="../shared/rules.js"></script>
 <script src="../shared/pieces.js"></script>
+<script src="../shared/board.js"></script>
 <script src="lichess.js"></script>
-<script src="board.js"></script>
 <script src="touch.js"></script>
 <script src="keys.js"></script>
 <script src="ui.js"></script>
