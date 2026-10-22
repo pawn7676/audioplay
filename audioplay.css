@@ -47,19 +47,19 @@
      The page sets it by itself:
        Safari tab ... 0px - Safari's own toolbar is above
                       the page
-       web app ...... 24px - the rule just below
+       web app ...... 10px - the rule just below
      audioplay.html's <head> puts the class "web-app" on
      the page when iPadOS says it was opened from its Home
      Screen icon (navigator.standalone), and the rule below
      only applies then. (The CSS check, @media
      (display-mode: standalone), doesn't work here: iPadOS
      doesn't report the web app that way.)
-     Tweak the 24px if the blur still overlaps.
+     Tweak the number below if the blur still overlaps.
      (&.web-app is a rule written inside this block: it
      means "this block, when the page has the class
      web-app".) */
   --top-inset: 0px;
-  &.web-app { --top-inset: 24px; }
+  &.web-app { --top-inset: 10px; }
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
