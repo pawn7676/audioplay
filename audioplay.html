@@ -30,6 +30,16 @@
      tag naming both uses is not reliably honoured. -->
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
+<!-- The home-screen web app: when iPadOS says the page was
+     opened from its Home Screen icon (navigator.standalone
+     - false in a Safari tab), the page gets the class
+     "web-app", which gives it room for the iPadOS status
+     bar at the top (--top-inset in audioplay.css). Here,
+     before the stylesheets, so the room is there from the
+     first frame. -->
+<script>
+if (navigator.standalone) document.documentElement.classList.add("web-app");
+</script>
 <link rel="stylesheet" href="audioplay.css">
 <link rel="stylesheet" href="keys.css">
 </head>

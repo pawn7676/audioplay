@@ -38,6 +38,28 @@
      stands out over the dimmed page, and its row names */
   --menu:      #2b2a27;
   --menu-text: #bbbbbb;
+
+  /* Extra space at the top of the page in the full-screen
+     home-screen web app, to clear the iPadOS status bar
+     (clock/wifi/battery), whose translucent blur otherwise
+     overlaps the board - on top of the page's own 12px
+     (body, below). The log panel moves down by it too.
+     The page sets it by itself:
+       Safari tab ... 0px - Safari's own toolbar is above
+                      the page
+       web app ...... 24px - the rule just below
+     audioplay.html's <head> puts the class "web-app" on
+     the page when iPadOS says it was opened from its Home
+     Screen icon (navigator.standalone), and the rule below
+     only applies then. (The CSS check, @media
+     (display-mode: standalone), doesn't work here: iPadOS
+     doesn't report the web app that way.)
+     Tweak the 24px if the blur still overlaps.
+     (&.web-app is a rule written inside this block: it
+     means "this block, when the page has the class
+     web-app".) */
+  --top-inset: 0px;
+  &.web-app { --top-inset: 24px; }
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
@@ -48,7 +70,10 @@ body {
   background: var(--bg); color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-weight: 500;
-  padding: 12px; max-width: 760px; margin: 0 auto;
+  /* (--top-inset: the web app's room for the status bar,
+     :root above) */
+  padding: calc(12px + var(--top-inset)) 12px 12px;
+  max-width: 760px; margin: 0 auto;
 }
 .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
 
@@ -344,9 +369,12 @@ label.menuRow { cursor: pointer; }
 /* ---- the log panel ---- */
 
 /* Covers the page, under Clock View. A tap on it closes
-   it (ui.js). */
+   it (ui.js). Its top edge is below the status bar in the
+   web app (--top-inset, :root), so Copy and Clear aren't
+   under the blur. */
 #logPanel {
   position: fixed; inset: 8px; z-index: 1000;
+  top: calc(8px + var(--top-inset));
   display: flex; flex-direction: column;
   background: rgba(12,12,11,.97);
   border: 1px solid var(--border); border-radius: 12px;
